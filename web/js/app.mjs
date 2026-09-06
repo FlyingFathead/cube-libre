@@ -27,12 +27,16 @@ async function main() {
   const game=new Game({stats,save:s=>write('cube-libre-scores-v1',s)});
   game.flags.shake=read('cube-libre-shake-v1',game.flags.shake)!==false;
   game.flags.spin=read('cube-libre-spin-v1',game.flags.spin)!==false;
+  game.flags.portal_white_light=read('cube-libre-portal-white-light-v1',game.flags.portal_white_light)!==false;
+  game.flags.culling=read('cube-libre-culling-v1',game.flags.culling)!==false;
+  game.flags.rotation_shocks=read('cube-libre-rotation-shocks-v1',game.flags.rotation_shocks)!==false;
   const renderer=new Renderer($('scene'),$('fx'),titleCells);
   const keyboard=new Set(),pointers=new Map();
   const clearInput=()=>{keyboard.clear();pointers.clear();document.querySelectorAll('.held').forEach(b=>b.classList.remove('held'));};
   let loadingStart=false,audioProgress='',audioWarning='',modalKind=null,previousPaused=false,consolePaused=false,raf=0;
   const audio=new GameAudio((done,total)=>{audioProgress=`Loading audio ${done}/${total}`;});
   audio.mute(read('cube-libre-muted-v1',false)===true);
+  game.consoleSettings.mute={get:()=>audio.muted,set:value=>{void mute(value);}};
   const focusGame=()=>{$('game').focus({preventScroll:true});};
   const syncAudio=()=>audio.pause(game.paused||game.help||document.hidden);
   async function start() {
@@ -80,6 +84,18 @@ async function main() {
     const spinToggle=document.createElement('input');spinToggle.type='checkbox';spinToggle.checked=game.flags.spin;
     spinToggle.addEventListener('change',()=>{game.command(`spin ${spinToggle.checked}`);write('cube-libre-spin-v1',game.flags.spin);});
     spinLabel.append(spinToggle,'Player auto-rotation (normal levels)');body.append(spinLabel);
+    const shockLabel=document.createElement('label');shockLabel.className='shake-setting';
+    const shockToggle=document.createElement('input');shockToggle.type='checkbox';shockToggle.checked=game.flags.rotation_shocks;
+    shockToggle.addEventListener('change',()=>{game.command(`rotation_shocks ${shockToggle.checked}`);write('cube-libre-rotation-shocks-v1',game.flags.rotation_shocks);});
+    shockLabel.append(shockToggle,'Hit rotation shocks');body.append(shockLabel);
+    const lightLabel=document.createElement('label');lightLabel.className='shake-setting';
+    const lightToggle=document.createElement('input');lightToggle.type='checkbox';lightToggle.checked=game.flags.portal_white_light;
+    lightToggle.addEventListener('change',()=>{game.flags.portal_white_light=lightToggle.checked;write('cube-libre-portal-white-light-v1',game.flags.portal_white_light);});
+    lightLabel.append(lightToggle,'Portal white light');body.append(lightLabel);
+    const cullLabel=document.createElement('label');cullLabel.className='shake-setting';
+    const cullToggle=document.createElement('input');cullToggle.type='checkbox';cullToggle.checked=game.flags.culling;
+    cullToggle.addEventListener('change',()=>{game.flags.culling=cullToggle.checked;write('cube-libre-culling-v1',game.flags.culling);});
+    cullLabel.append(cullToggle,'Cull distant corridors');body.append(cullLabel);
     if(inBonus) {
       const bonusHelp=document.createElement('p');bonusHelp.className='bonus-help';
       bonusHelp.textContent='BONUS ROUND: W / ↑ rolls toward the ramp, S / ↓ rolls back, A / D or ← / → rolls sideways. Hold Shift to rush. Touch loose pieces to collect them, then roll up the ramp into the portal before time runs out. The golden ring marks your body.';body.append(bonusHelp);
@@ -130,8 +146,8 @@ async function main() {
       ['2 · Retry current level',()=>{closeModal();game.ready(game.level);syncAudio();}]
     ]);
   }
-  async function mute() {
-    audio.mute();write('cube-libre-muted-v1',audio.muted);
+  async function mute(value) {
+    audio.mute(typeof value==='boolean'?value:undefined);write('cube-libre-muted-v1',audio.muted);
     if(!audio.muted) {try{await audio.unlock();audioWarning=audio.failed.length?'Some audio could not load.':'';}catch{audioWarning='Audio unavailable. The game will play silently.';audio.mute(true);}}
     syncAudio();
   }
@@ -161,10 +177,13 @@ async function main() {
     if(['clear','cls'].includes(value.toLowerCase())) {log.length=0;$('console-log').textContent='';return;}
     consoleLog(`> ${value}`);
     try {
-      const previousShake=game.flags.shake,previousSpin=game.flags.spin;
+      const previousShake=game.flags.shake,previousSpin=game.flags.spin,previousLight=game.flags.portal_white_light,previousCulling=game.flags.culling,previousShocks=game.flags.rotation_shocks;
       consoleLog(game.command(value));
       if(game.flags.shake!==previousShake)write('cube-libre-shake-v1',game.flags.shake);
       if(game.flags.spin!==previousSpin)write('cube-libre-spin-v1',game.flags.spin);
+      if(game.flags.portal_white_light!==previousLight)write('cube-libre-portal-white-light-v1',game.flags.portal_white_light);
+      if(game.flags.culling!==previousCulling)write('cube-libre-culling-v1',game.flags.culling);
+      if(game.flags.rotation_shocks!==previousShocks)write('cube-libre-rotation-shocks-v1',game.flags.rotation_shocks);
       if(/^(view_end_anim_v1|view_bonus_001|test\s+(ending_1|bonus_round_1)|bonus(?:\s+\S+)?)$/i.test(value)) { closeConsole();game.paused=false;game.help=false;syncAudio();focusGame();if(!audio.muted)audio.unlock().then(syncAudio,()=>{});return; }
     }catch(err){consoleLog(`ERROR: ${err.message}`);}
     // Commands that change state must still respect the open console's pause.

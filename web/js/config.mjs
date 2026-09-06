@@ -1,6 +1,12 @@
 // Web-only visual settings. These do not change the physical simulation.
 export const VISUAL_EFFECTS=Object.freeze({
   shakingEnabled:true,
+  portalWhiteLight:true,
+  courseCulling:true,
+  rotationShocks:true,
+  impactAngularSpeed:420,
+  impactMaxAngle:28,
+  impactMaxSpeed:700,
   overheatBodyAmplitude:.55,
   overheatCellAmplitude:.09,
 });
@@ -8,7 +14,7 @@ export const VISUAL_EFFECTS=Object.freeze({
 // Rotation moves the actual player cells as well as their rendered geometry.
 export const PLAYER_ROTATION=Object.freeze({
   enabled:true,
-  degreesPerSecond:6,
+  degreesPerSecond:Object.freeze({x:3,y:6,z:2}),
 });
 
 // Gameplay constants from original ecf8f014 (0.15.79).
@@ -40,7 +46,7 @@ export const C = {
   "AUTO_CENTER_ON_PLAYER": false,
   "PLAYER_CENTER_ZOOM": 48.0,
   "PREVIEW_MODULES_AHEAD": 1,
-  "MAX_COURSE_MODULES": 7,
+  "MAX_COURSE_MODULES": 7, // PyGame reference only; web routes use one leg per level.
   "AUTO_CENTER_START_LEVEL": 3,
   "AUTO_CENTER_ON_HIGH_LEVELS": true,
   "RENDER_MODULES_BEHIND": 1,

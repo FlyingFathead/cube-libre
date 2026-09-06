@@ -1,16 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Game,Course,Player,V,cells,recoupleTargets,beginRecouple,portalMetrics,suction,openingLineOpacity} from '../../web/js/core.mjs';
+import {Game,Course,Player,V,cells,recoupleTargets,beginRecouple,portalMetrics,suction,openingLineOpacity,ASCENSION_TIMING} from '../../web/js/core.mjs';
 import {difficultyForLevel} from '../../web/js/difficulty.mjs';
 const ref=JSON.parse(readFileSync(new URL('./python-reference.json',import.meta.url)));
 const near=(a,b,eps=1e-9)=>assert.ok(Math.abs(a-b)<=eps,`${a} != ${b}`);
 const nearVector=(a,b)=>a.forEach((v,i)=>near(v,b[i]));
 const advance=(g,seconds,input={})=>{for(let i=0;i<Math.ceil(seconds*120);i++)g.tick(1/120,input);};
 function playing(level=1){const g=new Game({rng:()=>.5});g.ready(level);advance(g,8.7);assert.equal(g.state,'playing');return g;}
+// Preserve comparisons with the seven-leg PyGame snapshot; web progression now
+// has its own full-length route checks below and in long-course.test.mjs.
+const referenceCourse=(level,route3d=true)=>new Course(level,route3d,{moduleCount:Math.min(7,level)});
 
 test('route geometry, corridor union and joint locations match the Python implementation',()=>{
-  for(const r of ref.levels){const c=new Course(r.level,r.route3d);
+  for(const r of ref.levels){const c=referenceCourse(r.level,r.route3d);
     assert.deepEqual(c.modules.map(m=>m.bx.array()),r.directions);nearVector(c.bounds,r.bounds);
     for(let i=0;i<r.modules.length;i++){const m=c.modules[i],v=r.modules[i];nearVector(m.start.array(),v.start);nearVector(m.end().array(),v.end);
       assert.deepEqual([m.bx,m.by,m.bz].map(v=>v.array()),v.basis);}
@@ -20,13 +23,13 @@ test('route geometry, corridor union and joint locations match the Python implem
 });
 test('rotating laser collision and coordinate transforms match Python',()=>{
   const courses=new Map();let hits=0;
-  for(const r of ref.lasers){if(!courses.has(r.level))courses.set(r.level,new Course(r.level));
+  for(const r of ref.lasers){if(!courses.has(r.level))courses.set(r.level,referenceCourse(r.level));
     const l=courses.get(r.level).lasers[r.index];assert.equal(l.hits(V.of(r.p),r.t),r.hit);nearVector(l.local(V.of(r.p),r.t).array(),r.local);hits+=r.hit;}
   assert.ok(hits>100,'Fixtures must include collisions, not only empty space');
 });
 test('portal commitment, contact charge and suction match Python for small and whole bodies',()=>{
   const courses=new Map();
-  for(const r of ref.portals){if(!courses.has(r.level))courses.set(r.level,new Course(r.level));
+  for(const r of ref.portals){if(!courses.has(r.level))courses.set(r.level,referenceCourse(r.level));
     const c=courses.get(r.level),p=new Player();p.alive=new Set(cells.map((_,i)=>i).slice(0,r.count));p.origin=V.of(r.origin);
     const m=portalMetrics(c,p);for(const key of ['ratio','charge','overlap'])near(m[key],r.metrics[key]);assert.equal(m.ratio>=.985,r.metrics.reached);
     suction(c,p,1/120);nearVector(p.origin.array(),r.after_suction);
@@ -173,17 +176,20 @@ test('TIME returns before levels 20, 35 and 50 with the new allowance and no run
   assert.equal(g.state,'ascension');assert.equal(g.level,50);
 });
 
-test('level 50 can be traversed with rush, actual lasers, turns and the ten-second leg clock',()=>{
+test('all 50 legs can be traversed with rush, lasers, scarce re-coupling and the ten-second leg clock',()=>{
   const g=playing(50);
   const targets=[...g.course.modules.slice(0,-1).map(m=>m.end()),g.course.portal.world(25)];
   let target=0,minLeft=Infinity;
-  for(let frame=0;frame<120*60&&g.state==='playing';frame++){
+  for(let frame=0;frame<120*180&&g.state==='playing';frame++){
     const delta=targets[target].sub(g.player.origin),input={rush:true};
     for(const axis of ['x','y','z'])input[axis]=Math.max(-1,Math.min(1,delta[axis]/(15.6/120)));
+    if(frame%252===0)g.requestRecouple(); // One legal C request every 2.1 seconds.
     g.tick(1/120,input);minLeft=Math.min(minLeft,g.legTime);
     if(g.player.origin.sub(targets[target]).length()<.03&&target<targets.length-1)target++;
   }
   assert.equal(g.state,'ascension');assert.equal(g.completedLevel,50);
+  assert.equal(g.course.modules.length,50);assert.equal(g.timedModule,49);
+  assert.ok(g.runStats.recoupledCubes>0);assert.equal(g.course.collapsed.size,49);
   assert.ok(g.player.alive.size>0);assert.ok(minLeft>5,'Rush route leaves maneuvering time on every leg');
 });
 
@@ -206,8 +212,8 @@ test('clearing the level cap awards score once, holds white, then needs separate
   assert.equal(g.runSummary.deaths,2);assert.equal(g.runSummary.recoupledCubes,7);
   const playTime=g.runSummary.playSeconds;g.win();assert.equal(g.score,expected);
   g.continue();assert.equal(g.state,'ascension');
-  g.tick(4.7);assert.equal(g.state,'ascension');
-  g.paused=true;g.tick(20);near(g.stateTime,4.7);g.paused=false;
+  g.tick(ASCENSION_TIMING.flySeconds-.1);assert.equal(g.state,'ascension');
+  g.paused=true;g.tick(20);near(g.stateTime,ASCENSION_TIMING.flySeconds-.1);g.paused=false;
   g.tick(.11);assert.equal(g.state,'ascension_white');near(g.stateTime,0);
   g.continue();assert.equal(g.state,'ascension_white');
   g.tick(1.99);assert.equal(g.state,'ascension_white');
@@ -233,15 +239,17 @@ test('unlisted ending preview starts the cinematic without awarding scores or re
 
 test('ascension renders a single cube; the white hold contains no scene geometry',async()=>{
   const {Renderer}=await import('../../web/js/render.mjs');
+  const T=await import('../../web/vendor/three.module.min.js');
   let cubes=0,clearColor;
   const noop=()=>{},transform={set:noop,copy:noop,setScalar:noop};
   const r=Object.create(Renderer.prototype);
   Object.assign(r,{lines:{reset:noop,finish:noop},cubes:{reset(){cubes=0;},cube(){cubes++;},finish:noop},
     gl:{setClearColor(c){clearColor=c;},render:noop},stars:{material:{color:{setHex:noop}}},
-    world:{position:transform},rotator:{rotation:transform,scale:transform},camera:{position:transform,aspect:16/9,lookAt:noop},effects:noop});
+    world:new T.Group(),rotator:{rotation:transform,scale:transform},camera:{position:transform,aspect:16/9,lookAt:noop},effects:noop});
   const g=new Game();g.command('view_end_anim_v1');r.render(g);assert.equal(cubes,1);
   for(const state of ['ascension_white','ascension_title','run_summary']){
     g.setState(state);r.render(g);assert.equal(cubes,0);assert.equal(clearColor,0xffffff);assert.equal(r.stars.visible,false);
+    assert.equal(r.ascensionScene.group.visible,false);
   }
 });
 

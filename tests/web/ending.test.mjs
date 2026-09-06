@@ -1,0 +1,58 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as T from '../../web/vendor/three.module.min.js';
+import {Game,ASCENSION_TIMING} from '../../web/js/core.mjs';
+import {AscensionScene,ascensionPose,ASCENSION_STAGE} from '../../web/js/ending.mjs';
+import {Renderer} from '../../web/js/render.mjs';
+
+test('the ending uses a broad blue floor grid and one reusable starfield buffer above it',()=>{
+  const world=new T.Group(),scene=new AscensionScene(world);
+  assert.equal(scene.group.children.length,4);
+  assert.equal(scene.grid.position.y,ASCENSION_STAGE.floorY);
+  const color=scene.grid.geometry.getAttribute('color');assert.ok(color.getZ(0)>color.getX(0));
+  const stars=scene.stars.geometry.getAttribute('position');assert.equal(stars.count,ASCENSION_STAGE.starCount);
+  for(let i=0;i<stars.count;i++)assert.ok(stars.getY(i)>ASCENSION_STAGE.floorY);
+  assert.equal(scene.spark.geometry.getAttribute('position').count,1);
+  const grid=scene.grid.geometry,sky=scene.stars.geometry;
+  for(const time of [0,3,6.8,9.9,0])scene.update(ascensionPose(time));
+  assert.equal(scene.grid.geometry,grid);assert.equal(scene.stars.geometry,sky);
+  assert.equal(scene.group.children.length,4,'Replaying creates no additional scene objects');
+});
+
+test('the cube rises from the grid, stays framed, and becomes a star before any white fade',()=>{
+  const start=ascensionPose(0),starTime=ASCENSION_TIMING.starStarts+ASCENSION_TIMING.starSeconds;
+  assert.ok(Math.abs(start.position.y-.46*start.scale-ASCENSION_STAGE.floorY)<1e-8);
+  assert.equal(start.white,0);assert.equal(start.starOpacity,0);
+  const merged=ascensionPose(starTime+.2);
+  assert.equal(merged.scale,0);assert.equal(merged.starOpacity,1);assert.equal(merged.white,0);
+  assert.ok(merged.position.y>start.position.y+40);assert.ok(merged.position.z<-100);
+  assert.ok(ASCENSION_TIMING.fadeStarts-starTime>=1,'Hold the completed star transformation visibly before fading');
+  assert.equal(ascensionPose(ASCENSION_TIMING.flySeconds).white,1);
+  for(const aspect of [16/9,4/3,9/16]) {
+    let previousY=-Infinity;
+    for(const time of [0,.6,1.5,3,4.5,5.8,6.5,7.5]) {
+      const pose=ascensionPose(time,aspect),camera=new T.PerspectiveCamera(45,aspect,.1,1500);
+      camera.position.set(...pose.camera.array());camera.lookAt(...pose.target.array());camera.updateMatrixWorld();
+      const projected=new T.Vector3(...pose.position.array()).project(camera);
+      assert.ok(Math.abs(projected.x)<.9&&Math.abs(projected.y)<.9&&projected.z<1,`Cube/star framed at ${time}s, aspect ${aspect}`);
+      assert.ok(pose.position.y>=previousY);previousY=pose.position.y;
+    }
+  }
+});
+
+test('ending_1 renders one white cube, then just its star, freezes on pause, and hides the stage for white/text',()=>{
+  const g=new Game(),drawn=[],r=Object.create(Renderer.prototype),noop=()=>{};
+  Object.assign(r,{world:new T.Group(),rotator:new T.Group(),camera:new T.PerspectiveCamera(45,16/9,.1,1500),
+    stars:{material:{color:{setHex:noop}}},lines:{reset:noop,finish:noop},
+    cubes:{reset(){drawn.length=0;},cube(pos,color,scale){drawn.push({pos:pos.array(),color,scale});},finish:noop},
+    gl:{setClearColor:noop,render:noop},effects:noop});
+  g.command('test ending_1');r.render(g);assert.equal(drawn.length,1);assert.deepEqual(drawn[0].color,[1,1,1]);
+  assert.equal(r.ascensionScene.group.visible,true);assert.equal(r.stars.visible,false);
+  g.tick(3);r.render(g);const before=structuredClone(drawn);
+  g.paused=true;g.tick(4);r.render(g);assert.deepEqual(drawn,before);g.paused=false;
+  g.tick(3.8);r.render(g);assert.equal(drawn.length,0);assert.equal(r.ascensionScene.spark.visible,true);
+  assert.equal(ascensionPose(g.stateTime).white,0);
+  for(const state of ['ascension_white','ascension_title','run_summary']) {
+    g.setState(state);r.render(g);assert.equal(r.ascensionScene.group.visible,false);assert.equal(drawn.length,0);
+  }
+});

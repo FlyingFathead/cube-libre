@@ -1,7 +1,10 @@
 import * as T from '../vendor/three.module.min.js';
 import {VISUAL_EFFECTS} from './config.mjs';
 import {PIECES_RULES,recoveredShape,rotateQ,multiplyQ,bonusHeat} from './bonus.mjs';
-import { C,V,cells,cellColor,clamp,smooth,mix,lerp,rotate,radians,portalMetrics,ASCENSION_TIMING } from './core.mjs';
+import {AscensionScene,ascensionPose} from './ending.mjs';
+import {updatePortalWhiteLight} from './portal-light.mjs';
+import {RouteGuide,detailWindow,overviewZoom,createInfiniteStarfield,positionInfiniteStarfield} from './space-view.mjs';
+import { C,V,cells,cellColor,clamp,smooth,mix,lerp,rotate,radians,portalMetrics } from './core.mjs';
 
 const vec=p=>new T.Vector3(p.x,p.y,p.z);
 const white=[1,1,1],cyan=[0,1,.95],red=[1,.05,.03];
@@ -103,15 +106,10 @@ export class Renderer {
     this.canvas=canvas; this.fx=fx; this.ctx=fx.getContext('2d'); this.titleCells=titleCells;
     this.gl=new T.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
     this.gl.outputColorSpace=T.LinearSRGBColorSpace; this.gl.setPixelRatio(Math.min(devicePixelRatio||1,2));
-    this.scene=new T.Scene(); this.camera=new T.PerspectiveCamera(45,1,.1,1500);
+    this.scene=new T.Scene(); this.camera=new T.PerspectiveCamera(45,1,.1,12000);
     this.rotator=new T.Group(); this.world=new T.Group(); this.rotator.add(this.world); this.scene.add(this.rotator);
     this.lines=new Lines(this.world); this.cubes=new Cubes(this.world,this.lines);
-    const positions=[]; let seed=8721;
-    const rng=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};
-    for(let i=0;i<900;i++) positions.push((rng()*2-1)*70,(rng()*2-1)*55,(rng()*2-1)*70);
-    const geo=new T.BufferGeometry(); geo.setAttribute('position',new T.Float32BufferAttribute(positions,3));
-    this.stars=new T.Points(geo,new T.PointsMaterial({color:0xffffff,size:1.7,sizeAttenuation:false,transparent:true,opacity:.9,depthWrite:false}));
-    this.world.add(this.stars); this.createBonusArena(); this.resize();
+    this.stars=createInfiniteStarfield(this.scene);this.createBonusArena();this.resize();
   }
   createBonusArena() {
     const r=PIECES_RULES;this.bonusArena=new T.Group();this.world.add(this.bonusArena);this.bonusArena.visible=false;
@@ -222,11 +220,12 @@ export class Renderer {
     for(const [a,b] of edgeIndices) this.lines.line(pts[a],pts[b],color,alpha);
   }
   course(g,preview=false) {
-    const c=g.course,p=g.player.origin,t=g.t,location=c.location(p),reveal=c.revealIndex(p);
+    const c=g.course,p=g.player.origin,t=g.t,window=detailWindow(g,preview),{location,reveal,first,last}=window;
+    if(this.routeGuide?.course!==c) {this.routeGuide?.dispose();this.routeGuide=new RouteGuide(this.world,c);}
+    this.routeGuide.update(g,window,preview);
     const progress=preview?smooth(g.stateTime/7):1;
-    for(const m of c.modules) {
+    for(const m of c.modules.slice(first,last+1)) {
       const i=m.index;
-      if(!preview&&g.level>=3&&(i<location.index-1||i>Math.max(location.index+1,reveal+1))) continue;
       const fade=preview?0:c.fade(i,p,t),alpha=(1-fade)*(fade>.01?.58+.42*(.5+.5*Math.sin(t*Math.PI*22+i)) : 1);
       const future=!preview&&g.level>=3&&i>reveal;
       const col=future?[.45,.48,.52]:[.25,.62,.8];
@@ -240,8 +239,9 @@ export class Renderer {
         this.lines.line(map(x0,v,side),map(x1,v,side),col,alpha*.12*progress);
       }
     }
-    c.joints.forEach((j,i)=>{
-      if(!preview&&g.level>=3&&(i<location.index-2||i>Math.max(location.index+1,reveal+1))) return;
+    const joints=last<first?[]:c.joints.slice(Math.max(0,first-1),last+1);
+    joints.forEach(j=>{
+      const i=j.index;
       const alpha=(1-(preview?0:c.fade(i,p,t)))*progress;
       const map=(x,y,z)=>j.center.add(new V(x,y,z));
       this.box(map,-7,7,-7,7,-7,7,[.3,.65,.85],alpha*.4);
@@ -260,13 +260,9 @@ export class Renderer {
         for(let n=-7;n<=7;n++) this.lines.line(m.world(23,-7,n),m.world(23,7,n),[.6,.92,1],a);
       }
     });
-    if(preview) {
-      for(const m of c.modules) this.lines.line(m.start,m.end(),cyan,.35*progress);
-      this.lines.line(p,c.portal.world(20),cyan,.22*progress);
-    }
-    for(const l of c.lasers) {
+    if(preview)return; // The overview introduces the field, never its cutting grids.
+    for(const l of c.moduleLasers.slice(first,last+1).flat()) {
       const i=l.module.index;
-      if(!preview&&g.level>=3&&(i<location.index-1||i>Math.max(location.index+1,reveal+1))) continue;
       const fade=preview?0:c.fade(i,p,t); if(fade>=.995) continue;
       const future=!preview&&g.level>=3&&i>reveal;
       const rp=preview?smooth((progress-.24-i*.045)/.48):c.revealProgress(i,t);
@@ -323,9 +319,17 @@ export class Renderer {
   }
   player(g) {
     const p=g.player,t=g.t;
-    const spinAxis=new V(0,1,0),bodyRotation=new T.Quaternion().setFromAxisAngle(vec(spinAxis),radians(p.spinAngle));
+    const bodyRotation=new T.Quaternion().fromArray(p.spinQuaternion);
+    const recoil=g.flags.rotation_shocks&&g.rotationShock.angle.length()>0;
+    const shockRotation=recoil?new T.Quaternion().setFromEuler(new T.Euler(...g.rotationShock.angle.array().map(radians),'ZYX')):null;
+    if(recoil)bodyRotation.premultiply(shockRotation);
+    const bodyOrientation=bodyRotation.toArray();
     const heat=g.state==='playing'&&g.flags.shake?g.heat:0,bodyTremor=overheatTremor(t,heat);
-    const visualPosition=i=>p.pos(i).add(bodyTremor).add(overheatTremor(t,heat,i));
+    const visualPosition=i=>{
+      let pos=p.pos(i);
+      if(recoil) {const offset=vec(pos.sub(p.origin)).applyQuaternion(shockRotation);pos=p.origin.add(new V(offset.x,offset.y,offset.z));}
+      return pos.add(bodyTremor).add(overheatTremor(t,heat,i));
+    };
     for(const i of p.alive) {
       const pos=p.pos(i),l=g.course.portal.local(pos);
       if(['playing','portal_warp'].includes(g.state)&&l.x-20>=C.PORTAL_ABSORB_X-C.PORTAL_VISUAL_ABSORB_LEAD&&Math.max(Math.abs(l.y),Math.abs(l.z))<=C.PORTAL_CAPTURE_HALF) continue;
@@ -334,7 +338,7 @@ export class Renderer {
       else if(g.cool>0) color=colorMix(color,[.1,.5,1],g.cool);
       if(g.hitTime>0&&g.heat<=0&&Math.sin(t*17*Math.PI*2)>0) color=g.lastHit==='laser'?[1,.2,.1]:[.4,.85,1];
       if(g.state==='course_materialize') scale=smooth((g.stateTime/7-i/125*.22)/.72);
-      this.cubes.cube(visualPosition(i),color,scale,spinAxis,p.spinAngle);
+      this.cubes.cube(visualPosition(i),color,scale,null,0,1,false,null,bodyOrientation);
     }
     for(const f of p.fragments) {
       const expiry=8-f.age,alpha=1-f.age/8;
@@ -383,7 +387,7 @@ export class Renderer {
       ctx.fillStyle=`rgba(255,255,255,${alpha})`;ctx.fillRect(0,0,w,h);
     }
     if(g.state==='ascension') {
-      const fade=smooth((g.stateTime-ASCENSION_TIMING.fadeStarts)/ASCENSION_TIMING.fadeSeconds);
+      const fade=ascensionPose(g.stateTime).white;
       ctx.fillStyle=`rgba(255,255,255,${fade})`;ctx.fillRect(0,0,w,h);
     }
     if(g.state==='level_ready'&&g.openingTransition&&g.stateTime<.75) {
@@ -412,6 +416,10 @@ export class Renderer {
     const whiteVoid=phase||g.state==='result_overlay'||bonusResult||g.state==='reassembly'||endWhite;
     const blank=phase||g.state==='result_overlay'||bonusResult||g.state==='level_ready'||ascending||endWhite;
     if(this.bonusArena)this.bonusArena.visible=bonusScene;
+    if(ascending&&!this.ascensionScene)this.ascensionScene=new AscensionScene(this.world);
+    if(this.ascensionScene)this.ascensionScene.group.visible=ascending;
+    if(this.routeGuide)this.routeGuide.group.visible=false;
+    updatePortalWhiteLight(this,g);
     this.gl.setClearColor(whiteVoid?0xffffff:0x000000,1);
     this.stars.visible=!blank&&!bonusScene; this.stars.material.color.setHex(whiteVoid?0x444444:0xffffff);
     this.world.position.set(0,0,0); this.rotator.rotation.set(0,0,0); this.rotator.scale.setScalar(1);
@@ -423,23 +431,23 @@ export class Renderer {
     } else if(bonusScene) {
       this.bonus(g);
     } else if(ascending) {
-      const q=smooth(g.stateTime/ASCENSION_TIMING.flySeconds);
-      this.camera.position.set(0,0,18*Math.max(1,.9/this.camera.aspect));
-      this.cubes.cube(new V(0,-2+8*q,-18*q*q),[.86,.94,1],3*(1-.65*q),new V(1,.7,.25),28+g.stateTime*24);
+      const pose=ascensionPose(g.stateTime,this.camera.aspect);this.ascensionScene.update(pose);
+      this.camera.position.copy(vec(pose.camera));this.camera.lookAt(pose.target.x,pose.target.y,pose.target.z);
+      if(pose.scale>.001)this.cubes.cube(pose.position,white,pose.scale,new V(1,.7,.25),pose.angle,pose.alpha);
     } else if(!blank) {
       let center=(g.locate||g.level>=3)?g.player.origin:g.course.center,zoom=(g.locate||g.level>=3)?48:g.course.zoom;
       if(preview) {
-        const q=smooth(g.stateTime/7),b=g.course.bounds,diag=Math.hypot(b[1]-b[0],b[3]-b[2],b[5]-b[4]);
-        center=lerp(g.player.origin,g.course.center,q);
-        zoom=mix(27.5,Math.min(150,diag*.5/Math.tan(Math.PI/8)*1.22),q);
-        if(q>.78) {center=lerp(center,(g.locate||g.level>=3)?g.player.origin:g.course.center,smooth((q-.78)/.22));zoom=mix(zoom,(g.locate||g.level>=3)?48:g.course.zoom,smooth((q-.78)/.22));}
+        const q=g.stateTime/7,out=smooth((q-.08)/.48),settle=smooth((q-.8)/.2);
+        center=lerp(lerp(g.player.origin,g.course.center,out),center,settle);
+        zoom=mix(mix(27.5,overviewZoom(g.course),out),zoom,settle);
       }
       if(g.state==='reassembly') {center=V.of(C.START_ORIGIN);zoom=32;}
       this.world.position.copy(vec(center).multiplyScalar(-1));
       this.rotator.rotation.set(...g.angles.map(radians));
       this.camera.position.set(g.flags.shake&&g.shake?Math.sin(g.t*145)*g.shake*.8:0,g.flags.shake&&g.shake?Math.cos(g.t*139)*g.shake*.8:0,zoom*Math.max(1,.9/this.camera.aspect));
       if(g.state!=='reassembly') {
-        this.course(g,preview); this.portal(g);
+        this.course(g,preview);
+        if(preview||!g.flags.culling||g.course.location(g.player.origin).index>=g.course.modules.length-2)this.portal(g);
         if(g.state!=='death_dissolve') this.player(g);
         for(const p of g.particles) this.lines.line(p.pos,p.pos.sub(p.vel.mul(.035)),p.color,1-p.age/p.life);
         for(const p of g.impacts) {
@@ -449,6 +457,8 @@ export class Renderer {
       }
       if(['reassembly','death_dissolve'].includes(g.state)) this.reassemble(g);
     }
-    if(!bonusScene)this.camera.lookAt(0,0,0); this.lines.finish(); this.cubes.finish(); this.gl.render(this.scene,this.camera); this.effects(g);
+    if(!bonusScene&&!ascending)this.camera.lookAt(0,0,0);
+    if(this.stars.visible)positionInfiniteStarfield(this.stars,this.camera,this.rotator.rotation);
+    this.lines.finish(); this.cubes.finish(); this.gl.render(this.scene,this.camera); this.effects(g);
   }
 }

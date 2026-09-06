@@ -70,15 +70,15 @@ MIME type requires a different fix; the loading screen alone does not identify i
 | Movement | Fixed world X/Y/Z axes, arrows and Ctrl aliases, 2.6× rush |
 | View | Original continuous three-axis rotation; L locate and automatic tracking at level 3+ |
 | Lasers | All five original grid templates, rotating/tilting planes, moving cyan apertures, difficulty speed scaling |
-| Maze | Same modular self-avoiding X/Z/Y route, open turn chambers, maximum seven physical modules |
+| Maze | Modular self-avoiding X/Z/Y route and open turn chambers; one added leg per level through fifty legs at level 50 |
 | Boundary damage | Cell shaving, delayed overheating, cooling, local impacts and drifting debris |
 | Recovery | Eight-second expiry, warning blinks, compact reconstruction, five requests per ten seconds, active-spam quota |
 | Difficulty | Space at level 3; timed legs from level 5; entropy from level 10; HEAT at level 15; gradual timer/yield ramp to level 50 |
-| Collapse | Progressive reveal/arming, old sections dissolving, debris, sealing effects, timed backtracking death |
+| Collapse | Progressive reveal/arming; the previous leg dissolves after the next turn is cleared, with debris, sound and sealed timed backtracking |
 | Portal | Per-cell slab contact, suction, charge, absorption and 98.5% body commitment |
 | Progression | Preview, level-ready cards, portal warp, result cards and automatic progression up to level 50, then ascension and run statistics |
 | Death | Dissolve into the void, reconstruct the body, retry the current level with fresh geometry and timer |
-| Persistence | Best escape, best score and highest level in localStorage, plus mute, shaking and player rotation preferences |
+| Persistence | Best escape, best score and highest level in localStorage, plus mute, shaking, player rotation, hit rotation shocks, portal light and culling preferences |
 | UI | Original cube-letter title and dot-matrix prompt; help, pause, menu/reset confirmations, fullscreen |
 | Console | Flags, level/restart/newrun, heal/kill/cubes, portal teleport, position/route, score and locate commands |
 | Audio | All 18 original generated sounds, ambience/gamelan, portal feedback, countdown layers and alarms |
@@ -86,6 +86,9 @@ MIME type requires a different fix; the loading screen alone does not identify i
 The route, collision, scoring and portal rules are ported from the source. Web
 0.17.0 deliberately extends timing, re-coupling, heat and end-of-run progression.
 Web 0.19.0 adds physical rotation of the surviving body in normal levels.
+Web 0.20.0 expands this to three axes and adds the starfield ending and portal glow.
+It also restores one added route leg per level, with local collision queries,
+nearby rendering and a full-route ghost overview.
 The OpenGL effects are recreated in WebGL and are **not pixel-identical**.
 Standalone desktop authoring utilities (Audio Lab and the font editor) remain
 Python tools; they are not part of the playable browser game.
@@ -315,10 +318,66 @@ and continues to affect gameplay. The browser remembers the choice using
 `VISUAL_EFFECTS` at the top of `web/js/config.mjs` supplies the default boolean and
 body/cell amplitudes. Existing saved preferences take precedence over the default.
 
-## Player rotation (web 0.19.0)
+## Long routes, ghost overviews and culling (web 0.20.0)
 
-In normal levels, the entire surviving collective turns about its own vertical
-axis at six degrees per second, one full revolution per minute. The pivot travels
+Level 1 has one leg, level 2 has two, and each subsequent level adds one, through
+50 legs at the current cap. Routing starts on X, adds Z at level 2, and introduces
+Y from level 3. The self-avoiding route generator and open turn chambers remain.
+The imported PyGame 0.15.79 snapshot has a seven-leg performance cap; web 0.20.0
+deliberately replaces that cap with the intended growing route.
+
+The seven-second introduction starts close to the forming cube, pulls back to fit
+the entire route, holds that overview, then returns toward the first leg. The
+whole maze is a faint cached outline and the exit is marked in the distance.
+There are **no red laser grids during the overview**. As the camera returns, the
+ghost outline fades and the nearby blue corridor forms. Hazard detail appears
+once play begins, and later sections reveal and arm as you advance.
+
+During normal play, roughly one recent, one current and one upcoming leg are
+drawn in detail. The distant exit remains marked, while the rest of the maze is
+hidden. From level 3, the previous section collapses after the player has cleared
+the next turn, with the original collapse/dissipation sounds, flashes and debris.
+The trigger waits beyond the joint so it cannot seal the passage under the
+player. Collapsed hazards are removed, and timed play kills attempts to return
+into a sealed section. Transient debris remains capped at 300 particles.
+
+The performance limits are structural:
+
+- The 50-leg overview has 2,376 line vertices in one static buffer, plus an exit
+  marker. It is rebuilt only when the course changes.
+- Normal detailed rendering selects at most three nearby legs and their laser
+  sets. Collision queries use a spatial index and at most four nearby laser sets.
+- The main sky uses a fixed 1,600-point sphere centered on the camera. Its buffers
+  stay constant while the player travels or the overview zooms out.
+- The camera's far plane and overview distance accommodate the complete cap-level
+  route. Large maps do not multiply star counts or detailed hazard draw calls.
+
+**Help → Cull distant corridors** is enabled by default. The console accepts:
+
+```text
+culling true
+culling false
+set culling 1
+set culling 0
+```
+
+The browser saves this under `cube-libre-culling-v1`.
+`VISUAL_EFFECTS.courseCulling` in `web/js/config.mjs` supplies the default.
+Disabling it expands the detailed rendering window to the surviving route and
+future previews; physical damage, local collision checks, reveal/arming and
+collapse continue to apply. The opening overview always hides cutting grids.
+
+A deterministic run with ordinary damage and timer rules, rush and one legal
+re-coupling request every 2.1 seconds cleared all 50 legs in about 147 simulated
+seconds, with three cubes remaining. This verifies a viable route; it is not a
+browser FPS benchmark or a substitute for human difficulty testing.
+
+## Player rotation (web 0.20.0)
+
+In normal levels, the entire surviving collective tumbles smoothly across three
+axes: X at 3°/second, Y at 6°/second and Z at 2°/second. The independent phases
+compose X, then Y, then Z; their different rates make the rotation axis evolve
+over time. The pivot travels
 with the player's origin. Each mini-cube shares the body's orientation, and lost
 cells remain missing from that body as it turns. Re-coupling aims at moving slots
 and blends arriving pieces into the collective's orientation.
@@ -332,7 +391,8 @@ The cell centers used for field damage, laser hits and portal absorption rotate
 with their visible geometry. Detached fragments launch from those positions and
 then follow their existing independent trajectories. World-axis movement controls
 stay the same. Geometry is reused through the existing instanced renderer, and
-the simulation caches a single sine/cosine pair per update for all body cells.
+the simulation caches one orientation quaternion and rotation matrix per update
+for all body cells. Rendering uses that same quaternion.
 
 **Help → Player auto-rotation (normal levels)** is on by default. Console commands:
 
@@ -345,8 +405,97 @@ set spin true
 
 Disabling it restores axis alignment immediately. The browser saves either Help
 or console changes under `cube-libre-spin-v1`. `PLAYER_ROTATION` in
-`web/js/config.mjs` defines the default boolean and `degreesPerSecond`; an existing
+`web/js/config.mjs` defines the default boolean and `degreesPerSecond: {x, y, z}`; an existing
 saved preference takes precedence over the default. Shaking has its own switch.
+
+## Hit rotation shocks and uniform console settings (web 0.20.0)
+
+Laser and field-edge hits apply a sharp angular impulse to the surviving body's
+visual pose. The axis depends on the impact location and surface, with variation
+between hits. A damped spring returns the body to its normal tumble. Repeated
+hits are bounded to a 28-degree recoil and 700 degrees/second angular speed;
+an ordinary impulse starts at 420 degrees/second. These limits and the default
+are in `VISUAL_EFFECTS` in `web/js/config.mjs`.
+
+Cell centers, cell geometry and arriving re-coupled pieces follow the same
+visual recoil. Physical collision and portal positions keep their existing
+slow-tumble pose, so recoil cannot create an extra damage cascade. Pause and
+Help freeze the effect; spawning resets it. Bonus rolling and ending animations
+remain independent. It works with slow spin or overheating shake disabled.
+
+**Help → Hit rotation shocks** is on by default. Its separate `rotation_shocks`
+setting is saved under `cube-libre-rotation-shocks-v1`; disabling it clears any
+active recoil immediately.
+
+Every console boolean uses this interface:
+
+| Command | Result |
+| --- | --- |
+| `toggle shake` | Flips the setting; replies `shake set to true` or `shake set to false` |
+| `set shake enabled` | Sets it explicitly; accepts true/false, on/off, 1/0, enabled/disabled |
+| `status shake` | Reports `Status for shake is: Enabled` or `Disabled` |
+| `view shake`, `get shake`, `set shake` | Same read-only status query |
+| `flags` | Lists the current status of every registered boolean |
+| `toggle missing` | Reports `missing not found!` |
+| `toggle level` | Reports `level cannot be toggled with on/off!` |
+
+Names and values are case-insensitive. Legacy `flag <thing> <value>`, bare flag
+shortcuts and yes/no remain accepted. A bare flag name toggles, except `portal`,
+which retains its original teleport action. Use `status portal` to query the
+portal switch without moving. Invalid values report an error and leave the
+setting unchanged. `toggle` takes only the name; use `set` for an explicit value.
+
+Available booleans: `damage`, `lasers`, `bounds`, `noclip`, `portal`, `suction`,
+`route3d`, `shake`, `spin`, `rotation_shocks`, `portal_white_light`, `culling`,
+`locate` and browser audio `mute`. The visual preferences and mute are saved;
+debug flags and locate remain session controls. Numeric `level`, `score` and
+`cubes` also support status queries. `set level X` still starts the chosen level.
+Internal animation state and original Python reference constants are not console
+settings. Browser settings join the same registry through `game.consoleSettings`.
+
+## Ascending into the stars (web 0.20.0)
+
+Ending 001 begins with one white cube resting just above a blue grid floor.
+The broad grid fades toward the distant horizon. After a brief 0.6-second hold,
+the cube levitates upward and away while the camera smoothly tilts into the sky.
+It shrinks and blends into a white star from 5.2 to 6.4 seconds, then remains a
+small point among the stars. The white fade starts at 7.6 seconds and completes
+at 10 seconds. The existing two-second white hold, YOU'VE ASCENDED / ... FOR NOW.,
+statistics screen and separate continuation inputs follow.
+
+The sky uses 900 points in one reusable geometry buffer. A separate single point
+keeps the final star visible even as the cube's mesh shrinks away. The scene is
+created on first use and reused for later previews; it is hidden during other
+states. Pausing freezes its movement and fades. Normal-level rotation settings
+do not change this animation.
+
+Use `test ending_1` or the original `view_end_anim_v1` to preview it. The preview
+does not award scores or records. Scene geometry and motion are in
+`web/js/ending.mjs`; timing is in `ASCENSION_TIMING` in `web/js/core.mjs`.
+
+## Portal white light and console alias (web 0.20.0)
+
+Within 22 world units of a portal, a soft white halo and rays grow smoothly with
+proximity. Normal-level portals use the player's distance to the portal center;
+bonus portals use the floor approach distance. The effect is a camera-facing
+additive sprite with a shared 64×64 texture. It does not add dynamic lighting,
+shadows or postprocessing, and does not affect collision or absorption.
+
+Enabled by default, with **Help → Portal white light** and these console controls:
+
+```text
+portal_white_light true
+portal_white_light false
+set portal_white_light 1
+set portal_white_light 0
+```
+
+The browser saves the choice under `cube-libre-portal-white-light-v1`.
+`VISUAL_EFFECTS.portalWhiteLight` supplies the default. The halo hides on menus,
+ending screens and other scenes without an active portal approach.
+
+`set level X` is also an alias for `level X`, with the same validation, level-cap
+clamping and attempt reset. For example, `set level 20` starts level 20.
 
 ## Versioning
 
@@ -354,14 +503,14 @@ saved preference takes precedence over the default. Shaking has its own switch.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.19.0**. The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.20.0**. The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.19.1`, `0.19.2`, etc. for fixes, and `0.20.0` for the
+For future releases, use `0.20.1`, `0.20.2`, etc. for fixes, and `0.21.0` for the
 next feature release. Update `web/version.json` and the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.19.0.zip` and `v0.19.0`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.20.0.zip` and `v0.20.0`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior
@@ -411,13 +560,17 @@ The reference suite covers 16 course configurations, 2,250 laser samples, 640
 portal samples, boundary/joint samples, compact recovery targets, and complete
 progression/death/timeout scenarios. The Python fixtures intentionally remain
 outside the published `web/` directory.
-Player-based baseline fixtures use a neutral body orientation. Separate web tests
+Player-based baseline fixtures use a neutral body orientation and the original
+seven-leg limit through an explicit test-only course-length override. Separate web tests
 cover rotated field damage, rendered poses, re-coupling, portal entry, pause and
-respawn behavior, saved settings, and exclusion from bonus rounds.
+respawn behavior, saved settings, exclusion from bonus rounds, all fifty route
+lengths, spatial queries against full scans, overview framing, culling, collapse,
+starfield continuity, a complete 50-leg traversal, hit recoil and settling,
+uniform boolean aliases, precise errors, saved controls and audio mute.
 
 The original synthesized WAV cache is approximately 10.5 MiB; the web audio is
 approximately 2.6 MiB with both codecs included (roughly 0.75 MiB for the preferred
-Ogg set). The complete published folder is roughly 3.4 MiB.
+Ogg set). The complete published folder is roughly 3.5 MiB.
 
 To regenerate sounds, install FFmpeg with libvorbis and libmp3lame, then run:
 
@@ -434,7 +587,10 @@ and FFmpeg are developer tools only; visitors do not need them.
 | File | Purpose |
 | --- | --- |
 | `web/js/core.mjs` | Browser-independent simulation and debug commands |
-| `web/js/config.mjs` | Original configuration values and web shaking/rotation defaults |
+| `web/js/config.mjs` | Original configuration values and web visual/rotation defaults |
+| `web/js/ending.mjs` | Blue-grid and starfield ascension scene and motion |
+| `web/js/portal-light.mjs` | Proximity-based portal halo and reusable glow sprite |
+| `web/js/space-view.mjs` | Cached ghost route, overview framing, detail window and infinite starfield |
 | `web/js/render.mjs` | Batched cube/line rendering, title, field and transition effects |
 | `web/js/audio.mjs` | Local audio loading, codecs, channels, loops and state mix |
 | `web/js/app.mjs` | Browser input, overlays, storage, fullscreen and fixed timestep |

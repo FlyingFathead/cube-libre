@@ -13,7 +13,8 @@ export const OPENING_DURATION = 9.2;
 export const openingLineOpacity = (time,line) =>
   smooth((time-.8-line*1.6)/1.2)*(1-smooth((time-7.2)/1.2));
 export const ASCENSION_TIMING = Object.freeze({
-  flySeconds: 4.8, fadeStarts: 1.8, fadeSeconds: 3,
+  riseStarts: .6, riseSeconds: 5.8, starStarts: 5.2, starSeconds: 1.2,
+  flySeconds: 10, fadeStarts: 7.6, fadeSeconds: 2.4,
   whiteHoldSeconds: 2, titleFadeSeconds: 1.4,
   subtitleStarts: .9, subtitleFadeSeconds: 1.2, continueAfter: 2.3,
   summaryInputDelay: .35,
@@ -51,15 +52,27 @@ export const cellColor = i => {
 
 export class Player {
   constructor(rng=Math.random) { this.rng=rng; this.reset(); }
-  reset() { this.origin=V.of(C.START_ORIGIN); this.alive=new Set(cells.map((_,i)=>i)); this.fragments=[]; this.setSpinAngle(0); }
-  setSpinAngle(degrees) {
-    this.spinAngle=((degrees%360)+360)%360;
-    // Cache this pair once per tick, instead of repeating trig for each collision.
-    this.spinCos=Math.cos(radians(this.spinAngle));this.spinSin=Math.sin(radians(this.spinAngle));
+  reset() { this.origin=V.of(C.START_ORIGIN); this.alive=new Set(cells.map((_,i)=>i)); this.fragments=[]; this.setSpinAngles(0,0,0); }
+  setSpinAngles(x,y,z) {
+    this.spinAngles=[x,y,z].map(degrees=>((degrees%360)+360)%360);
+    const [ax,ay,az]=this.spinAngles.map(degrees=>radians(degrees)*.5);
+    const sx=Math.sin(ax),cx=Math.cos(ax),sy=Math.sin(ay),cy=Math.cos(ay),sz=Math.sin(az),cz=Math.cos(az);
+    // Compose X, then Y, then Z. Different phase speeds make the tumble's axis
+    // evolve smoothly instead of merely spinning around a fixed diagonal.
+    const a=sx*cy*cz-cx*sy*sz,b=cx*sy*cz+sx*cy*sz,c=cx*cy*sz-sx*sy*cz,w=cx*cy*cz+sx*sy*sz;
+    this.spinQuaternion=[a,b,c,w];
+    // Share this pose with rendering; cache its matrix once for all cell queries.
+    this.spinMatrix=[
+      1-2*(b*b+c*c),2*(a*b-c*w),2*(a*c+b*w),
+      2*(a*b+c*w),1-2*(a*a+c*c),2*(b*c-a*w),
+      2*(a*c-b*w),2*(b*c+a*w),1-2*(a*a+b*b),
+    ];
   }
   pos(i) {
-    const [x,y,z]=cells[i],c=this.spinCos,s=this.spinSin,spacing=C.CELL_SPACING;
-    return new V(this.origin.x+(x*c+z*s)*spacing,this.origin.y+y*spacing,this.origin.z+(z*c-x*s)*spacing);
+    const [x,y,z]=cells[i],m=this.spinMatrix,spacing=C.CELL_SPACING;
+    return new V(this.origin.x+(m[0]*x+m[1]*y+m[2]*z)*spacing,
+      this.origin.y+(m[3]*x+m[4]*y+m[5]*z)*spacing,
+      this.origin.z+(m[6]*x+m[7]*y+m[8]*z)*spacing);
   }
   destroy(i, blast, heat=0) {
     if(!this.alive.delete(i)) return false;
@@ -140,14 +153,15 @@ export class Laser {
 }
 
 export class Course {
-  constructor(level,route3d=true) {
+  constructor(level,route3d=true,{moduleCount=clamp(Math.trunc(level),1,BALANCE.levelCap)}={}) {
     this.level=level; this.modules=[]; let start=new V(-23,0,0);
-    for(const d of routeDirections(Math.min(7,level),route3d)) {
+    for(const d of routeDirections(moduleCount,route3d)) {
       const m=new Module(this.modules.length,start,d); this.modules.push(m); start=m.end();
     }
     this.portal=this.modules.at(-1);
-    this.joints=this.modules.slice(0,-1).map((m,i)=>({center:m.end(),open:[m.bx.mul(-1).array(),this.modules[i+1].bx.array()]}));
-    this.lasers=this.modules.flatMap(m=>laserTemplates.map(t=>new Laser(t,m,level)));
+    this.joints=this.modules.slice(0,-1).map((m,i)=>({index:i,center:m.end(),open:[m.bx.mul(-1).array(),this.modules[i+1].bx.array()]}));
+    this.moduleLasers=this.modules.map(m=>laserTemplates.map(t=>new Laser(t,m,level)));
+    this.lasers=this.moduleLasers.flat();
     this.revealed=new Map(level<3?this.modules.map(m=>[m.index,-9999]):[[0,-9999]]);
     this.collapsed=new Map();
     const pts=[];
@@ -156,17 +170,38 @@ export class Course {
     this.bounds=[...['x','y','z'].flatMap(k=>[Math.min(...pts.map(p=>p[k])),Math.max(...pts.map(p=>p[k]))])];
     const b=this.bounds; this.center=new V((b[0]+b[1])/2,(b[2]+b[3])/2,(b[4]+b[5])/2);
     this.zoom=Math.min(120,48+Math.max(0,Math.max(b[1]-b[0],b[3]-b[2],b[5]-b[4])-46)*.38);
+    // A fixed-size spatial broad phase keeps cell queries local on long routes.
+    // The expanded boxes cover location(), and all normal collision padding.
+    this.spatial=new Map();this.emptyNearby={modules:[],joints:[]};
+    const add=(kind,item,bounds)=>{
+      const lo=[bounds[0],bounds[2],bounds[4]].map(v=>Math.floor(v/46));
+      const hi=[bounds[1],bounds[3],bounds[5]].map(v=>Math.floor(v/46));
+      for(let x=lo[0];x<=hi[0];x++)for(let y=lo[1];y<=hi[1];y++)for(let z=lo[2];z<=hi[2];z++) {
+        const key=`${x},${y},${z}`;
+        if(!this.spatial.has(key))this.spatial.set(key,{modules:[],joints:[]});
+        this.spatial.get(key)[kind].push(item);
+      }
+    };
+    for(const m of this.modules) {
+      const a=m.world(-30,-14,-14),b=m.world(30,14,14);
+      add('modules',m,['x','y','z'].flatMap(k=>[Math.min(a[k],b[k]),Math.max(a[k],b[k])]));
+    }
+    for(const j of this.joints)add('joints',j,['x','y','z'].flatMap(k=>[j.center[k]-10,j.center[k]+10]));
+  }
+  nearby(p,pad=0) {
+    if(pad>3)return {modules:this.modules,joints:this.joints};
+    return this.spatial.get(`${Math.floor(p.x/46)},${Math.floor(p.y/46)},${Math.floor(p.z/46)}`)||this.emptyNearby;
   }
   span(m,pad=0) { return [-23+(m.index>0?7:0)-pad,23-(m.index<this.modules.length-1?7:0)+pad]; }
-  jointAt(p,pad=0) { return this.joints.findIndex(j=>p.sub(j.center).array().every(x=>Math.abs(x)<=7+pad)); }
+  jointAt(p,pad=0) { return this.nearby(p,pad).joints.find(j=>Math.abs(p.x-j.center.x)<=7+pad&&Math.abs(p.y-j.center.y)<=7+pad&&Math.abs(p.z-j.center.z)<=7+pad)?.index??-1; }
   inside(p,pad=0) {
-    return this.modules.some(m=>{const l=m.local(p),[a,b]=this.span(m,pad);
+    return this.nearby(p,pad).modules.some(m=>{const l=m.local(p),[a,b]=this.span(m,pad);
       return l.x>=a&&l.x<=b&&Math.abs(l.y)<=7+pad&&Math.abs(l.z)<=7+pad;
     }) || this.jointAt(p,pad)>=0;
   }
   location(p) {
     let index=0,x=-23,score=-Infinity;
-    for(const m of this.modules) {
+    for(const m of this.nearby(p).modules) {
       const l=m.local(p);
       if(Math.abs(l.z)>14 || Math.abs(l.y)>14 || l.x< -30 || l.x>30) continue;
       const lx=clamp(l.x,-23,23),s=m.index*1000+lx;
@@ -181,10 +216,13 @@ export class Course {
   }
   revealProgress(i,t) { const start=this.revealed.get(i); return start===undefined?0:smooth((t-start)/1.45); }
   distanceFade(i,p) {
-    const {index,x}=this.location(p),collapse=i+2;
+    if(this.level<3)return 0;
+    const {index,x}=this.location(p),collapse=i+1;
     if(index<collapse) return 0;
     if(index>collapse) return 1;
-    return smooth((x-(-23+.35))/C.TRAIL_FADE_DISTANCE);
+    // The location hint can favor the next leg before the turn is cleared.
+    // Begin sealing only beyond its exit, with room for the rotating body.
+    return smooth((x-(-23+8))/C.TRAIL_FADE_DISTANCE);
   }
   fade(i,p,t) { return Math.max(this.distanceFade(i,p),this.collapsed.has(i)?smooth((t-this.collapsed.get(i))/1.25):0); }
   activeLaser(l,p,t) {
@@ -193,12 +231,18 @@ export class Course {
     const hardCulled=this.level>=3&&i<index&&this.collapsed.has(i)&&t-this.collapsed.get(i)>=1.25;
     return !hardCulled && this.revealProgress(i,t)>=.78 && this.distanceFade(i,p)<.98;
   }
+  activeLasers(p,t) {
+    const index=this.location(p).index,active=[];
+    const first=this.level<3?0:Math.max(0,index-1),last=this.level<3?this.modules.length-1:Math.min(this.modules.length-1,index+2);
+    for(let i=first;i<=last;i++)for(const l of this.moduleLasers[i])if(this.activeLaser(l,p,t))active.push(l);
+    return active;
+  }
   update(p,t,emit) {
     for(let i=0;i<=this.revealIndex(p);i++) if(!this.revealed.has(i)) {
       this.revealed.set(i,t); emit('laser_reveal',this.modules[i].start);
     }
     const {index}=this.location(p);
-    for(let i=0;i<=index-2;i++) if(!this.collapsed.has(i)&&this.distanceFade(i,p)>=.04) {
+    for(let i=0;this.level>=3&&i<=index-1;i++) if(!this.collapsed.has(i)&&this.distanceFade(i,p)>=.04) {
       this.collapsed.set(i,t); emit('collapse',this.modules[i].end()); emit('laser_dissipate');
     }
   }
@@ -246,8 +290,9 @@ export function beginRecouple(player,level) {
 export class Game {
   constructor({rng=Math.random,stats={},save=()=>{}}={}) {
     this.rng=rng; this.save=save; this.stats={best_escape:0,highest_level:1,best_score:0,...stats};
-    this.flags={...C.DEBUG_FLAGS,shake:VISUAL_EFFECTS.shakingEnabled,spin:PLAYER_ROTATION.enabled}; this.player=new Player(rng); this.t=0; this.angles=[0,0,0];
+    this.flags={...C.DEBUG_FLAGS,shake:VISUAL_EFFECTS.shakingEnabled,spin:PLAYER_ROTATION.enabled,portal_white_light:VISUAL_EFFECTS.portalWhiteLight,culling:VISUAL_EFFECTS.courseCulling,rotation_shocks:VISUAL_EFFECTS.rotationShocks}; this.player=new Player(rng); this.t=0; this.angles=[0,0,0];
     this.level=1; this.score=0; this.locate=false; this.paused=false; this.help=false; this.events=[]; this.pendingIntroductions=[];
+    this.consoleSettings={}; // Browser-owned booleans can join the same command interface.
     this.runStats={playSeconds:0,deaths:0,recoupledCubes:0,levelsCleared:0,bonusRounds:0,bonusPieces:0,bonusScore:0}; this.runSummary=null;
     this.bonusesPlayedAfter=new Set();this.bonus=null;this.previewReturn=null;
     this.state='title'; this.stateTime=0; this.message=''; this.messageTime=0; this.resetAttempt();
@@ -267,6 +312,7 @@ export class Game {
     this.outsideTime=0; this.heat=0; this.lastHeat=0; this.coolTime=0; this.cool=0;
     this.recoupling=[]; this.recoupleTime=0; this.requests=[]; this.cooldown=0;
     this.particles=[]; this.impacts=[]; this.shake=0; this.outside=false;
+    this.rotationShock={angle:new V(),velocity:new V(),hits:0};
   }
   ready(level) {
     this.bonus=null;this.previewReturn=null;
@@ -379,8 +425,30 @@ export class Game {
   }
   updatePlayerSpin(dt) {
     const p=this.player;
-    if(!this.flags.spin) {if(p.spinAngle!==0)p.setSpinAngle(0);return;}
-    p.setSpinAngle(p.spinAngle+PLAYER_ROTATION.degreesPerSecond*dt);
+    if(!this.flags.spin) {if(p.spinAngles.some(angle=>angle!==0))p.setSpinAngles(0,0,0);return;}
+    const [x,y,z]=p.spinAngles,speed=PLAYER_ROTATION.degreesPerSecond;
+    p.setSpinAngles(x+speed.x*dt,y+speed.y*dt,z+speed.z*dt);
+  }
+  kickRotation(impact,normal=new V(0,1,0)) {
+    if(!this.flags.rotation_shocks)return;
+    const s=this.rotationShock,n=++s.hits;
+    let axis=impact.sub(this.player.origin).cross(normal);
+    const variation=new V(Math.sin(n*2.399+.7),Math.cos(n*1.71),Math.sin(n*3.13+1.2));
+    axis=axis.length()>.01?axis.norm().add(variation.mul(.35)).norm():variation.norm();
+    s.velocity=s.velocity.add(axis.mul(VISUAL_EFFECTS.impactAngularSpeed));
+    s.velocity=s.velocity.mul(Math.min(1,VISUAL_EFFECTS.impactMaxSpeed/Math.max(.001,s.velocity.length())));
+  }
+  updateRotationShock(dt) {
+    const s=this.rotationShock;
+    if(!this.flags.rotation_shocks) {s.angle=new V();s.velocity=new V();return;}
+    if(s.angle.length()===0&&s.velocity.length()===0)return;
+    // Exact damped-spring step: the recoil stays smooth at different frame rates.
+    const damping=6,spring=120,w=Math.sqrt(spring-damping*damping),decay=Math.exp(-damping*dt),c=Math.cos(w*dt),sn=Math.sin(w*dt);
+    const angle=s.angle,velocity=s.velocity;
+    s.angle=angle.mul(c).add(velocity.add(angle.mul(damping)).mul(sn/w)).mul(decay);
+    s.velocity=velocity.mul(c).sub(velocity.mul(damping).add(angle.mul(spring)).mul(sn/w)).mul(decay);
+    s.angle=s.angle.mul(Math.min(1,VISUAL_EFFECTS.impactMaxAngle/Math.max(.001,s.angle.length())));
+    if(s.angle.length()<.02&&s.velocity.length()<.08) {s.angle=new V();s.velocity=new V();}
   }
   thermal(dt) {
     this.outside=this.flags.bounds&&!this.flags.noclip&&[...this.player.alive].some(i=>!this.course.inside(this.player.pos(i),.25*.45));
@@ -398,7 +466,7 @@ export class Game {
     if(!this.flags.damage) return null;
     const p=this.player,candidates=[];
     if(this.flags.lasers) {
-      const active=this.course.lasers.filter(l=>this.course.activeLaser(l,p.origin,this.t));
+      const active=this.course.activeLasers(p.origin,this.t);
       for(const i of p.alive) for(const l of active) if(this.course.jointAt(p.pos(i))<0&&l.hits(p.pos(i),this.t)) {
         const v=l.local(p.pos(i),this.t); candidates.push({i,l,exposure:Math.abs(v.x)+.04*(Math.abs(v.y)+Math.abs(v.z))}); break;
       }
@@ -407,15 +475,17 @@ export class Game {
     if(!candidates.length&&this.flags.bounds&&!this.flags.noclip) {
       type='bounds'; for(const i of p.alive) if(!this.course.inside(p.pos(i),.25)) candidates.push({i,l:null});
     }
-    let destroyed=0;
+    let destroyed=0,shockImpact;
     for(const {i,l} of candidates.slice(0,2)) {
       const pos=p.pos(i);
       if(p.destroy(i,l?l.center:p.origin,this.heat)) {
+        shockImpact??={pos,normal:l?.module.bx};
         destroyed++; this.impacts.push({pos,age:0,type,laser:l});
         for(let k=0;k<8;k++) this.particles.push({pos,vel:randV(this.rng,7),age:0,life:.3,color:type==='laser'?[1,.12,.05]:[.35,.8,1]});
       }
     }
     if(destroyed) {
+      this.kickRotation(shockImpact.pos,shockImpact.normal);
       this.shake=.22; this.emit('crash'); this.emit('structure_alert'); this.lastHit=type; this.hitTime=.22;
       this.messageSet(`${type==='laser'?'HIT':this.heat?'OVERHEATING':'FIELD EDGE'}: -${destroyed} CUBES`,.7);
       return type;
@@ -463,7 +533,7 @@ export class Game {
     this.timeResetNotice=Math.max(0,this.timeResetNotice-dt);
     this.hitTime=Math.max(0,(this.hitTime||0)-dt); this.cooldown=Math.max(0,this.cooldown-dt);
     if(this.state.startsWith('bonus_')) {this.tickBonus(dt,input);return;}
-    if(['course_materialize','playing','reassembly_flash'].includes(this.state))this.updatePlayerSpin(dt);
+    if(['course_materialize','playing','reassembly_flash'].includes(this.state)) {this.updatePlayerSpin(dt);this.updateRotationShock(dt);}
     this.player.update(dt);
     for(const p of this.particles) { p.age+=dt; p.pos=p.pos.add(p.vel.mul(dt)); p.vel.y-=1.2*dt; }
     this.particles=this.particles.filter(p=>p.age<p.life).slice(-300);
@@ -497,6 +567,7 @@ export class Game {
           this.emit(name,pos);
           if(name==='collapse') for(let i=0;i<70;i++) this.particles.push({pos:pos.add(randV(this.rng,7)),vel:randV(this.rng,7),age:0,life:1.25,color:[.4,.8,1]});
         });
+        if(this.particles.length>300)this.particles.splice(0,this.particles.length-300);
         const heat=this.thermal(dt);
         if(this.difficulty.timed) {
           const loc=this.course.location(this.player.origin),j=this.course.jointAt(this.player.origin,.46);
@@ -538,18 +609,47 @@ export class Game {
       this.startBonus(cmd==='bonus'?(arg||'001'):'001',{preview:true});return `Bonus round 001 test · exit to level ${this.previewReturn.nextLevel}`;
     }
     if(cmd==='test')throw Error('Available previews: test ending_1, test bonus_round_1');
-    const bool=s=>{if(['1','on','true','yes'].includes(s)) return true; if(['0','off','false','no'].includes(s)) return false; throw Error('Expected on or off');};
+    const trueValues=['1','on','true','enabled','yes'],falseValues=['0','off','false','disabled','no'];
+    const bool=s=>{if(trueValues.includes(s)) return true; if(falseValues.includes(s)) return false; throw Error('Expected true/false, on/off, 1/0 or enabled/disabled');};
     const number=(s,min,max)=>{const n=Number(s); if(s===undefined||!Number.isFinite(n)) throw Error('Expected a number'); return clamp(Math.trunc(n),min,max);};
-    const setFlag=(key,v)=>{if(!(key in this.flags)) throw Error(`Unknown flag: ${key}`); this.flags[key]=v;
-      if(key==='spin'&&!v)this.player.setSpinAngle(0);
-      if(key==='route3d') { this.course=new Course(this.level,v); this.geometryVersion++; } return `${key} = ${v?'on':'off'}`;};
-    if(cmd==='help'||cmd==='?') return 'help, clear, flags, get <flag>, set <flag> <on|off>, toggle <flag>\nFlags: damage lasers bounds noclip portal suction route3d shake spin\nlevel <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n], locate <on|off>\nPreviews: test ending_1, test bonus_round_1, bonus <type>';
-    if(cmd==='flags') return Object.entries(this.flags).map(([k,v])=>`${k} = ${v?'on':'off'}`).join('\n');
-    if(cmd==='get') {if(!(arg in this.flags)) throw Error('Unknown flag'); return `${arg} = ${this.flags[arg]?'on':'off'}`;}
-    if(['set','flag','toggle'].includes(cmd)) return setFlag(arg,cmd==='toggle'?!this.flags[arg]:bool(value));
+    const settings=new Map(Object.keys(this.flags).map(key=>[key,{
+      get:()=>this.flags[key],set:v=>{
+        this.flags[key]=v;
+        if(key==='spin'&&!v)this.player.setSpinAngles(0,0,0);
+        if(key==='rotation_shocks'&&!v) {this.rotationShock.angle=new V();this.rotationShock.velocity=new V();}
+        if(key==='route3d') {this.course=new Course(this.level,v);this.geometryVersion++;}
+      }
+    }]));
+    settings.set('locate',{get:()=>this.locate,set:v=>{this.locate=v;}});
+    for(const [key,setting] of Object.entries(this.consoleSettings))settings.set(key,setting);
+    const values=new Map([['level',()=>this.level],['score',()=>this.score],['cubes',()=>this.player.alive.size]]);
+    const actions=new Set(['help','clear','cls','flags','restart','newrun','new','run','title','kill','heal','pos','where','route','test','bonus','view_end_anim_v1','view_bonus_001']);
+    const requireSetting=key=>{
+      if(!key)throw Error(`Usage: ${cmd} <thing>${cmd==='set'?' [value]':''}`);
+      if(settings.has(key)&&typeof settings.get(key).get()==='boolean')return settings.get(key);
+      if(settings.has(key)||values.has(key)||actions.has(key))throw Error(`${key} cannot be toggled with on/off!`);
+      throw Error(`${key} not found!`);
+    };
+    const status=key=>{
+      if(values.has(key))return `Status for ${key} is: ${values.get(key)()}`;
+      return `Status for ${key} is: ${requireSetting(key).get()?'Enabled':'Disabled'}`;
+    };
+    const setFlag=(key,v)=>{requireSetting(key).set(v);return `${key} set to ${v}`;};
+    if(cmd==='help'||cmd==='?') return 'help, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light culling locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nPreviews: test ending_1, test bonus_round_1, bonus <type>';
+    if(cmd==='flags')return [...settings.keys()].map(status).join('\n');
+    if(['get','view','status'].includes(cmd)||['set','flag'].includes(cmd)&&value===undefined)return status(arg);
+    if(cmd==='level'||cmd==='set'&&arg==='level') {
+      const target=cmd==='level'?arg:value;
+      if([...trueValues,...falseValues].includes(target)&&!['0','1'].includes(target))throw Error('level cannot be toggled with on/off!');
+      this.ready(number(target,1,1000000));return `Starting level ${this.level}`;
+    }
+    if(['set','flag','toggle'].includes(cmd)) {
+      const setting=requireSetting(arg);
+      if(parts.length>(cmd==='toggle'?2:3))throw Error(`Usage: ${cmd} <thing>${cmd==='toggle'?'':' <value>'}`);
+      return setFlag(arg,cmd==='toggle'?!setting.get():bool(value));
+    }
     // "portal" alone is the original teleport command, not the flag shortcut.
-    if(cmd in this.flags && (cmd!=='portal'||arg)) return setFlag(cmd,arg?bool(arg):!this.flags[cmd]);
-    if(cmd==='level') { this.ready(number(arg,1,1000000)); return `Starting level ${this.level}`; }
+    if(settings.has(cmd)&&(cmd!=='portal'||arg))return setFlag(cmd,arg?bool(arg):!requireSetting(cmd).get());
     if(cmd==='restart') {this.ready(this.level); return 'Restarting current level';}
     if(['newrun','new','run'].includes(cmd)) {this.newRun(); return 'New run';}
     if(cmd==='title') {this.title(); return 'Title screen';}
@@ -559,7 +659,6 @@ export class Game {
     if(cmd==='pos'||cmd==='where') return `Position ${this.player.origin.array().map(n=>n.toFixed(2)).join(', ')}\nLeg ${this.course.location(this.player.origin).index+1}/${this.course.modules.length}`;
     if(cmd==='route') return this.course.modules.map(m=>m.bx.array().join(',')).join(' → ');
     if(cmd==='score') {if(arg!==undefined) this.score=number(arg,0,Number.MAX_SAFE_INTEGER); return `Score: ${this.score}`;}
-    if(cmd==='locate') {this.locate=arg?bool(arg):!this.locate; return `Locate: ${this.locate?'on':'off'}`;}
     throw Error('Unknown command. Type help.');
   }
 }

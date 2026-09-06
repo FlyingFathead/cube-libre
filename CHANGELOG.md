@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.20.0 — Into the stars
+
+- Restore one added leg per level through fifty legs at level 50, retaining X/Z/Y
+  axis introduction, the route generator, difficulty progression and cap ending.
+- Add a full-route ghost overview with camera framing scaled to the maze, a
+  distant exit marker, no red cutting grids, and a fade into nearby gameplay.
+- Limit detail to nearby legs, use spatial collision queries and grouped laser
+  checks, and cache the whole-route outline. Collapse the previous leg with sound
+  and debris after the next junction is safely cleared. Keep debris bounded.
+- Add saved `culling true/false` / `1/0` controls and a Help checkbox, enabled by
+  default. Preserve collision, reveal and collapse rules when culling is off.
+- Keep a fixed 1,600-point sky centered on the camera so larger maps and overview
+  zooms cannot carry the player out of the starfield.
+- Expand normal-level player rotation to smooth X/Y/Z tumbling at 3, 6 and 2
+  degrees per second. Use one cached pose for cell positions and rendering,
+  retaining re-coupling alignment, pause behavior and the saved `spin` switch.
+- Rebuild ending 001 around one white cube above an endless blue grid. Levitate
+  into the starfield with an upward camera tilt, become a small white star, hold
+  there, then fade to white. Keep the two-second white hold, text and stats flow.
+- Use a reusable 900-point sky, a distant fading grid and one final star point.
+  Preserve both `test ending_1` and `view_end_anim_v1` without awarding records.
+- Add a proximity-based white portal halo in normal and bonus levels. Enable it
+  by default with `portal_white_light true/false` (also 0/1) and a Help checkbox;
+  save the preference. Use one small sprite without dynamic lights or shadows.
+- Alias `set level X` to `level X`, including validation and level-cap behavior.
+- Add strong, damped rotational recoil for laser and field-edge hits. Rotate the
+  visible collective together without extra collision damage. Enable it by
+  default with saved `rotation_shocks` controls and Help's Hit rotation shocks.
+- Unify every console boolean, including locate and mute: `toggle <thing>`,
+  `set <thing> <value>`, and status aliases `status`, `view`, `get` and bare `set`.
+  Accept true/false, on/off, 1/0 and enabled/disabled; distinguish missing names
+  from recognized controls that cannot be toggled. Preserve legacy shortcuts.
+- Retain the author's README thanks formatting and revised copyright wording.
+
+Validation: 78 test groups and static checks pass, including three-axis pose
+agreement and continuity, normal-level portal/level-50 traversal, bonus isolation,
+ending geometry, framing and star-before-white timing, portal light settings,
+buffer reuse, console persistence and level aliases. Added coverage checks every
+route length through 50, spatial queries against full scans, overview framing,
+nearby detail limits, collapse safety and an actual 50-leg traversal with scarce
+re-coupling, hit recoil and settling, collision invariance, uniform boolean
+commands, non-mutating status aliases, error replies and audio mute integration.
+Browser playtesting and GPU profiling of the new graphics are still
+outstanding.
+
 ## 0.19.0 — The surviving body turns
 
 - Slowly rotate the whole player collective about its own vertical axis in normal
