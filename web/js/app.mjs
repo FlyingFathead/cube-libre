@@ -1,3 +1,4 @@
+import {createHelpTabs,createVisualOptions} from './help-tabs.mjs';
 import {GamepadInput,emptyMovement,mergeMovement,navigateControllerMenu} from './gamepad.mjs';
 import {shutterGateCount,shutterInterval} from './changes.mjs';
 import {UpdateChecker,UPDATE_INTERVAL_MS,releaseAssetURL} from './updates.mjs';
@@ -93,7 +94,7 @@ async function main() {
     for(const [label,callback] of actions) {const b=document.createElement('button');b.textContent=label;b.onclick=callback;$('modal-actions').append(b);}
     $('modal').showModal();
     if(kind==='help') {
-      body.querySelector(controller.enabled&&controller.connected?'.controller-map-scroll':'.keyboard-map-scroll')?.focus({preventScroll:true});
+      body.querySelector('[role="tab"][aria-selected="true"]')?.focus({preventScroll:true});
       $('modal').scrollTop=0;
     } else $('modal-actions').querySelector('button')?.focus();
   }
@@ -101,7 +102,7 @@ async function main() {
     if(modalKind==='pause') return closeModal();
     if(game.state==='title') return;
     if(game.paused&&!$('modal').open&&!$('console').open) {game.paused=false;syncAudio();return;}
-    modal('pause','PAUSED','Your remaining pieces can wait.',[['Resume (P)',closeModal],['Help',help],['Reset options',reset],['Main menu',menu]]);
+    modal('pause','PAUSED','Your remaining pieces can wait.',[['Resume (P)',closeModal],['Help',help],['Restart / retry',reset],['Main menu',menu]]);
   }
   function controllerHelp(inBonus) {
     const section=document.createElement('section');section.className='controller-help';
@@ -121,58 +122,19 @@ async function main() {
       ['Menu / Start','Pause / resume'],['View / Back','Help'],
       ['D-pad / left stick in menus','Select buttons and settings; A activates the selection'],['Right stick in menus','Scroll Help and other dialogs']
     ]) {const row=document.createElement('tr');for(const text of [key,action]){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}table.append(row);}section.append(table);
-    const hint=document.createElement('p');hint.textContent='Connect your controller by USB or Bluetooth, focus this page, and press then release a controller button. Firefox exposes controllers after you interact with them. Use an Xbox-style controller recognized by the browser. If sound stays silent, click the game or press a keyboard key once. Console: toggle controller; set controller_deadzone 0.18.';section.append(hint);
+    const hint=document.createElement('p');hint.textContent='Connect your controller by USB or Bluetooth, focus this page, and press then release a controller button. Firefox exposes controllers after you interact with them. Use an Xbox-style controller recognized by the browser. If sound stays silent, click the game or press a keyboard key once.';section.append(hint);
     return section;
   }
   function help() {
     if(modalKind==='help') return closeModal();
     const inBonus=game.state.startsWith('bonus_');
-    const body=document.createElement('div');
-    if(controller.enabled&&controller.connected)body.append(controllerHelp(inBonus));
-    const shakeLabel=document.createElement('label');shakeLabel.className='shake-setting';
-    const shakeToggle=document.createElement('input');shakeToggle.type='checkbox';shakeToggle.checked=game.flags.shake;
-    shakeToggle.addEventListener('change',()=>{game.flags.shake=shakeToggle.checked;write('cube-libre-shake-v1',game.flags.shake);});
-    shakeLabel.append(shakeToggle,'Shaking and heat flashes');body.append(shakeLabel);
-    const spinLabel=document.createElement('label');spinLabel.className='shake-setting';
-    const spinToggle=document.createElement('input');spinToggle.type='checkbox';spinToggle.checked=game.flags.spin;
-    spinToggle.addEventListener('change',()=>{game.command(`spin ${spinToggle.checked}`);write('cube-libre-spin-v1',game.flags.spin);});
-    spinLabel.append(spinToggle,'Player auto-rotation (normal levels)');body.append(spinLabel);
-    const gravityLabel=document.createElement('label');gravityLabel.className='shake-setting';
-    const gravityToggle=document.createElement('input');gravityToggle.type='checkbox';gravityToggle.checked=game.flags.microgravity;
-    gravityToggle.addEventListener('change',()=>{game.command(`microgravity ${gravityToggle.checked}`);write('cube-libre-microgravity-v1',game.flags.microgravity);});
-    gravityLabel.append(gravityToggle,'Microgravity: thrust and coasting (normal levels)');body.append(gravityLabel);
-    const heatLabel=document.createElement('label');heatLabel.className='shake-setting';
-    const heatToggle=document.createElement('input');heatToggle.type='checkbox';heatToggle.checked=game.flags.overheat_blocks_recoupling;
-    heatToggle.addEventListener('change',()=>{game.command(`overheat_blocks_recoupling ${heatToggle.checked}`);write('cube-libre-overheat-blocks-recoupling-v1',game.flags.overheat_blocks_recoupling);});
-    heatLabel.append(heatToggle,`Overheating blocks re-coupling (from level ${BALANCE.heatStartLevel})`);body.append(heatLabel);
-    for(const [key,label,storage] of [
-      ['change_1','CHANGE 1: laser shutters','cube-libre-change-1-v1'],
-      ['change_1_random_per_leg','Random shutter gates and legs','cube-libre-change-1-random-per-leg-v1'],
-      ['change_1_no_repeat_leg','Prevent consecutive zaps in the same leg','cube-libre-change-1-no-repeat-leg-v1']
-    ]) {
-      const row=document.createElement('label');row.className='shake-setting';
-      const input=document.createElement('input');input.type='checkbox';input.checked=game.flags[key];
-      input.addEventListener('change',()=>{game.command(`set ${key} ${input.checked}`);write(storage,game.flags[key]);});
-      row.append(input,label);body.append(row);
-    }
-    const shockLabel=document.createElement('label');shockLabel.className='shake-setting';
-    const shockToggle=document.createElement('input');shockToggle.type='checkbox';shockToggle.checked=game.flags.rotation_shocks;
-    shockToggle.addEventListener('change',()=>{game.command(`rotation_shocks ${shockToggle.checked}`);write('cube-libre-rotation-shocks-v1',game.flags.rotation_shocks);});
-    shockLabel.append(shockToggle,'Hit rotation shocks');body.append(shockLabel);
-    const lightLabel=document.createElement('label');lightLabel.className='shake-setting';
-    const lightToggle=document.createElement('input');lightToggle.type='checkbox';lightToggle.checked=game.flags.portal_white_light;
-    lightToggle.addEventListener('change',()=>{game.flags.portal_white_light=lightToggle.checked;write('cube-libre-portal-white-light-v1',game.flags.portal_white_light);});
-    lightLabel.append(lightToggle,'Portal white light');body.append(lightLabel);
-    const cullLabel=document.createElement('label');cullLabel.className='shake-setting';
-    const cullToggle=document.createElement('input');cullToggle.type='checkbox';cullToggle.checked=game.flags.culling;
-    cullToggle.addEventListener('change',()=>{game.flags.culling=cullToggle.checked;write('cube-libre-culling-v1',game.flags.culling);});
-    cullLabel.append(cullToggle,'Cull distant corridors');body.append(cullLabel);
+    const body=document.createElement('div'),keyboardBody=document.createElement('div');
     if(inBonus) {
       const bonusHelp=document.createElement('p');bonusHelp.className='bonus-help';
-      bonusHelp.textContent='BONUS ROUND: W / ↑ rolls toward the ramp, S / ↓ rolls back, A / D or ← / → rolls sideways. Hold Shift to rush. Touch loose pieces to collect them, then roll up the ramp into the portal before time runs out. The golden ring marks your body.';body.append(bonusHelp);
+      bonusHelp.textContent='BONUS ROUND: W / ↑ rolls toward the ramp, S / ↓ rolls back, A / D or ← / → rolls sideways. Hold Shift to rush. Touch loose pieces to collect them, then roll up the ramp into the portal before time runs out. The golden ring marks your body.';keyboardBody.append(bonusHelp);
     }
-    const p=document.createElement('p');p.textContent=inBonus?'BONUS CONTROLS · Recover what you can, then escape. Touching a loose piece collects it automatically.':'Reach the portal with as many of your 125 cubes as possible. The entire surviving body must enter. The view rotates; movement stays on the world axes.';body.append(p);
-    if(!inBonus) {const propulsionHelp=document.createElement('p');propulsionHelp.textContent='With microgravity enabled, hold movement keys to build speed, release to coast, and steer in the opposite direction to brake. Shift increases your top speed.';body.append(propulsionHelp);}
+    const p=document.createElement('p');p.textContent=inBonus?'BONUS CONTROLS · Recover what you can, then escape. Touching a loose piece collects it automatically.':'Reach the portal with as many of your 125 cubes as possible. The entire surviving body must enter. The view rotates; movement stays on the world axes.';keyboardBody.append(p);
+    if(!inBonus) {const propulsionHelp=document.createElement('p');propulsionHelp.textContent='With microgravity enabled, hold movement keys to build speed, release to coast, and steer in the opposite direction to brake. Shift increases your top speed.';keyboardBody.append(propulsionHelp);}
     const figure=document.createElement('figure');figure.className='keyboard-help';
     const map=document.createElement('div');map.className='keyboard-map-scroll';map.tabIndex=0;
     map.setAttribute('role','region');map.setAttribute('aria-label','Keyboard control map. Scroll sideways on smaller screens.');
@@ -180,7 +142,7 @@ async function main() {
     diagram.src=(inBonus?releaseAssetURL('../assets/keyboard-bonus-controls.svg',import.meta.url):releaseAssetURL('../assets/keyboard-controls.svg',import.meta.url)).href;
     diagram.alt=inBonus?'Bonus keyboard map: WASD or arrows roll on the floor, W goes toward the ramp, Shift rushes. Collect pieces by contact. H help, P pause, M mute, Esc menu.':'Keyboard map: A/D move along X; W/S move along Y from SPACE; Q/E move along Z. Hold Shift to rush, C to recover loose cubes, L to locate your cube. Space or Enter starts a run or advances a level. H opens help, P pauses, M mutes, and Esc opens the menu.';
     diagram.width=1040;diagram.height=590;map.append(diagram);figure.append(map);
-    const caption=document.createElement('figcaption');caption.textContent=inBonus?'W / ↑ goes toward the ramp. S / ↓ rolls back. A / D or ← / → rolls sideways. Hold Shift to rush. The camera follows you.':'Hold the movement keys to move. Matching colors mark each pair. The view rotates, so these directions rotate on screen too. On small screens, scroll the keyboard sideways.';figure.append(caption);body.append(figure);
+    const caption=document.createElement('figcaption');caption.textContent=inBonus?'W / ↑ goes toward the ramp. S / ↓ rolls back. A / D or ← / → rolls sideways. Hold Shift to rush. The camera follows you.':'Hold the movement keys to move. Matching colors mark each pair. The view rotates, so these directions rotate on screen too. On small screens, scroll the keyboard sideways.';figure.append(caption);keyboardBody.append(figure);
     const table=document.createElement('table');
     for(const [keys,action] of (inBonus?[
       ['W / S or ↑ / ↓','Roll forward toward the ramp / back'],['A / D or ← / →','Roll left / right'],
@@ -194,8 +156,9 @@ async function main() {
       ['M','Mute / unmute'],['Alt+F / Alt+Enter / F11','Fullscreen (or use the button)'],['Esc','Main menu confirmation'],
       ['Ctrl+Shift+F2','Reset run or retry current level'],['` / Ctrl+Shift+F1','Debug console']
     ])) {const tr=document.createElement('tr');for(const text of [keys,action]){const td=document.createElement('td');td.textContent=text;tr.append(td);}table.append(tr);}
-    body.append(table);
-    if(!(controller.enabled&&controller.connected))body.append(controllerHelp(inBonus));
+    keyboardBody.append(table);
+    const rulesDetails=document.createElement('details'),rulesTitle=document.createElement('summary');
+    rulesTitle.textContent='GAME RULES & LEVEL PROGRESSION';rulesDetails.append(rulesTitle);keyboardBody.append(rulesDetails);
     const milestones=document.createElement('table'),heading=document.createElement('caption');
     heading.textContent='What changes as you advance';milestones.append(heading);
     const header=document.createElement('tr');
@@ -204,18 +167,24 @@ async function main() {
       const row=document.createElement('tr');
       for(const text of [feature.level,feature.banner,feature.summary()]) {const cell=document.createElement('td');cell.textContent=text;row.append(cell);}milestones.append(row);
     }
-    body.append(milestones);
-    const q=document.createElement('p');q.textContent='Each level adds one corridor leg, up to fifty. Repeated re-coupling requests can recover more pieces before they expire. Once HEAT is active, new requests are blocked while overheating if that option is enabled. Returning inside cools you immediately. A request already in progress finishes; refused requests use no quota. Lost cubes cost 100 potential points each. Death rebuilds your current level; your run score stays.';body.append(q);
-    const shutterHelp=document.createElement('p');shutterHelp.textContent=`CHANGE starts at level ${Math.max(1,game.changeSettings.change_1_min_level)}. At this level, ${shutterGateCount(game.level,game.changeSettings)} gate(s) per leg are selected for shutters. At most ${game.changeSettings.change_1_max_simultaneous} close together across the scene, with ${shutterInterval(game.changeSettings)} seconds between closure groups and at least ${game.changeSettings.change_1_gate_cooldown} seconds of open rest before the next warning. Closures last ${game.changeSettings.change_1_closed_seconds} seconds. A hit costs ${Math.round(game.changeSettings.change_1_damage_fraction*100)}% of remaining cubes, rounded down, and grants ${game.changeSettings.change_1_damage_cooldown} seconds of grid-damage protection. Consecutive zaps in the same leg: ${game.flags.change_1_no_repeat_leg?'blocked; waits for another revealed leg':'allowed'}. Console: set change_1_gates_per_leg 1; use 0 for the automatic ramp.`;body.append(shutterHelp);
-    const bonusRules=document.createElement('p');bonusRules.textContent=`PICKING UP THE PIECES · Bonus round 001 follows level ${BONUS_SCHEDULE.firstLevel}, then every ${BONUS_SCHEDULE.interval} levels before the final level cap. Roll on a solid floor using WASD / arrow keys; Shift rushes. Collect the scattered pieces and take the ramp to the portal within ${PIECES_RULES.seconds} seconds. Each piece banks ${PIECES_RULES.pointsPerPiece} bonus points only if you escape. Running out of time forfeits this bonus; your existing score is kept and the next level follows. C and the corridor heat/entropy rules do not apply. Console: test bonus_round_1 previews the complete round.`;body.append(bonusRules);
+    rulesDetails.append(milestones);
+    const q=document.createElement('p');q.textContent='Each level adds one corridor leg, up to fifty. Repeated re-coupling requests can recover more pieces before they expire. Once HEAT is active, new requests are blocked while overheating. Returning inside cools you immediately. A request already in progress finishes; refused requests use no quota. Lost cubes cost 100 potential points each. Death rebuilds your current level; your run score stays.';rulesDetails.append(q);
+    const shutterHelp=document.createElement('p');shutterHelp.textContent=`CHANGE starts at level ${Math.max(1,game.changeSettings.change_1_min_level)}. At this level, ${shutterGateCount(game.level,game.changeSettings)} gate(s) per leg are selected for shutters. At most ${game.changeSettings.change_1_max_simultaneous} close together across the scene, with ${shutterInterval(game.changeSettings)} seconds between closure groups and at least ${game.changeSettings.change_1_gate_cooldown} seconds of open rest before the next warning. Closures last ${game.changeSettings.change_1_closed_seconds} seconds. A hit costs ${Math.round(game.changeSettings.change_1_damage_fraction*100)}% of remaining cubes, rounded down, and grants ${game.changeSettings.change_1_damage_cooldown} seconds of grid-damage protection. Consecutive zaps in the same leg: ${game.flags.change_1_no_repeat_leg?'blocked; waits for another revealed leg':'allowed'}.`;rulesDetails.append(shutterHelp);
+    const bonusRules=document.createElement('p');bonusRules.textContent=`PICKING UP THE PIECES · Bonus round 001 follows level ${BONUS_SCHEDULE.firstLevel}, then every ${BONUS_SCHEDULE.interval} levels before the final level cap. Roll on a solid floor using WASD / arrow keys; Shift rushes. Collect the scattered pieces and take the ramp to the portal within ${PIECES_RULES.seconds} seconds. Each piece banks ${PIECES_RULES.pointsPerPiece} bonus points only if you escape. Running out of time forfeits this bonus; your existing score is kept and the next level follows. C and the corridor heat/entropy rules do not apply.`;rulesDetails.append(bonusRules);
     const rules=game.difficulty,current=document.createElement('p');
-    current.textContent=`Level ${game.level}: ${rules.timed?`${rules.secondsPerLeg.toFixed(1)} seconds per leg`:'no timer'} · ${Math.round(rules.recouplingRate*100)}% re-coupling yield per request · ${rules.overheatGraceSeconds.toFixed(1)} seconds before overheating outside. Heat re-coupling restriction: ${game.flags.overheat_blocks_recoupling?(rules.heat?'active':'not yet active'):'disabled'}.`;body.append(current);
+    current.textContent=`Level ${game.level}: ${rules.timed?`${rules.secondsPerLeg.toFixed(1)} seconds per leg`:'no timer'} · ${Math.round(rules.recouplingRate*100)}% re-coupling yield per request · ${rules.overheatGraceSeconds.toFixed(1)} seconds before overheating outside. Heat re-coupling restriction: ${game.flags.overheat_blocks_recoupling?(rules.heat?'active':'not yet active'):'disabled'}.`;rulesDetails.append(current);
+    body.append(createHelpTabs(document,[
+      {id:'keyboard',label:'KEYBOARD',body:keyboardBody},
+      {id:'controller',label:'CONTROLLER',body:controllerHelp(inBonus)},
+      {id:'options',label:'OPTIONS',body:createVisualOptions(document,game,write)}
+    ],controller.enabled&&controller.connected?'controller':'keyboard'));
+    const creditBlock=document.createElement('footer');creditBlock.className='help-credits';body.append(creditBlock);
     const credits=document.createElement('p');credits.className='version-note';
     credits.append(`CUBE LIBRE v${release.version} | By FlyingFathead | `);
-    const authorLink=document.createElement('a');authorLink.href='https://github.com/FlyingFathead';authorLink.textContent='github.com/FlyingFathead';authorLink.target='_blank';authorLink.rel='noopener';credits.append(authorLink);body.append(credits);
-    const copyright=document.createElement('p');copyright.className='version-note';copyright.textContent='© 2024–2026 FlyingFathead';body.append(copyright);
-    const version=document.createElement('p');version.className='version-note';version.textContent=`Web version · Based on PyGame v${release.upstream.version}`;body.append(version);
-    modal('help','CUBE LIBRE · CONTROLS',body,[['Back to game (H)',closeModal]]);
+    const authorLink=document.createElement('a');authorLink.href='https://github.com/FlyingFathead';authorLink.textContent='github.com/FlyingFathead';authorLink.target='_blank';authorLink.rel='noopener';credits.append(authorLink);creditBlock.append(credits);
+    const copyright=document.createElement('p');copyright.className='version-note';copyright.textContent='© 2024–2026 FlyingFathead';creditBlock.append(copyright);
+    const version=document.createElement('p');version.className='version-note';version.textContent=`Web version · Based on PyGame v${release.upstream.version}`;creditBlock.append(version);
+    modal('help','CUBE LIBRE · HELP',body,[['Back to game (H)',closeModal]]);
   }
   function menu() {
     if(game.state==='title') {
@@ -225,7 +194,7 @@ async function main() {
     ]);
   }
   function reset() {
-    modal('reset','RESET OPTIONS',`Current level: ${game.level} · Score: ${game.score}`,[
+    modal('reset','RESTART / RETRY',`Current level: ${game.level} · Score: ${game.score}`,[
       ['Cancel (Esc)',closeModal],['1 · Start at level one',()=>{closeModal();game.newRun();syncAudio();}],
       ['2 · Retry current level',()=>{closeModal();game.ready(game.level);syncAudio();}]
     ]);

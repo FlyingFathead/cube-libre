@@ -1,6 +1,6 @@
 # Cube Libre web progression
 
-Default schedule for web **0.23.0**, based on published v0.22.1 (`51e047b`).
+Default schedule for web **0.23.1**, based on published v0.23.0 (`acbb831`).
 [`featuresForSettings()`](../web/js/difficulty.mjs) combines `BALANCE` milestones
 with [`CHANGES` and `CHANGE_NUMBERS`](../web/js/changes.mjs), sorts by level, and
 supplies phase selection, banner titles and the Help table. `LEVEL_FEATURES` is a
@@ -192,3 +192,12 @@ in `viewconfig`. Help includes the Xbox-style controller map and keyboard diagra
 The campaign ending limit is still file-configured: `BALANCE.levelCap`, currently
 50. `BALANCE.capLevel` is the independent endpoint of the time/entropy curves.
 There is no runtime console setter for those two limits in this release.
+
+## Public Options versus developer configuration
+
+Help → Options contains only shaking/heat flashes, hit rotation shocks and portal
+white light. Body auto-rotation, microgravity, HEAT restrictions, shutters and
+culling remain editable through the debug console; they have no public checkboxes.
+All listed commands and persistence rules still apply. Help opening/tab switching
+never resets saved gameplay flags. Keyboard and Controller each have their own
+Help tab; the milestone table is under Keyboard → GAME RULES & LEVEL PROGRESSION.

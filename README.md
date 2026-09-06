@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.23.0
+# Cube Libre — Web v0.23.1
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -22,7 +22,23 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.23.0
+## Web release 0.23.1
+
+Help is now split into **KEYBOARD | CONTROLLER | OPTIONS**. Each controls tab
+contains its diagram and action list; the keyboard map adapts for bonus rounds.
+Options contains only **Shaking and heat flashes**, **Hit rotation shocks** and
+**Portal white light**. Tabs and the Back button remain visible while the active
+section scrolls. Mouse, keyboard arrows/Tab and controller navigation work across
+the sections. Game rules and milestones are collapsed beneath the keyboard list;
+credits remain at the bottom.
+
+Gameplay switches are console-only: body auto-rotation, microgravity, the heat
+re-coupling restriction and all shutter switches. Culling is console-only too,
+since disabling it exposes extra route detail. Their existing saved values and
+console aliases remain available for development. No gameplay tuning is exposed
+in Options. The separate reset dialog is now labeled **RESTART / RETRY**.
+
+### Retained from 0.23.0
 
 **Xbox-style controllers are supported**, including analog movement and menus.
 Use the left stick for X/Y, LT / RT for Z, **LB to re-couple** (X also works), and
@@ -120,7 +136,7 @@ to scroll; the listing reads live settings without changing them.
 the cube builds speed, coasts briefly when released, and brakes faster when you
 steer against its motion. Top speed stays 6 units/second, or 15.6 with Shift.
 The drift affects the actual body and collisions. Bonus rounds keep their floor
-rolling. Use **Help → Microgravity** or `set microgravity off` to compare with
+rolling. Use `set microgravity off` in the debug console to compare with
 the original direct controls; `toggle microgravity` and `status microgravity`
 work too. The browser remembers the setting.
 
@@ -129,7 +145,7 @@ to 1.4 seconds, and new re-coupling requests are blocked while overheating.
 Cooling down restores re-coupling. The check uses the heat state, so future heat
 sources can reuse it. Refused requests cost no quota; a request already underway
 finishes. Use `set overheat_blocks_recoupling off` to disable this restriction.
-The flag defaults to on and is saved in Help and through the console.
+The flag defaults to on and is saved through the debug console.
 
 `BALANCE.heatMinLevel` in [`web/js/difficulty.mjs`](web/js/difficulty.mjs) defaults
 to **15**; **0 removes the level gate**. Both heat penalties and the HEAT banner
@@ -163,7 +179,7 @@ exit stays marked while the route ahead remains hidden. A fixed starfield follow
 the view, so even the largest maps cannot leave it behind.
 
 **Culling is enabled by default.** Compare with `culling false` / `culling true`
-(also `0` / `1`) or **Help → Cull distant corridors**. The browser remembers the
+(also `0` / `1`) in the debug console. The browser remembers the
 choice. Disabling culling shows the surviving route and future previews; the
 collision, hazard-reveal and collapse rules continue to apply.
 
@@ -174,15 +190,14 @@ Every remaining mini-cube moves with the body, including its holes; the rotated
 positions determine which pieces hit the field and laser gaps. Re-coupled pieces
 settle into the turning body. The aim is to reach the portal with whatever remains.
 
-Rotation is on by default. Use **Help → Player auto-rotation (normal levels)**
-or `spin 0` / `spin 1` in the console (`false` / `true` also work).
+Rotation is on by default. Use `spin 0` / `spin 1` in the debug console (`false` / `true` also work).
 Turning it off restores the body's axis alignment, and the browser remembers
 your choice. Bonus rounds keep their own floor rolling and crash animations.
 The speed and default live in `PLAYER_ROTATION` in `web/js/config.mjs`.
 
 Laser and field-edge hits now jolt the whole surviving body into a sharp
 rotational recoil that settles back into its slow tumble. **Hit rotation shocks**
-is enabled by default in Help and has its own saved `rotation_shocks` switch.
+is enabled by default in Help → Options and has its own saved `rotation_shocks` switch.
 The recoil is visual and does not inflict additional collision damage.
 
 All console boolean settings use the same commands, including `locate` and `mute`:
@@ -209,13 +224,13 @@ hold, ending text and run statistics.
 
 Portals now radiate a white glow that strengthens as you approach, in normal and
 bonus rounds. Use `portal_white_light true` / `portal_white_light false`, or
-**Help → Portal white light**, to compare it. It is enabled by default and the
+**Help → Options → Portal white light**, to compare it. It is enabled by default and the
 browser saves the setting. The effect uses one small glow sprite.
 `set level 20` now works as an alias for `level 20`.
 
 Outside the grid, overheating makes the player body vibrate violently and
 flash red/orange with white-hot peaks. The effect intensifies with heat and stops
-on returning inside. Open **Help → Shaking and heat flashes** to toggle it, or use
+on returning inside. Open **Help → Options → Shaking and heat flashes** to toggle it, or use
 `shake 0` / `shake 1` in the console (`false` / `true` also work). The browser saves
 your choice. The switch also controls bonus warning tremors and camera jolts.
 
@@ -351,10 +366,10 @@ node --test tests/web/*.test.mjs
 
 See [WEB_PORT.md](WEB_PORT.md) for gameplay details, browser differences,
 source layout, and optional regeneration using a separate PyGame checkout.
-Web 0.22.1 (`51e047b`) is the published baseline. This release passes 124 automated
+Web 0.23.0 (`acbb831`) is the published baseline. This release passes 128 automated
 test groups and static checks, including a complete level-50 traversal, controller
 input and menu dispatch, shutter limits, startup cache handling and preview
-geometry. The controller mapping and new visual balance need browser/hardware
+geometry and tabbed Help. The controller mapping and new visual layout need browser/hardware
 playtesting. WebGL effects are recreated and are not pixel-identical to the desktop version.
 
 After changing the version or adding/removing modules, regenerate the committed

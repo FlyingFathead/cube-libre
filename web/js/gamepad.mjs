@@ -66,8 +66,9 @@ export function mergeMovement(keyboard,controller) {
 }
 
 export function navigateControllerMenu(root,frame,document,dt) {
-  if(frame.scroll)root.scrollTop+=frame.scroll*Math.min(dt,.1)*550;
-  const choices=[...root.querySelectorAll('button, input, a[href]')].filter(el=>!el.disabled&&!el.closest('[hidden]')&&el.getClientRects().length);
+  const scrollTarget=root.querySelector?.('[role="tabpanel"]:not([hidden])')||root;
+  if(frame.scroll)scrollTarget.scrollTop+=frame.scroll*Math.min(dt,.1)*550;
+  const choices=[...root.querySelectorAll('button, input, a[href], summary')].filter(el=>!el.disabled&&!el.closest('[hidden]')&&el.getClientRects().length);
   let current=choices.indexOf(document.activeElement);
   if(frame.menuStep&&choices.length) {
     current=current<0?(frame.menuStep>0?0:choices.length-1):(current+frame.menuStep+choices.length)%choices.length;

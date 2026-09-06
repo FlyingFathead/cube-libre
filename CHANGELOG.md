@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.23.1 — Controls without difficulty switches
+
+Based on published web v0.23.0 (`acbb831`).
+
+- Split Help into KEYBOARD, CONTROLLER and OPTIONS tabs. Keep each control diagram
+  with its action list and retain normal/bonus keyboard variants.
+- Limit public Options to shaking/heat flashes, hit rotation shocks and portal
+  white light. Remove public switches for body rotation, microgravity, the HEAT
+  re-coupling restriction, shutters and culling. Their console commands and saved
+  preferences remain intact.
+- Keep tabs and the return button visible while the active panel scrolls. Support
+  mouse clicks, keyboard arrows/Home/End and controller navigation; skip hidden
+  panel controls and scroll only the active panel with the right stick.
+- Put game rules/milestones in a disclosure below Keyboard controls, retain
+  credits below the tabs, and remove inline gameplay-tuning examples from Help.
+- Rename the separate reset menu RESTART / RETRY. Update documentation and the
+  versioned startup import map.
+
+Validation: static checks and all 128 automated test groups pass. New checks cover
+actual Help construction, tab visibility/focus, normal/bonus diagrams, visual-only
+option writes, preservation of console gameplay flags, pause restoration and
+controller navigation/scroll routing. Browser layout and hardware playtesting
+remain outstanding.
+
+
 ## 0.23.0 — Room to move
 
 Based on published web v0.22.1 (`51e047b`).

@@ -291,7 +291,7 @@ ordinary per-beam damage. Bonus rounds use their existing rules.
 with the configured introduction level and its card. This is a normal gameplay
 debug command, so normal scoring applies. Pause and Help freeze timing. Changing
 shutter settings or resetting an attempt clears the clock, immunity and contacts.
-`change_1`, `change_1_random_per_leg` and `change_1_no_repeat_leg` are saved booleans, also available in Help.
+`change_1`, `change_1_random_per_leg` and `change_1_no_repeat_leg` are saved console-only booleans.
 Numeric settings accept `set name number`, a bare `name number` shortcut, and
 read-only `status`, `view`, `get` or bare `set` queries. They last for this session;
 edit `CHANGE_NUMBERS` for shipped defaults. A zero minimum removes the level gate.
@@ -365,7 +365,7 @@ restores direct controls. Bonus floor rolling and ascension have their own motio
 Use `toggle microgravity`, `set microgravity off` or `status microgravity`.
 For the heat restriction, use `toggle overheat_blocks_recoupling`,
 `set overheat_blocks_recoupling false` or `status overheat_blocks_recoupling`.
-Both support all normal boolean aliases, have Help checkboxes, and persist as
+Both support all normal boolean aliases through the debug console and persist as
 `cube-libre-microgravity-v1` and `cube-libre-overheat-blocks-recoupling-v1`.
 The default heat restriction lives in `BALANCE.overheatBlocksRecoupling`;
 its minimum level is `BALANCE.heatMinLevel`. These configuration numbers are
@@ -408,6 +408,26 @@ flashes **TIME RESET ... FOR NOW** for 1.6 seconds when timed play begins, a new
 leg resets the clock, or a death/reassembly restarts it. Its lifetime and blinking
 pause with the game, and it shares the bottom stack with the other messages.
 
+## Tabbed Help and public options (web 0.23.1)
+
+Help has three sections: **KEYBOARD**, **CONTROLLER** and **OPTIONS**. The connected
+controller determines the initial controls tab; either tab remains available.
+Keyboard maps adapt to normal/bonus play. A tablist uses roving keyboard focus,
+Left/Right arrows and Home/End. Clicking a tab or activating it with controller A
+shows exactly one panel. The right stick scrolls that panel, and inactive-panel
+controls are excluded from navigation. Tab labels and the return button stay
+visible while content scrolls, including in narrow windows. Credits stay beneath
+the tabs. Game rules/milestones are inside a disclosure under Keyboard controls;
+controller navigation can focus and open that disclosure too.
+
+The public options allow only `shake`, `rotation_shocks` and `portal_white_light`.
+They retain browser persistence and the existing console aliases. `spin` affects
+physical collisions; `microgravity`, the HEAT restriction and shutters affect
+rules. Culling exposes extra route detail when disabled. These settings stay
+console-only, and merely opening Help does not change their saved values.
+The separate run-reset dialog is named RESTART / RETRY to avoid confusion with
+visual options. There are no difficulty switches in the public Options tab.
+
 ## Keyboard help and opening sequence
 
 H / Help shows a color-coded keyboard diagram above the existing key list.
@@ -443,7 +463,7 @@ those physical positions include the player's slow collective rotation.
 Returning inside stops the shaking and resumes the normal cooling tint. Pause and
 help freeze the effects along with game time.
 
-**Help → Shaking and heat flashes** is enabled by default. The console accepts:
+**Help → Options → Shaking and heat flashes** is enabled by default. The console accepts:
 
 ```text
 shake 0
@@ -501,7 +521,7 @@ The performance limits are structural:
 - The camera's far plane and overview distance accommodate the complete cap-level
   route. Large maps do not multiply star counts or detailed hazard draw calls.
 
-**Help → Cull distant corridors** is enabled by default. The console accepts:
+Corridor culling is enabled by default and can be changed only through the debug console:
 
 ```text
 culling true
@@ -545,7 +565,7 @@ stay the same. Geometry is reused through the existing instanced renderer, and
 the simulation caches one orientation quaternion and rotation matrix per update
 for all body cells. Rendering uses that same quaternion.
 
-**Help → Player auto-rotation (normal levels)** is on by default. Console commands:
+Player auto-rotation is on by default and is now console-only because rotated cells affect collisions:
 
 ```text
 spin 0
@@ -554,8 +574,7 @@ set spin false
 set spin true
 ```
 
-Disabling it restores axis alignment immediately. The browser saves either Help
-or console changes under `cube-libre-spin-v1`. `PLAYER_ROTATION` in
+Disabling it restores axis alignment immediately. The browser saves console changes under `cube-libre-spin-v1`. `PLAYER_ROTATION` in
 `web/js/config.mjs` defines the default boolean and `degreesPerSecond: {x, y, z}`; an existing
 saved preference takes precedence over the default. Shaking has its own switch.
 
@@ -574,7 +593,7 @@ slow-tumble pose, so recoil cannot create an extra damage cascade. Pause and
 Help freeze the effect; spawning resets it. Bonus rolling and ending animations
 remain independent. It works with slow spin or overheating shake disabled.
 
-**Help → Hit rotation shocks** is on by default. Its separate `rotation_shocks`
+**Help → Options → Hit rotation shocks** is on by default. Its separate `rotation_shocks`
 setting is saved under `cube-libre-rotation-shocks-v1`; disabling it clears any
 active recoil immediately.
 
@@ -656,7 +675,7 @@ bonus portals use the floor approach distance. The effect is a camera-facing
 additive sprite with a shared 64×64 texture. It does not add dynamic lighting,
 shadows or postprocessing, and does not affect collision or absorption.
 
-Enabled by default, with **Help → Portal white light** and these console controls:
+Enabled by default, with **Help → Options → Portal white light** and these console controls:
 
 ```text
 portal_white_light true
@@ -728,14 +747,14 @@ Reference: [MDN Gamepad API](https://developer.mozilla.org/en-US/docs/Web/API/Ga
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.23.0**, based on published **0.22.1**, commit `51e047b`. The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.23.1**, based on published **0.23.0**, commit `acbb831`. The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.23.1`, `0.23.2`, etc. for fixes, and `0.24.0` for the
+For future releases, use `0.23.2`, `0.23.3`, etc. for fixes, and `0.24.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.23.0.zip` and `v0.23.0`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.23.1.zip` and `v0.23.1`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior
@@ -755,8 +774,8 @@ version and commit fixed unless deliberately rebasing on a different PyGame sour
   reliably close tabs they did not open.
 - Scores are local to this browser and origin. They do not import the Python
   `cube_libre_scores.json`, sync between devices, or form an online leaderboard.
-- WebGL 2, JavaScript and import maps are required. Web 0.22.1 is the published
-  baseline. The 0.23.0 controller mapping and visual/balance changes still require
+- WebGL 2, JavaScript and import maps are required. Web 0.23.0 is the published
+  baseline. Controller mapping and the new tabbed Help layout still require
   browser and hardware playtesting; automated checks do not claim a hardware benchmark.
 
 ## Verify or regenerate
@@ -805,7 +824,7 @@ immunity, warning/closed rendering, local audio events, movable introductions,
 camera centering, legacy and irregular skies, saved pattern switching and full
 configuration listings. Web 0.23.0 adds controller axes/buttons and browser-dispatch
 checks, record resets, globally capped alternating shutters, preview limits/fade
-uniforms, startup cache replacement and live leg totals. All 124 test groups pass.
+uniforms, startup cache replacement and live leg totals. All 128 test groups pass, including the tabbed Help and visual-only options boundary.
 The fifty-leg simulated pilot accounts for closed shutters.
 
 The original synthesized WAV cache is approximately 10.5 MiB; the web audio is
@@ -843,6 +862,7 @@ entries. Temporary source WAV files are not included in the published game.
 | `web/js/space-view.mjs` | Cached ghost route, overview framing, detail window and selectable infinite starfields |
 | `web/js/render.mjs` | Batched cube/line rendering, title, field and transition effects |
 | `web/js/audio.mjs` | Local audio loading, codecs, channels, loops and state mix |
+| `web/js/help-tabs.mjs` | Accessible Help tabs and explicit visual-only option allowlist |
 | `web/js/gamepad.mjs` | Standard controller polling, analog inputs, action edges and menu navigation |
 | `web/assets/controller-controls.svg` | Controller diagram with exact action callouts |
 | `tools/prepare_web_release.mjs` | Regenerate committed release metadata, import map and stylesheet version |
