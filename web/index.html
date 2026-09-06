@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="description" content="Cube Libre web version by FlyingFathead. A rotating 3D survival puzzle. Reach the portal with your remaining pieces.">
+  <title>Cube Libre · FlyingFathead</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main id="game" tabindex="-1" aria-label="Cube Libre game">
+    <canvas id="scene" aria-label="Rotating 3D cube maze. Use A and D for X, W and S for Y, Q and E for Z. Press H for help."></canvas>
+    <canvas id="fx" aria-hidden="true"></canvas>
+    <div id="boot" role="status"><strong>CUBE LIBRE</strong><p id="boot-text">Loading the cube universe…</p><button id="reload" hidden>Reload</button></div>
+    <div id="title" hidden>
+      <button id="start" aria-label="Start a new run"><canvas id="start-dots" aria-hidden="true"></canvas><span class="sr-only">Space / Enter = New run</span></button>
+      <div class="title-info">
+        <p><b>A / D</b> move X <span>·</span> <b>W / S</b> move Y <span>·</span> <b>Q / E</b> move Z</p>
+        <p><b>Shift</b> rush <span>·</span> <b>C</b> re-couple <span>·</span> <b>H</b> help</p>
+        <p id="title-stats"></p>
+        <p class="credits">by <a href="https://github.com/FlyingFathead/cube-libre" target="_blank" rel="noopener">FlyingFathead</a> <span>·</span> <a href="https://github.com/FlyingFathead/cube-libre-pygame" target="_blank" rel="noopener">PyGame original</a> <span>·</span> w/ thanks to ChaosWhisperer</p>
+        <p id="title-version" class="version-note"></p>
+      </div>
+    </div>
+    <section id="hud" aria-label="Game status" hidden>
+      <strong id="cube-count"></strong><p id="score"></p><p id="records"></p><p id="integrity-warning"></p>
+    </section>
+    <div id="timer" hidden></div>
+    <div id="notice" role="status" aria-live="polite"></div>
+    <div id="danger" hidden></div>
+    <section id="opening" aria-label="Opening" hidden>
+      <div>
+        <p>I have no fixed place here.</p>
+        <p>I only have my remaining pieces.</p>
+        <p>I'm on my way to the portal.</p>
+      </div>
+    </section>
+    <section id="ending" aria-label="Run ending" hidden>
+      <div id="ascension-copy">
+        <h1 id="ascension-title">YOU'VE ASCENDED</h1>
+        <p id="ascension-subtitle">... FOR NOW.</p>
+      </div>
+      <section id="run-summary" aria-labelledby="summary-title" hidden>
+        <h1 id="summary-title">YOUR RUN</h1>
+        <dl id="summary-values"></dl>
+      </section>
+      <button id="ending-next" hidden>Space / Enter / click to see your stats</button>
+    </section>
+    <section id="card" hidden><h1 id="card-title"></h1><p id="card-subtitle"></p><p id="card-detail"></p><button id="next" hidden>Space / Enter = next level</button></section>
+    <div id="bottom-ui">
+      <div id="bonus-instructions" hidden>WASD / arrows: roll · Shift: rush<br>Collect pieces, then take the ramp to the portal</div>
+      <div id="recovery" hidden></div>
+      <div id="time-reset" role="status" hidden>TIME RESET ... FOR NOW</div>
+      <div id="countdown" role="timer" aria-live="off" hidden><strong id="countdown-text"></strong></div>
+      <div id="audio-status" role="status"></div>
+      <div id="touch-controls" aria-label="Touch movement controls" hidden>
+        <div class="touch-pad"><button data-key="KeyW" aria-label="Move positive Y">W +Y</button><button data-key="KeyA" aria-label="Move negative X">A −X</button><button data-key="KeyS" aria-label="Move negative Y">S −Y</button><button data-key="KeyD" aria-label="Move positive X">D +X</button></div>
+        <div class="touch-pad"><button data-key="KeyQ" aria-label="Move positive Z">Q +Z</button><button data-key="KeyE" aria-label="Move negative Z">E −Z</button><button data-key="ShiftLeft">Rush</button><button id="touch-c">Re-couple</button></div>
+      </div>
+    <nav id="toolbar" aria-label="Game controls" hidden>
+      <button id="pause" title="Pause / resume (P)">Pause</button>
+      <button id="locate" title="Locate camera (L)" aria-pressed="false">Locate</button>
+      <button id="help" title="Help (H)">Help</button>
+      <button id="mute" title="Mute / unmute (M)" aria-pressed="false">Sound on</button>
+      <button id="fullscreen" title="Fullscreen (Alt+F / F11)">Fullscreen</button>
+      <button id="menu" title="Main menu (Esc)">Menu</button>
+    </nav>
+    </div>
+    <dialog id="modal" aria-labelledby="modal-title"><h2 id="modal-title"></h2><div id="modal-body"></div><div id="modal-actions"></div></dialog>
+    <dialog id="console" aria-labelledby="console-title">
+      <header><h2 id="console-title">CUBE LIBRE CONSOLE</h2><button id="console-close" aria-label="Close console">Close</button></header>
+      <pre id="console-log" role="log"></pre><form id="console-form"><label for="console-input">&gt;</label><input id="console-input" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Debug command"></form>
+      <p>Enter = run · ↑ / ↓ = history · Ctrl+L = clear · Esc = close</p>
+    </dialog>
+    <noscript>Cube Libre requires JavaScript and WebGL 2. Enable JavaScript to play.</noscript>
+  </main>
+  <script>
+    (() => {
+      const message = document.getElementById('boot-text');
+      const reload = document.getElementById('reload');
+      if (location.protocol === 'file:') {
+        message.textContent = 'Run this game through a local HTTP server. From the repository folder, run: python -m http.server 8000 --directory web (Windows: py instead of python). Then open http://localhost:8000/.';
+        return;
+      }
+      import('./js/app.mjs').catch(error => {
+        message.textContent = 'Could not load the game scripts: ' + error.message + '. Check that all ZIP contents were extracted and the server serves JavaScript modules correctly. See the browser console for details.';
+        reload.hidden = false;
+        reload.onclick = () => location.reload();
+        console.error(error);
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "Cube Libre",
+  "edition": "web",
+  "version": "0.19.0",
+  "repository": "https://github.com/FlyingFathead/cube-libre",
+  "upstream": {
+    "edition": "pygame",
+    "version": "0.15.79",
+    "repository": "https://github.com/FlyingFathead/cube-libre-pygame",
+    "commit": "ecf8f0148713e5606e64624464eecc4545c71047"
+  }
+}

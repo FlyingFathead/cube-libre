@@ -1,0 +1,128 @@
+{
+  "crash": {
+    "duration": 0.72,
+    "ogg": "crash.ogg",
+    "mp3": "crash.mp3",
+    "source_wav": "crash_collision.wav",
+    "source_sha256": "3efec61f4163d80d16bb8694f14220c893b4a8307faf7eec6ec30eaace542b3d"
+  },
+  "structure_alert": {
+    "duration": 0.98,
+    "ogg": "structure_alert.ogg",
+    "mp3": "structure_alert.mp3",
+    "source_wav": "structure_loss_dee_doo.wav",
+    "source_sha256": "ffffc6e888c464312bb37eef7583d623ddb4c51a261427dfcc3327b6e771efd8"
+  },
+  "ambient": {
+    "duration": 24.0,
+    "ogg": "ambient.ogg",
+    "mp3": "ambient.mp3",
+    "source_wav": "spaceship_engine_room_hum_loop.wav",
+    "source_sha256": "05a463268f60e9242aa64d3b689d4354bc69c8ccfe320846d3bf00a64899a87b"
+  },
+  "gamelan": {
+    "duration": 48.0,
+    "ogg": "gamelan.ogg",
+    "mp3": "gamelan.mp3",
+    "source_wav": "alien_gamelan_more_frequent_v3_sourcegain.wav",
+    "source_sha256": "98c9b7161b943bab5ed41f1a886f9ba27f6e3cddd83e7eaa3c7464e024e20fb6"
+  },
+  "field": {
+    "duration": 8.0,
+    "ogg": "field.ogg",
+    "mp3": "field.mp3",
+    "source_wav": "field_wooom_loop.wav",
+    "source_sha256": "d145d6dc2a553656f4fa6b4e1119b4bf94dd92e5ab98f5ae2ea7d1328ba72880"
+  },
+  "critical": {
+    "duration": 1.6,
+    "ogg": "critical.ogg",
+    "mp3": "critical.mp3",
+    "source_wav": "critical_beep_loop.wav",
+    "source_sha256": "74f630da5215c9a70a70e99393ede09702f94f680d56ecaf3d9d5f87f2b05eea"
+  },
+  "portal": {
+    "duration": 4.2,
+    "ogg": "portal.ogg",
+    "mp3": "portal.mp3",
+    "source_wav": "portal_ethereal_entry.wav",
+    "source_sha256": "73166849359d32524d52e0cd7ed115b416ea4a96e7dabeec4c7cd25b2691a46d"
+  },
+  "portal_wou": {
+    "duration": 8.0,
+    "ogg": "portal_wou.ogg",
+    "mp3": "portal_wou.mp3",
+    "source_wav": "portal_wou_wou_slow_loop.wav",
+    "source_sha256": "ebf4ce6b341eaa5bf4e4db9a89898854435b25233edd714026772bd1bf9be9e8"
+  },
+  "laser_reveal": {
+    "duration": 1.55,
+    "ogg": "laser_reveal.ogg",
+    "mp3": "laser_reveal.mp3",
+    "source_wav": "laser_grid_reveal_ominous_woosh.wav",
+    "source_sha256": "6e2e6efa0db0f82987cf69f5bb89f50ada8eac7be1ea1d91861edd9babf28b85"
+  },
+  "laser_dissipate": {
+    "duration": 2.85,
+    "ogg": "laser_dissipate.ogg",
+    "mp3": "laser_dissipate.mp3",
+    "source_wav": "laser_grid_dissipate_exhale_aaah.wav",
+    "source_sha256": "0ca0a48ae7a5a161f09c4a9cdcfee0d933e0261767531f518025ebecc934831e"
+  },
+  "materialize": {
+    "duration": 7.15,
+    "ogg": "materialize.ogg",
+    "mp3": "materialize.mp3",
+    "source_wav": "course_materialize.wav",
+    "source_sha256": "cd283987c695dab94c313424c5431eaed6a68aecd843585ed6ea677120460831"
+  },
+  "death": {
+    "duration": 0.78,
+    "ogg": "death.ogg",
+    "mp3": "death.mp3",
+    "source_wav": "cube_death_whiteout.wav",
+    "source_sha256": "cf2122387faf2efd2e02dc8fb13a3560dcbf9ce0a1f9a3fd07317d664823beda"
+  },
+  "reassembly": {
+    "duration": 3.75,
+    "ogg": "reassembly.ogg",
+    "mp3": "reassembly.mp3",
+    "source_wav": "cube_reassembly.wav",
+    "source_sha256": "0ce6d7a172237db05abab0125a0c20a61cfa7af6962ae0ec6e92d666b04aa0d0"
+  },
+  "recouple": {
+    "duration": 1.3799773242630387,
+    "ogg": "recouple.ogg",
+    "mp3": "recouple.mp3",
+    "source_wav": "cube_recoupling_request.wav",
+    "source_sha256": "fa67012482320c8c0b867d7dc8da8e0e64a9f6d13b0c01a32e8f92b973a47868"
+  },
+  "collapse": {
+    "duration": 2.35,
+    "ogg": "collapse.ogg",
+    "mp3": "collapse.mp3",
+    "source_wav": "joint_cage_collapse_cashhh_octave_down.wav",
+    "source_sha256": "2886dab8d86a67458ab2ce7417725b085654b17e3ada3151c6901a714c34d6c3"
+  },
+  "time_tick": {
+    "duration": 2.0,
+    "ogg": "time_tick.ogg",
+    "mp3": "time_tick.mp3",
+    "source_wav": "time_tick_tock_loop.wav",
+    "source_sha256": "15bc716a919ed5c39b3b20c7580060d1e3371a68c0cd67b825516ee2cf0b1dcb"
+  },
+  "time_buzzer": {
+    "duration": 0.68,
+    "ogg": "time_buzzer.ogg",
+    "mp3": "time_buzzer.mp3",
+    "source_wav": "time_buzzer_10sec_berrrrt.wav",
+    "source_sha256": "fb7e41e189ae701a1c781ae47d5c954b5480e13a9e4f103425f9f61a1c55454f"
+  },
+  "time_siren": {
+    "duration": 1.0,
+    "ogg": "time_siren.ogg",
+    "mp3": "time_siren.mp3",
+    "source_wav": "time_siren_5sec_wiuwiu_loop.wav",
+    "source_sha256": "0eccdc152cfc8505cdd468119d2a348e3fd36d239821ccfa158d0dbfa4f1fc66"
+  }
+}
