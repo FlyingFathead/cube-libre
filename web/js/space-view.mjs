@@ -63,19 +63,46 @@ export class RouteGuide {
   }
 }
 
-export function createInfiniteStarfield(parent) {
-  const positions=[],colors=[],count=1600,radius=1000;
-  // Uniform sphere: a fixed sky at infinity, independent of course coordinates.
+function starPatternData(pattern) {
+  const positions=[],colors=[],sizes=[],count=1600,radius=1000;
+  // Reproducible random sky: chance clusters and gaps, with no spiral/lattice.
+  // Keep its buffers fixed and its center on the camera, even on fifty-leg maps.
+  let seed=0xC0BE2026;
+  const random=()=>{seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return (seed>>>0)/4294967296;};
   for(let i=0;i<count;i++) {
-    const y=1-2*(i+.5)/count,r=Math.sqrt(1-y*y),angle=i*2.399963229728653;
+    const y=pattern===1?1-2*(i+.5)/count:1-2*random(),r=Math.sqrt(1-y*y),angle=pattern===1?i*2.399963229728653:random()*Math.PI*2;
     positions.push(Math.cos(angle)*r*radius,y*radius,Math.sin(angle)*r*radius);
-    const brightness=.45+.55*((i*67%101)/100);colors.push(brightness,brightness,brightness);
+    if(pattern===1) {
+      const brightness=.45+.55*((i*67%101)/100);colors.push(brightness,brightness,brightness);sizes.push(1);continue;
+    }
+    const bright=random(),brightness=.28+.72*bright**2.2,tint=random();
+    const color=tint<.12?[.80,.88,1]:tint>.92?[1,.90,.77]:[.96,.97,1];
+    colors.push(...color.map(v=>v*brightness));sizes.push(.65+1.25*bright**3);
   }
+  return {positions,colors,sizes};
+}
+export function createInfiniteStarfield(parent,pattern=2) {
+  const {positions,colors,sizes}=starPatternData(pattern===1?1:2);
   const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));
   geometry.setAttribute('color',new T.Float32BufferAttribute(colors,3));
+  geometry.setAttribute('starScale',new T.Float32BufferAttribute(sizes,1));
   const stars=new T.Points(geometry,new T.PointsMaterial({color:0xffffff,vertexColors:true,size:1.7,
     sizeAttenuation:false,transparent:true,opacity:.9,depthTest:false,depthWrite:false}));
+  stars.material.onBeforeCompile=shader=>{
+    shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nattribute float starScale;')
+      .replace('gl_PointSize = size;','gl_PointSize = size * starScale;');
+  };
+  stars.userData.pattern=pattern===1?1:2;
   stars.renderOrder=-100;stars.frustumCulled=false;parent.add(stars);return stars;
+}
+export function setStarPattern(stars,pattern) {
+  if(pattern===0){stars.visible=false;return;}
+  if(stars.userData.pattern===pattern)return;
+  const data=starPatternData(pattern);
+  for(const [attribute,key] of [['position','positions'],['color','colors'],['starScale','sizes']]) {
+    stars.geometry.attributes[attribute].array.set(data[key]);stars.geometry.attributes[attribute].needsUpdate=true;
+  }
+  stars.userData.pattern=pattern;
 }
 export function positionInfiniteStarfield(stars,camera,rotation) {
   stars.position.copy(camera.position);stars.rotation.copy(rotation);

@@ -1,8 +1,8 @@
 import {clamp,smooth,portalMetrics} from './core.mjs';
 const root=new URL('../assets/audio/',import.meta.url);
 const volumes={crash:.70,structure_alert:.48,portal:.88,laser_reveal:.64,laser_dissipate:.62,
-  materialize:.62,death:.74,reassembly:.60,recouple:.62,collapse:.82,time_buzzer:.78};
-const cooldowns={recouple:.18,crash:.075,structure_alert:.65,laser_reveal:.35,laser_dissipate:.28,collapse:.12,time_buzzer:.82};
+  materialize:.62,death:.74,reassembly:.60,recouple:.62,collapse:.82,time_buzzer:.78,shutter_close:.54,shutter_open:.48};
+const cooldowns={recouple:.18,crash:.075,structure_alert:.65,laser_reveal:.35,laser_dissipate:.28,collapse:.12,time_buzzer:.82,shutter_close:.12,shutter_open:.12};
 
 export class GameAudio {
   constructor(onProgress=()=>{}) {
@@ -95,7 +95,7 @@ export class GameAudio {
     const desired=new Map(),s=g.state,title=s==='title',playing=s==='playing',construct=s==='course_materialize';
     const bonusPlaying=s==='bonus_playing';
     const clock=bonusPlaying?g.bonus.timeLeft:g.legTime;
-    const ambience=s.startsWith('bonus_')||['title','quit_confirm','opening_intro','level_ready','course_materialize','playing','result_overlay','space_intro','time_intro','entropy_intro','heat_intro'].includes(s);
+    const ambience=s.startsWith('bonus_')||['title','quit_confirm','opening_intro','level_ready','course_materialize','playing','result_overlay','space_intro','time_intro','entropy_intro','heat_intro','change_1_intro'].includes(s);
     const metric=playing?portalMetrics(g.course,g.player):{charge:0,overlap:0,ratio:0};
     if(ambience) {
       desired.set('ambient',[title?.34:s==='level_ready'?.28:construct?.20:s==='result_overlay'?.17:s.endsWith('_intro')?.20:.15+.05*metric.charge,'ambient']);

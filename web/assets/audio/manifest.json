@@ -124,5 +124,23 @@
     "mp3": "time_siren.mp3",
     "source_wav": "time_siren_5sec_wiuwiu_loop.wav",
     "source_sha256": "0eccdc152cfc8505cdd468119d2a348e3fd36d239821ccfa158d0dbfa4f1fc66"
+  },
+  "shutter_close": {
+    "duration": 0.56,
+    "ogg": "shutter_close.ogg",
+    "mp3": "shutter_close.mp3",
+    "source_wav": "shutter_close.wav",
+    "source_sha256": "3fd6dc0e91c8c33a4ea82c7575853a3e99ed104bca75decd3f47b914f3fb4e6e",
+    "generator": "tools/build_shutter_audio.py",
+    "edition": "web"
+  },
+  "shutter_open": {
+    "duration": 0.72,
+    "ogg": "shutter_open.ogg",
+    "mp3": "shutter_open.mp3",
+    "source_wav": "shutter_open.wav",
+    "source_sha256": "c2e988cbaece0528111e3079587ec1c60a1c1ba95f11a55dff4fcc48f4ca6d4a",
+    "generator": "tools/build_shutter_audio.py",
+    "edition": "web"
   }
 }

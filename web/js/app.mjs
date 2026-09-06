@@ -1,7 +1,7 @@
 import {UpdateChecker,UPDATE_INTERVAL_MS} from './updates.mjs';
 import {BONUS_SCHEDULE,PIECES_RULES} from './bonus.mjs';
 import {observeTitleLayout} from './title-layout.mjs';
-import {LEVEL_FEATURES,introductionCard} from './difficulty.mjs';
+import {featuresForSettings,introductionCard} from './difficulty.mjs';
 const $=id=>document.getElementById(id);
 function fail(error) {
   $('boot').hidden=false; $('boot-text').textContent=`Cube Libre could not start: ${error.message}. See the browser console for details.`;
@@ -34,6 +34,10 @@ async function main() {
   game.flags.rotation_shocks=read('cube-libre-rotation-shocks-v1',game.flags.rotation_shocks)!==false;
   game.flags.microgravity=read('cube-libre-microgravity-v1',game.flags.microgravity)!==false;
   game.flags.overheat_blocks_recoupling=read('cube-libre-overheat-blocks-recoupling-v1',game.flags.overheat_blocks_recoupling)!==false;
+  game.flags.change_1=read('cube-libre-change-1-v1',game.flags.change_1)!==false;
+  game.flags.change_1_random_per_leg=read('cube-libre-change-1-random-per-leg-v1',game.flags.change_1_random_per_leg)!==false;
+  const savedStarPattern=read('cube-libre-star-pattern-v1',game.starPattern);
+  if(Number.isInteger(savedStarPattern)&&savedStarPattern>=0&&savedStarPattern<=2)game.starPattern=savedStarPattern;
   const renderer=new Renderer($('scene'),$('fx'),titleCells);
   const keyboard=new Set(),pointers=new Map();
   const clearInput=()=>{keyboard.clear();pointers.clear();document.querySelectorAll('.held').forEach(b=>b.classList.remove('held'));};
@@ -96,6 +100,15 @@ async function main() {
     const heatToggle=document.createElement('input');heatToggle.type='checkbox';heatToggle.checked=game.flags.overheat_blocks_recoupling;
     heatToggle.addEventListener('change',()=>{game.command(`overheat_blocks_recoupling ${heatToggle.checked}`);write('cube-libre-overheat-blocks-recoupling-v1',game.flags.overheat_blocks_recoupling);});
     heatLabel.append(heatToggle,`Overheating blocks re-coupling (from level ${BALANCE.heatStartLevel})`);body.append(heatLabel);
+    for(const [key,label,storage] of [
+      ['change_1','CHANGE 1: laser shutters','cube-libre-change-1-v1'],
+      ['change_1_random_per_leg','Different shutter timing per leg','cube-libre-change-1-random-per-leg-v1']
+    ]) {
+      const row=document.createElement('label');row.className='shake-setting';
+      const input=document.createElement('input');input.type='checkbox';input.checked=game.flags[key];
+      input.addEventListener('change',()=>{game.command(`set ${key} ${input.checked}`);write(storage,game.flags[key]);});
+      row.append(input,label);body.append(row);
+    }
     const shockLabel=document.createElement('label');shockLabel.className='shake-setting';
     const shockToggle=document.createElement('input');shockToggle.type='checkbox';shockToggle.checked=game.flags.rotation_shocks;
     shockToggle.addEventListener('change',()=>{game.command(`rotation_shocks ${shockToggle.checked}`);write('cube-libre-rotation-shocks-v1',game.flags.rotation_shocks);});
@@ -131,7 +144,7 @@ async function main() {
     ]:[
       ['Space / Enter','New run / next level'],['A / D or ← / →','Move along world X'],['W / S or ↑ / ↓','Move along world Y'],
       ['Q / E','Move along world Z (Q = +Z)'],['Ctrl + A / D','Alternate Z movement'],['Shift','Rush (2.6× speed)'],
-      ['C','Re-couple: 5 requests per 10 seconds; loose cubes expire after 8 seconds'],['P / H','Pause / help'],['L','Locate camera; automatic from level 3'],
+      ['C','Re-couple: 5 requests per 10 seconds; loose cubes expire after 8 seconds'],['P / H','Pause / help'],['L',`Locate camera; auto-location ${game.autoLocateMinLevel===0?'active from the start':`from level ${game.autoLocateMinLevel}`}`],
       ['M','Mute / unmute'],['Alt+F / Alt+Enter / F11','Fullscreen (or use the button)'],['Esc','Main menu confirmation'],
       ['Ctrl+Shift+F2','Reset run or retry current level'],['` / Ctrl+Shift+F1','Debug console']
     ])) {const tr=document.createElement('tr');for(const text of [keys,action]){const td=document.createElement('td');td.textContent=text;tr.append(td);}table.append(tr);}
@@ -140,12 +153,13 @@ async function main() {
     heading.textContent='What changes as you advance';milestones.append(heading);
     const header=document.createElement('tr');
     for(const text of ['Level','Banner','Change']) {const th=document.createElement('th');th.scope='col';th.textContent=text;header.append(th);}milestones.append(header);
-    for(const feature of LEVEL_FEATURES) {
+    for(const feature of featuresForSettings(game.changeSettings)) {
       const row=document.createElement('tr');
       for(const text of [feature.level,feature.banner,feature.summary()]) {const cell=document.createElement('td');cell.textContent=text;row.append(cell);}milestones.append(row);
     }
     body.append(milestones);
     const q=document.createElement('p');q.textContent='Each level adds one corridor leg, up to fifty. Repeated re-coupling requests can recover more pieces before they expire. Once HEAT is active, new requests are blocked while overheating if that option is enabled. Returning inside cools you immediately. A request already in progress finishes; refused requests use no quota. Lost cubes cost 100 potential points each. Death rebuilds your current level; your run score stays.';body.append(q);
+    const shutterHelp=document.createElement('p');shutterHelp.textContent=`From level ${Math.max(1,game.changeSettings.change_1_min_level)}, laser squares charge amber before sealing with electricity. Pass while open. Closures repeat every ${game.changeSettings.change_1_interval} seconds and last ${game.changeSettings.change_1_closed_seconds} seconds. A hit removes ${Math.round(game.changeSettings.change_1_damage_fraction*100)}% of your remaining cubes, rounded down, then protects you from grid damage for ${game.changeSettings.change_1_damage_cooldown} seconds. One closure can hit only once per grid; shutters preserve your last cube. Current switch: ${game.flags.change_1?'enabled':'disabled'}. Console: test change_1.`;body.append(shutterHelp);
     const bonusRules=document.createElement('p');bonusRules.textContent=`PICKING UP THE PIECES · Bonus round 001 follows level ${BONUS_SCHEDULE.firstLevel}, then every ${BONUS_SCHEDULE.interval} levels before the final level cap. Roll on a solid floor using WASD / arrow keys; Shift rushes. Collect the scattered pieces and take the ramp to the portal within ${PIECES_RULES.seconds} seconds. Each piece banks ${PIECES_RULES.pointsPerPiece} bonus points only if you escape. Running out of time forfeits this bonus; your existing score is kept and the next level follows. C and the corridor heat/entropy rules do not apply. Console: test bonus_round_1 previews the complete round.`;body.append(bonusRules);
     const rules=game.difficulty,current=document.createElement('p');
     current.textContent=`Level ${game.level}: ${rules.timed?`${rules.secondsPerLeg.toFixed(1)} seconds per leg`:'no timer'} · ${Math.round(rules.recouplingRate*100)}% re-coupling yield per request · ${rules.overheatGraceSeconds.toFixed(1)} seconds before overheating outside. Heat re-coupling restriction: ${game.flags.overheat_blocks_recoupling?(rules.heat?'active':'not yet active'):'disabled'}.`;body.append(current);
@@ -184,14 +198,15 @@ async function main() {
   }
   const log=[];const history=[];let historyIndex=0;
   function consoleLog(text) {
-    log.push(...String(text).split('\n'));if(log.length>120)log.splice(0,log.length-120);
+    const lines=String(text).split('\n'),limit=Math.max(250,lines.length);
+    log.push(...lines);if(log.length>limit)log.splice(0,log.length-limit);
     $('console-log').textContent=log.join('\n');$('console-log').scrollTop=$('console-log').scrollHeight;
   }
   function openConsole() {
     if($('modal').open) closeModal();
     consolePaused=game.paused;game.paused=true;clearInput();syncAudio();
     $('console').showModal();$('console-input').focus();
-    if(!log.length) consoleLog('Cube Libre debug console. Type help for commands.');
+    if(!log.length) consoleLog('Cube Libre debug console. Type help for commands or viewconfig for all settings.');
   }
   function closeConsole() {if(!$('console').open)return;$('console').close();game.paused=consolePaused;clearInput();syncAudio();focusGame();}
   $('console-form').onsubmit=e=>{
@@ -200,7 +215,7 @@ async function main() {
     if(['clear','cls'].includes(value.toLowerCase())) {log.length=0;$('console-log').textContent='';return;}
     consoleLog(`> ${value}`);
     try {
-      const previousShake=game.flags.shake,previousSpin=game.flags.spin,previousLight=game.flags.portal_white_light,previousCulling=game.flags.culling,previousShocks=game.flags.rotation_shocks,previousGravity=game.flags.microgravity,previousHeatLock=game.flags.overheat_blocks_recoupling;
+      const previousShake=game.flags.shake,previousSpin=game.flags.spin,previousLight=game.flags.portal_white_light,previousCulling=game.flags.culling,previousShocks=game.flags.rotation_shocks,previousGravity=game.flags.microgravity,previousHeatLock=game.flags.overheat_blocks_recoupling,previousChange=game.flags.change_1,previousRandom=game.flags.change_1_random_per_leg,previousStars=game.starPattern;
       consoleLog(game.command(value));
       if(game.flags.shake!==previousShake)write('cube-libre-shake-v1',game.flags.shake);
       if(game.flags.spin!==previousSpin)write('cube-libre-spin-v1',game.flags.spin);
@@ -209,7 +224,10 @@ async function main() {
       if(game.flags.rotation_shocks!==previousShocks)write('cube-libre-rotation-shocks-v1',game.flags.rotation_shocks);
       if(game.flags.microgravity!==previousGravity)write('cube-libre-microgravity-v1',game.flags.microgravity);
       if(game.flags.overheat_blocks_recoupling!==previousHeatLock)write('cube-libre-overheat-blocks-recoupling-v1',game.flags.overheat_blocks_recoupling);
-      if(/^(view_end_anim_v1|view_bonus_001|test\s+(ending_1|bonus_round_1)|bonus(?:\s+\S+)?)$/i.test(value)) { closeConsole();game.paused=false;game.help=false;syncAudio();focusGame();if(!audio.muted)audio.unlock().then(syncAudio,()=>{});return; }
+      if(game.flags.change_1!==previousChange)write('cube-libre-change-1-v1',game.flags.change_1);
+      if(game.flags.change_1_random_per_leg!==previousRandom)write('cube-libre-change-1-random-per-leg-v1',game.flags.change_1_random_per_leg);
+      if(game.starPattern!==previousStars)write('cube-libre-star-pattern-v1',game.starPattern);
+      if(/^(view_end_anim_v1|view_bonus_001|test\s+(ending_1|bonus_round_1|change_1)|bonus(?:\s+\S+)?)$/i.test(value)) { closeConsole();game.paused=false;game.help=false;syncAudio();focusGame();if(!audio.muted)audio.unlock().then(syncAudio,()=>{});return; }
     }catch(err){consoleLog(`ERROR: ${err.message}`);}
     // Commands that change state must still respect the open console's pause.
     game.paused=true;syncAudio();
@@ -224,7 +242,7 @@ async function main() {
   $('modal').addEventListener('cancel',e=>{e.preventDefault();closeModal();});
   $('start').onclick=start;$('next').onclick=()=>{clearInput();if(game.state==='ended')start();else game.continue();};
   $('pause').onclick=pause;$('help').onclick=help;$('mute').onclick=mute;$('fullscreen').onclick=fullscreen;$('menu').onclick=menu;
-  $('locate').onclick=()=>{game.locate=!game.locate;game.messageSet(`LOCATE ${game.locate?'ON':'OFF'}${game.level>=BALANCE.spaceStartLevel?' · AUTO TRACKING ACTIVE':''}`);};
+  $('locate').onclick=()=>{game.locate=!game.locate;game.messageSet(`LOCATE ${game.locate?'ON':'OFF'}${game.autoLocate?' · AUTO TRACKING ACTIVE':''}`);};
   $('touch-c').onclick=()=>game.requestRecouple();
   const keyCodes=new Set(['KeyA','KeyD','KeyW','KeyS','KeyQ','KeyE','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','ShiftLeft','ShiftRight','ControlLeft','ControlRight']);
   window.addEventListener('keydown',e=>{
@@ -370,7 +388,7 @@ async function main() {
       }
       $('touch-c').hidden=bonus;
     }
-    $('locate').setAttribute('aria-pressed',String(game.locate||game.level>=BALANCE.spaceStartLevel));
+    $('locate').setAttribute('aria-pressed',String(game.locate||game.autoLocate));
     $('pause').textContent=game.paused?'Resume':'Pause';
     $('fullscreen').textContent=document.fullscreenElement?'Windowed':'Fullscreen';
     $('touch-controls').hidden=!((playing||bonusPlaying)&&matchMedia('(pointer: coarse)').matches&&!game.paused);
@@ -399,7 +417,7 @@ async function main() {
       $('next').textContent=game.bonusPreview?`Space / Enter / click for level ${game.previewReturn.nextLevel}`:'Space / Enter / click for the next level';
       $('next').hidden=game.stateTime<.4;
     } else if(phase) {
-      const card=introductionCard(s,game.level,game.flags);
+      const card=introductionCard(s,game.level,game.flags,game.changeSettings);
       $('card-title').textContent=card.title;$('card-subtitle').textContent=card.subtitle;$('card-detail').textContent=card.detail;
       $('card').style.opacity=String(smooth(game.stateTime/1.1)*(1-smooth((game.stateTime/5-.86)/.14)));
     } else if(ready) {

@@ -1,4 +1,5 @@
 import { C } from './config.mjs';
+import {CHANGES,createChangeSettings} from './changes.mjs';
 
 // Web balance: gentle introductions, then a bounded ramp toward level 50.
 // Change the phase levels and late-game limits here; config.mjs retains the PyGame baseline.
@@ -53,7 +54,7 @@ export const isTimeIntroductionLevel = level =>
 
 // One ordered schedule for phase sequencing, banner wording and the Help table.
 // Levels reference BALANCE, so moving HEAT moves both heat rules and its message.
-export const LEVEL_FEATURES=Object.freeze([
+const BASE_FEATURES=Object.freeze([
   {id:'space',level:BALANCE.spaceStartLevel,state:'space_intro',banner:'SPACE ...',flag:'route3d',
     summary:()=> 'World Y axis opens; routes extend through three dimensions.'},
   {id:'time',level:BALANCE.timeStartLevel,state:'time_intro',banner:'TIME ...',
@@ -66,13 +67,22 @@ export const LEVEL_FEATURES=Object.freeze([
     summary:()=> `${difficultyForLevel(level).secondsPerLeg.toFixed(1)} seconds per leg${level>=BALANCE.capLevel?': the final allowance.':'; the clock tightens.'}`})),
 ].sort((a,b)=>a.level-b.level).map(Object.freeze));
 
-export function introductionsForLevel(level,route3d=true) {
-  return LEVEL_FEATURES.filter(f=>f.level===level&&(f.flag!=='route3d'||route3d)).map(f=>f.state);
+export function featuresForSettings(settings=createChangeSettings()) {
+  return [...BASE_FEATURES,...Object.entries(CHANGES).map(([id,change])=>({
+    id,level:Math.max(1,settings[`${id}_min_level`]),state:change.state,banner:change.banner,flag:id,
+    summary:()=>`Laser shutters close every ${settings[`${id}_interval`]} seconds for ${settings[`${id}_closed_seconds`]} seconds; contact costs ${Math.round(settings[`${id}_damage_fraction`]*100)}% of remaining cubes, rounded down.`
+  }))].sort((a,b)=>a.level-b.level);
+}
+export const LEVEL_FEATURES=Object.freeze(featuresForSettings().map(Object.freeze));
+export function introductionsForLevel(level,route3d=true,settings=createChangeSettings(),flags={}) {
+  return featuresForSettings(settings).filter(f=>f.level===level&&(f.flag!=='route3d'||route3d)&&(!f.flag||flags[f.flag]!==false)).map(f=>f.state);
 }
 
-export function introductionCard(state,level,flags={}) {
-  const feature=LEVEL_FEATURES.find(f=>f.state===state&&f.level===level);
+export function introductionCard(state,level,flags={},settings=createChangeSettings()) {
+  const feature=featuresForSettings(settings).find(f=>f.state===state&&f.level===level);
   if(!feature)return {title:'',subtitle:'',detail:''};
+  const change=CHANGES[feature.id];
+  if(change)return {title:change.banner,subtitle:change.description,detail:change.detail};
   const rules=difficultyForLevel(level);
   const subtitles={
     space_intro:'WORLD Y AXIS OPENS FROM HERE',

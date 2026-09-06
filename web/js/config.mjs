@@ -4,6 +4,7 @@ export const VISUAL_EFFECTS=Object.freeze({
   portalWhiteLight:true,
   courseCulling:true,
   rotationShocks:true,
+  starPattern:2,
   impactAngularSpeed:420,
   impactMaxAngle:28,
   impactMaxSpeed:700,
@@ -26,6 +27,9 @@ export const PLAYER_PROPULSION=Object.freeze({
   coastResponseSeconds:.22,
   reverseResponseSeconds:.08,
 });
+
+// Camera following is independent of the SPACE introduction.
+export const CAMERA_RULES=Object.freeze({autoLocateMinLevel:0}); // 0: follow from the first level.
 
 // Gameplay constants from original ecf8f014 (0.15.79).
 export const C = {

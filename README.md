@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.21.0
+# Cube Libre — Web v0.22.0
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -22,7 +22,60 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.21.0
+## Web release 0.22.0
+
+**CHANGE ... arrives at level 7: THE LASERS NOW OPEN AND CLOSE.** Electric
+shutters seal the entire laser square on a **4-second cycle**, with an amber
+warning for 0.4 seconds before a 0.8-second closure. Closing makes an electric
+BZZZT; reopening makes a whoosh. Each leg gets its own stable random timing.
+Contact with a closed shutter removes **50% of the remaining cubes, rounded down**,
+preserving the last cube. A hit grants **1.5 seconds of protection from all laser
+grids**, and the same grid cannot hit twice in one closure. Boundaries and the
+clock still apply. Pause and Help freeze the shutter cycle.
+
+Open the console with backtick or Ctrl+Shift+F1:
+
+```text
+test change_1
+set change_1_interval 4
+set change_1_min_level 7
+toggle change_1_random_per_leg
+toggle change_1
+viewconfig
+```
+
+`test change_1` enables lasers and shutters, then starts the configured introduction
+level with its CHANGE banner. It replaces the current level; it is a gameplay debug
+command. All shutter timing and damage settings are listed in
+[the progression reference](docs/LEVEL_PROGRESSION.md). The feature and random-timing
+booleans are saved; numeric shutter changes last for the current browser session.
+
+**The camera follows the cube from the first level.** The minimum is now
+`auto_locate_min_level = 0`, meaning always on. Full-maze opening overviews still
+settle onto the player. `set auto_locate_min_level 3` restores the former threshold;
+`set auto_locate_min_level 0` restores the new default. This session setting is
+independent of SPACE and corridor culling.
+
+**The default sky is more irregular:** random gaps and clusters, varied point
+sizes and brightness, and restrained blue/warm hues. It retains a fixed 1,600 stars
+and follows the camera. Compare through the debug console only:
+
+| Command | Background |
+| --- | --- |
+| `star_pattern 0` | No stars |
+| `star_pattern 1` | The original evenly spaced pattern |
+| `star_pattern 2` | The new irregular sky, enabled by default |
+
+The browser remembers the pattern. `set star_pattern N` also works. These options
+leave the ending's own cinematic starfield intact.
+
+**List every console-settable parameter** with `viewconfig`, `showconfig`,
+`showvars`, `viewvars`, `listvars` or `listconfig`. Each row shows its name, current
+value, friendly name and description. Use the mouse wheel or Page Up / Page Down
+to scroll; the listing reads live settings without changing them.
+
+### Retained from 0.21.0
+
 
 **Microgravity is on by default in normal levels.** Movement keys apply thrust:
 the cube builds speed, coasts briefly when released, and brakes faster when you
@@ -41,8 +94,8 @@ The flag defaults to on and is saved in Help and through the console.
 
 `BALANCE.heatMinLevel` in [`web/js/difficulty.mjs`](web/js/difficulty.mjs) defaults
 to **15**; **0 removes the level gate**. Both heat penalties and the HEAT banner
-share this setting. `LEVEL_FEATURES` supplies the ordered introduction schedule,
-banner titles and Help milestone table. See [the full progression list](docs/LEVEL_PROGRESSION.md).
+share this setting. `featuresForSettings()` supplies the ordered introduction
+schedule, banner titles and Help milestone table; `LEVEL_FEATURES` is its default snapshot. See [the full progression list](docs/LEVEL_PROGRESSION.md).
 Thrust response and coasting are tuned in `PLAYER_PROPULSION` in `web/js/config.mjs`.
 
 The package also declares its JavaScript module type explicitly, so local checks
@@ -213,7 +266,7 @@ python -m http.server 8000 --directory web
 
 Open http://localhost:8000/ (on Windows, `py` can replace `python`).
 The complete static game lives in `web/`, including its renderer, font and
-18 sounds in Ogg and MP3. No backend or npm installation is required.
+20 sounds in Ogg and MP3 (18 originals plus two shutter effects). No backend or npm installation is required.
 
 ## GitHub Pages
 
@@ -238,8 +291,8 @@ node --test tests/web/*.test.mjs
 
 See [WEB_PORT.md](WEB_PORT.md) for gameplay details, browser differences,
 source layout, and optional regeneration using a separate PyGame checkout.
-Web 0.20.1 was confirmed live and working by the author. This release has automated
-checks; its new movement feel and heat rule still need browser playtesting. The WebGL effects
+Web 0.21.0 is the published baseline. This release has automated checks;
+its new shutter effects, camera behavior and sky still need browser playtesting. The WebGL effects
 are recreated and are not pixel-identical to the desktop version.
 
 © 2024–2026 FlyingFathead. Original authorship and rights remain with the author. The bundled

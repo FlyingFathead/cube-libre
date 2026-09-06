@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.22.0 — Change in the grid
+
+Based on published web v0.21.0 (`34faa15`).
+
+- Introduce **CHANGE ...** at **level 7**: **THE LASERS NOW OPEN AND CLOSE**.
+  Register it as `change_1`, with its level, timing and damage tuning in
+  `web/js/changes.mjs`. The live milestone registry sorts it into the progression
+  and supplies the phase card and Help table, including console threshold changes.
+- Seal the complete rotating laser square with an electric shutter. Default:
+  four-second cycle, 0.4-second amber warning, 0.8 seconds closed, and a stable
+  random timing offset per leg. Add a translucent sheet and electric arcs using
+  reused geometry. Hidden hazards and turn-chamber safety retain their rules.
+- On closed-shutter contact, remove 50% of remaining cells, rounded down and
+  preserving the last cell. Detach cells as recoverable fragments. Allow one hit
+  per grid per closure and grant 1.5 seconds of protection from all laser grids;
+  ordinary beam damage cannot stack on the closed sheet. Preserve the leg timer
+  and boundary hazards. Pause and Help freeze the shutter clock.
+- Add generated closing BZZZT and reopening whoosh effects in Ogg and MP3, plus
+  a reproducible Python/FFmpeg generator. Keep all 18 original sounds unchanged.
+  Nearby legs emit one effect per transition; distant grids do not flood audio.
+- Add saved `change_1` and `change_1_random_per_leg` booleans with Help switches
+  and uniform console aliases. Expose the minimum level, interval, closed time,
+  warning time, damage fraction and grid cooldown as validated numeric session
+  settings. `test change_1` enables the hazards and starts the configured level
+  with its introduction. Zero minimum activates from level 1.
+- Set `auto_locate_min_level` to 0 by default: follow the cube from the beginning,
+  retaining the whole-maze intro overview and its transition. Keep the camera
+  threshold independent of SPACE and culling; set it to 3 to restore the old gate.
+- Preserve the former star layout as pattern 1, add pattern 0 for no background
+  stars, and default to pattern 2 with random spacing, varied sizes/brightness and
+  subtle cool/warm hues. Reuse the fixed 1,600-point sky and buffers. Save the
+  console-only `star_pattern` setting; leave the ending's own starfield intact.
+- Alias `viewconfig`, `showconfig`, `showvars`, `viewvars`, `listvars` and
+  `listconfig` to the live parameter listing. Show each value, friendly name and
+  description directly from registered commands. Preserve long output in full
+  and support mouse-wheel and Page Up / Page Down scrolling without changing
+  settings during queries.
+- Update the README, technical notes and complete level progression reference.
+  Preserve the prominent live-game link, cube-letter logo and PyGame attribution.
+
+Validation: **108 test groups and static checks pass**, with automatic JavaScript
+module detection disabled. Coverage includes full-square collision, per-closure
+hits and grid cooldown, configurable milestones, nearby sound events, generated
+panel geometry, camera projection at early and late levels, preserved legacy
+stars, sky switching/persistence, config aliases and scrolling. A deterministic
+fifty-leg traversal with default hazards, spin, microgravity and shutters clears
+the level with twelve cubes and over three seconds left on its tightest leg.
+All four new audio files decode without clipping; the 36 original codec files are
+unchanged. The new effects, camera behavior and sky still need browser playtesting.
+
 ## 0.21.0 — Thrust, drift and heat
 
 - Add gentle microgravity to normal levels, enabled by default. Movement keys

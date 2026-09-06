@@ -68,20 +68,20 @@ MIME type requires a different fix; the loading screen alone does not identify i
 | --- | --- |
 | Body | 125 individually destructible cubes, original color gradient, optional slow collective rotation in normal levels |
 | Movement | Fixed world X/Y/Z axes, arrows and Ctrl aliases, 2.6× rush |
-| View | Original continuous three-axis rotation; L locate and automatic tracking at level 3+ |
-| Lasers | All five original grid templates, rotating/tilting planes, moving cyan apertures, difficulty speed scaling |
+| View | Original continuous three-axis rotation; L locate and automatic tracking from level 1 (minimum 0) |
+| Lasers | All five original grid templates, rotating/tilting planes, moving cyan apertures, difficulty speed scaling; full-square electric shutters from level 7 |
 | Maze | Modular self-avoiding X/Z/Y route and open turn chambers; one added leg per level through fifty legs at level 50 |
 | Boundary damage | Cell shaving, delayed overheating, cooling, local impacts and drifting debris |
 | Recovery | Eight-second expiry, warning blinks, compact reconstruction, five requests per ten seconds, active-spam quota |
-| Difficulty | Space at level 3; timed legs from level 5; entropy from level 10; HEAT at level 15; gradual timer/yield ramp to level 50 |
+| Difficulty | Space at level 3; timed legs from level 5; CHANGE 1 shutters from level 7; entropy from level 10; HEAT at level 15; gradual timer/yield ramp to level 50 |
 | Collapse | Progressive reveal/arming; the previous leg dissolves after the next turn is cleared, with debris, sound and sealed timed backtracking |
 | Portal | Per-cell slab contact, suction, charge, absorption and 98.5% body commitment |
 | Progression | Preview, level-ready cards, portal warp, result cards and automatic progression up to level 50, then ascension and run statistics |
 | Death | Dissolve into the void, reconstruct the body, retry the current level with fresh geometry and timer |
-| Persistence | Best escape, best score and highest level in localStorage, plus mute, shaking, player rotation, hit rotation shocks, portal light and culling preferences |
+| Persistence | Best escape, best score and highest level in localStorage, plus mute, shaking, player rotation, hit rotation shocks, portal light, culling, microgravity, heat restriction, shutter booleans and sky preferences |
 | UI | Original cube-letter title and dot-matrix prompt; help, pause, menu/reset confirmations, fullscreen |
-| Console | Flags, level/restart/newrun, heal/kill/cubes, portal teleport, position/route, score and locate commands |
-| Audio | All 18 original generated sounds, ambience/gamelan, portal feedback, countdown layers and alarms |
+| Console | Flags, level/restart/newrun, heal/kill/cubes, portal teleport, position/route, score, locate, and a scrollable live parameter listing |
+| Audio | 20 sounds in two codecs: all 18 originals plus generated electric closure and reopening whoosh |
 
 The route, collision, scoring and portal rules are ported from the source. Web
 0.17.0 deliberately extends timing, re-coupling, heat and end-of-run progression.
@@ -212,11 +212,12 @@ to the currently recoverable loose pieces **per request**. The original minimum
 of one piece, eight-second expiry, 1.18-second re-coupling duration, and request
 quota remain. Repeated requests can gather more of the remaining pieces.
 
-`web/js/difficulty.mjs` contains `BALANCE` and the ordered `LEVEL_FEATURES`
-registry. `spaceStartLevel` defaults to 3, `timeStartLevel` to 5,
+`web/js/difficulty.mjs` contains `BALANCE` and the ordered `featuresForSettings()`
+registry; `LEVEL_FEATURES` is the default schedule snapshot. `spaceStartLevel` defaults to 3, `timeStartLevel` to 5,
 `entropyStartLevel` to 10, `heatMinLevel` to 15, and `levelCap` and `capLevel`
 (the curve endpoint) to 50. Phase selection, banner wording and the Help table
-use this schedule. See [the complete milestone list](docs/LEVEL_PROGRESSION.md).
+use this schedule, including CHANGE at the current shutter minimum (default 7).
+See [the complete milestone list](docs/LEVEL_PROGRESSION.md).
 
 HEAT subtracts one second from the original 2.4-second outside grace period.
 From web 0.21.0, the same HEAT gate also blocks new re-coupling requests when
@@ -241,6 +242,82 @@ and braking add maneuvering time. A
 simulation test traverses level 50 with rush, active lasers, actual turns and the
 ten-second timer. This demonstrates a viable route, not a guarantee of human
 playability or a complete balance assessment.
+
+## Electric shutters, camera and sky (web 0.22.0)
+
+**CHANGE ...** introduces **THE LASERS NOW OPEN AND CLOSE** at **level 7**, with
+**PASS THROUGH WHILE THEY ARE OPEN** underneath. `CHANGES.change_1` in
+`web/js/changes.mjs` identifies the feature and its card. `CHANGE_NUMBERS` supplies
+its validated numeric defaults. The complete schedule and tuning table are in
+[docs/LEVEL_PROGRESSION.md](docs/LEVEL_PROGRESSION.md).
+
+A four-second cycle ends with a 0.4-second amber warning, then a 0.8-second full
+closure. Each corridor leg has one stable random phase; its grids share timing.
+With `change_1_random_per_leg` disabled, all legs use the same phase. The entire
+laser square seals, including its moving aperture. A translucent electric sheet,
+dense grid and brief arcs show the closure. The closing buzz and reopening whoosh
+play near the player, once per leg transition. Remote and unrevealed hazards
+remain inactive. Closing panels use a single reusable mesh buffer; no dynamic
+lights, postprocessing or growing per-frame geometry is added.
+
+Contact while closed removes half the surviving cells, rounded down and preserving
+the last cell. The closest cells to the plane detach into ordinary recoverable
+fragments. Each grid can hit once per closure. A hit gives 1.5 seconds of immunity
+from all laser grids, including other shutters; the timer and boundary hazards
+still apply. A protected contact is consumed for that closure, preventing a
+second bite just when immunity ends. The closed grid does not also apply its
+ordinary per-beam damage. Bonus rounds use their existing rules.
+
+`test change_1` enables the feature and lasers, then replaces the active level
+with the configured introduction level and its card. This is a normal gameplay
+debug command, so normal scoring applies. Pause and Help freeze timing. Changing
+shutter settings or resetting an attempt clears the clock, immunity and contacts.
+`change_1` and `change_1_random_per_leg` are saved booleans, also available in Help.
+Numeric settings accept `set name number`, a bare `name number` shortcut, and
+read-only `status`, `view`, `get` or bare `set` queries. They last for this session;
+edit `CHANGE_NUMBERS` for shipped defaults. A zero minimum removes the level gate.
+
+`CAMERA_RULES.autoLocateMinLevel` in `web/js/config.mjs` now defaults to **0**,
+so the normal camera tracks the cube from the beginning. Intro overviews still
+frame the whole maze and settle onto the player before movement. The console
+setting is `auto_locate_min_level`; set it to 3 to restore the earlier threshold.
+It is session-only and independent of SPACE/culling. Manual `locate` can force
+following regardless of the threshold, so turning manual locate off does not
+cancel automatic following.
+
+`VISUAL_EFFECTS.starPattern` defaults to **2**. Only the console changes the sky:
+`star_pattern 0` hides it, `star_pattern 1` restores the exact prior Fibonacci
+layout and monochrome intensities, and `star_pattern 2` selects the new seeded
+random sky. Pattern 2 has natural gaps/clumps, uneven brightness and sizes, and
+subtle cool/warm hues. Both skies use 1,600 points at a fixed radius around the
+camera. Pattern changes update existing buffers once; movement allocates no new
+sky geometry. The browser saves `cube-libre-star-pattern-v1`. The ending retains
+its own cinematic starfield and is not affected by this background preference.
+
+### Inspect every console parameter
+
+These six commands are aliases:
+
+```text
+viewconfig
+showconfig
+showvars
+viewvars
+listvars
+listconfig
+```
+
+The output has four columns: parameter, current value, friendly name and
+description. It includes all console-settable booleans and numbers, plus level,
+score and surviving cell count. It reads the command registry each time, so new
+registered settings are included without maintaining another inclusion list.
+Browser-owned entries can supply `name` and `description` alongside their getters
+and setters. Listing values never calls setters or changes gameplay state.
+
+The console scrolls vertically with the mouse wheel and Page Up / Page Down;
+its output can also receive keyboard focus. Long responses are retained in full.
+Use `status name` for one value. Numeric settings use `set name number`, except
+existing score/cell cheats which use `score N` and `cubes N`.
 
 ## Microgravity and thrust (web 0.21.0)
 
@@ -412,10 +489,12 @@ Disabling it expands the detailed rendering window to the surviving route and
 future previews; physical damage, local collision checks, reveal/arming and
 collapse continue to apply. The opening overview always hides cutting grids.
 
-A deterministic run with ordinary damage and timer rules, rush and one legal
-re-coupling request every 2.1 seconds cleared all 50 legs in about 147 simulated
-seconds, with three cubes remaining. This verifies a viable route; it is not a
-browser FPS benchmark or a substitute for human difficulty testing.
+The level-50 traversal test uses ordinary damage, microgravity, spin, shutters,
+rush and one legal re-coupling request every 2.1 seconds. Its controller waits
+for an open window before crossing each leg. A deterministic run cleared all
+fifty legs in about 237 simulated seconds with twelve cubes remaining and more
+than three seconds left on the tightest leg. This verifies a viable route; it
+is not a browser FPS benchmark or a substitute for human difficulty testing.
 
 ## Player rotation (web 0.20.0)
 
@@ -492,8 +571,9 @@ setting unchanged. `toggle` takes only the name; use `set` for an explicit value
 
 Available booleans: `damage`, `lasers`, `bounds`, `noclip`, `portal`, `suction`,
 `route3d`, `shake`, `spin`, `rotation_shocks`, `portal_white_light`, `culling`,
-`microgravity`, `overheat_blocks_recoupling`, `locate` and browser audio `mute`.
-The movement, heat restriction, visual preferences and mute settings are saved;
+`microgravity`, `overheat_blocks_recoupling`, `change_1`,
+`change_1_random_per_leg`, `locate` and browser audio `mute`.
+The movement, heat restriction, shutter booleans, visual preferences and mute settings are saved;
 debug flags and locate remain session controls. Numeric `level`, `score` and
 `cubes` also support status queries. `set level X` still starts the chosen level.
 Internal animation state and original Python reference constants are not console
@@ -571,14 +651,14 @@ clamping and attempt reset. For example, `set level 20` starts level 20.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.21.0**, based on the published **0.20.1** release. The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.22.0**, based on published **0.21.0**, commit `34faa15`. The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.21.1`, `0.21.2`, etc. for fixes, and `0.22.0` for the
+For future releases, use `0.22.1`, `0.22.2`, etc. for fixes, and `0.23.0` for the
 next feature release. Update `web/version.json` and the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.21.0.zip` and `v0.21.0`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.22.0.zip` and `v0.22.0`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior
@@ -599,8 +679,8 @@ version and commit fixed unless deliberately rebasing on a different PyGame sour
 - Scores are local to this browser and origin. They do not import the Python
   `cube_libre_scores.json`, sync between devices, or form an online leaderboard.
 - WebGL 2 and JavaScript are required. The author confirmed web
-  0.20.1 is live and works. The new movement feel and heat rule have not been browser-playtested in
-  the implementation session.
+  0.21.0 was released and pushed. The new shutters, camera default and sky have
+  not been browser-playtested in the implementation session.
 
 ## Verify or regenerate
 
@@ -641,7 +721,10 @@ starfield continuity, a complete 50-leg traversal, hit recoil and settling,
 uniform boolean aliases, precise errors, saved controls and audio mute. Web
 0.21.0 adds frame-rate-independent thrust and braking, coasting limits, drift
 resets, heat gates including a zero minimum, quota preservation, cooling and
-shared milestone sequencing checks.
+shared milestone sequencing checks. Web 0.22.0 adds shutter timing, collision and
+immunity, warning/closed rendering, local audio events, movable introductions,
+camera centering, legacy and irregular skies, saved pattern switching and full
+configuration listings. The fifty-leg controller now accounts for closed shutters.
 
 The original synthesized WAV cache is approximately 10.5 MiB; the web audio is
 approximately 2.6 MiB with both codecs included (roughly 0.75 MiB for the preferred
@@ -651,24 +734,31 @@ To regenerate sounds, install FFmpeg with libvorbis and libmp3lame, then run:
 
 ```bash
 python tools/build_web_audio.py --source ../cube-libre-pygame/cube_libre_pygame.py
+python tools/build_shutter_audio.py
 ```
 
 The script uses the original synthesizer functions directly and reuses an existing
 `assets/sfx/` cache in the supplied PyGame checkout. Deleting that cache forces a fresh original synthesis. Python
 and FFmpeg are developer tools only; visitors do not need them.
+The shutter script uses Python standard-library synthesis and FFmpeg; it needs no
+PyGame checkout. It creates a 0.56-second electric buzz and a 0.72-second reopening
+whoosh, both in Ogg and MP3. Each generator preserves the other set of manifest
+entries. Temporary source WAV files are not included in the published game.
 
 ## Source layout
 
 | File | Purpose |
 | --- | --- |
 | `web/js/core.mjs` | Browser-independent simulation and debug commands |
-| `web/js/config.mjs` | Original constants and web visual, rotation and propulsion defaults |
+| `web/js/config.mjs` | Original constants and web visual, camera, rotation and propulsion defaults |
+| `web/js/changes.mjs` | Numbered mechanic registry, shutter defaults, timing and damage rules |
+| `web/js/console-config.mjs` | Live configuration listing aliases and friendly descriptions |
 | `web/js/difficulty.mjs` | Balance thresholds, ordered feature introductions, banners and heat restriction |
 | `docs/LEVEL_PROGRESSION.md` | Feature, banner and level reference |
 | `docs/GITHUB_METADATA.md` | Repository description, homepage and topic command |
 | `web/js/ending.mjs` | Blue-grid and starfield ascension scene and motion |
 | `web/js/portal-light.mjs` | Proximity-based portal halo and reusable glow sprite |
-| `web/js/space-view.mjs` | Cached ghost route, overview framing, detail window and infinite starfield |
+| `web/js/space-view.mjs` | Cached ghost route, overview framing, detail window and selectable infinite starfields |
 | `web/js/render.mjs` | Batched cube/line rendering, title, field and transition effects |
 | `web/js/audio.mjs` | Local audio loading, codecs, channels, loops and state mix |
 | `web/js/app.mjs` | Browser input, overlays, storage, fullscreen and fixed timestep |

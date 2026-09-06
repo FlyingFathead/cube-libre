@@ -36,12 +36,13 @@ assert.equal(release.edition,'web');
 assert.equal(release.repository,'https://github.com/FlyingFathead/cube-libre');
 const reference=JSON.parse(readFileSync(resolve(root,'tests/web/python-reference.json')));
 assert.equal(release.upstream.commit,reference.source_commit,'PyGame provenance must match the reference fixtures');
-assert.equal(Object.keys(manifest).length,18);
+assert.equal(Object.keys(manifest).length,20);
+for(const name of ['shutter_close','shutter_open'])assert.ok(manifest[name],`Missing shutter sound: ${name}`);
 for(const [name,item] of Object.entries(manifest))for(const ext of ['ogg','mp3']){
   assert.equal(item[ext],`${name}.${ext}`);
   const path=resolve(web,'assets/audio',item[ext]);assert.ok(existsSync(path)&&statSync(path).size>100,`Missing or empty sound: ${path}`);
 }
 const total=files.reduce((sum,p)=>sum+statSync(p).size,0);
-console.log(`Static checks passed: ${files.length} files, 18 sounds × 2 codecs, all module and entrypoint references resolve.`);
+console.log(`Static checks passed: ${files.length} files, ${Object.keys(manifest).length} sounds × 2 codecs, all module and entrypoint references resolve.`);
 console.log(`Published size: ${(total/1048576).toFixed(2)} MiB. No remote runtime dependencies.`);
 console.log(`Cube Libre Web v${release.version}, based on PyGame v${release.upstream.version}.`);

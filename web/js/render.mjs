@@ -4,7 +4,7 @@ import {PIECES_RULES,recoveredShape,rotateQ,multiplyQ,bonusHeat} from './bonus.m
 import {AscensionScene,ascensionPose} from './ending.mjs';
 import {titleBounds,frameTitle} from './title-layout.mjs';
 import {updatePortalWhiteLight} from './portal-light.mjs';
-import {RouteGuide,detailWindow,overviewZoom,createInfiniteStarfield,positionInfiniteStarfield} from './space-view.mjs';
+import {RouteGuide,detailWindow,overviewZoom,createInfiniteStarfield,positionInfiniteStarfield,setStarPattern} from './space-view.mjs';
 import { BALANCE,C,V,cells,cellColor,clamp,smooth,mix,lerp,rotate,radians,portalMetrics } from './core.mjs';
 
 const vec=p=>new T.Vector3(p.x,p.y,p.z);
@@ -56,6 +56,27 @@ class Lines {
   }
   loop(pts,col,alpha) { for(let i=0;i<pts.length;i++) this.line(pts[i],pts[(i+1)%pts.length],col,alpha); }
   finish() {this.geo.setDrawRange(0,this.count); this.geo.attributes.position.needsUpdate=true; this.geo.attributes.rgba.needsUpdate=true;}
+}
+
+// All nearby electric sheets share one small reusable geometry and draw call.
+class ShutterPanels {
+  constructor(parent,capacity=30) {
+    this.count=0;this.capacity=capacity;this.positions=new Float32Array(capacity*18);this.colors=new Float32Array(capacity*24);
+    this.geo=new T.BufferGeometry();
+    this.geo.setAttribute('position',new T.BufferAttribute(this.positions,3).setUsage(T.DynamicDrawUsage));
+    this.geo.setAttribute('rgba',new T.BufferAttribute(this.colors,4).setUsage(T.DynamicDrawUsage));
+    this.mesh=new T.Mesh(this.geo,new T.ShaderMaterial({transparent:true,depthWrite:false,side:T.DoubleSide,
+      vertexShader:'attribute vec4 rgba; varying vec4 vColor; void main(){vColor=rgba;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+      fragmentShader:'varying vec4 vColor; void main(){gl_FragColor=vColor;}'}));
+    this.mesh.frustumCulled=false;this.mesh.renderOrder=1;parent.add(this.mesh);
+  }
+  reset(){this.count=0;}
+  add(corners,color,alpha) {
+    if(this.count>=this.capacity||alpha<=.002)return;
+    [0,1,2,0,2,3].forEach((i,j)=>{const n=this.count*6+j;this.positions.set(corners[i].array(),n*3);this.colors.set([...color,alpha],n*4);});
+    this.count++;
+  }
+  finish(){this.geo.setDrawRange(0,this.count*6);this.geo.attributes.position.needsUpdate=true;this.geo.attributes.rgba.needsUpdate=true;}
 }
 
 class Cubes {
@@ -110,6 +131,7 @@ export class Renderer {
     this.scene=new T.Scene(); this.camera=new T.PerspectiveCamera(45,1,.1,12000);
     this.rotator=new T.Group(); this.world=new T.Group(); this.rotator.add(this.world); this.scene.add(this.rotator);
     this.lines=new Lines(this.world); this.cubes=new Cubes(this.world,this.lines);
+    this.shutterPanels=new ShutterPanels(this.world);
     this.stars=createInfiniteStarfield(this.scene);this.createBonusArena();this.resize();
   }
   createBonusArena() {
@@ -268,19 +290,30 @@ export class Renderer {
       const future=!preview&&g.level>=BALANCE.spaceStartLevel&&i>reveal;
       const rp=preview?smooth((progress-.24-i*.045)/.48):c.revealProgress(i,t);
       if(preview&&rp<=0) continue;
-      this.laser(l,t,future,(1-fade)*(future?.22:rp),fade);
+      this.laser(l,t,future,(1-fade)*(future?.22:rp),fade,g.shutterState(l));
     }
   }
-  laser(l,t,future=false,alpha=1,fade=0) {
+  laser(l,t,future=false,alpha=1,fade=0,shutter=null) {
     const m=l.module,local=(y,z)=>{
       const r=rotate(new V(0,y,z),l.axis,l.angle(t));
       return l.center.add(m.bx.mul(r.x)).add(m.by.mul(r.y)).add(m.bz.mul(r.z));
     };
-    const h=l.half,[gy,gz]=l.gap(t),safe=l.safe;
-    const color=future?[.5,.53,.58]:colorMix(red,[.4,.35,.3],fade);
+    const closed=!future&&shutter?.closed,warning=!future&&shutter?.warning;
+    const h=l.half,[gy,gz]=l.gap(t),safe=closed?0:l.safe;
+    const color=future?[.5,.53,.58]:closed?[.55,.83,1]:colorMix(red,[.4,.35,.3],fade);
     this.lines.loop([local(-h,-h),local(h,-h),local(h,h),local(-h,h)],color,alpha*.6);
-    this.lines.loop([local(gy-safe,gz-safe),local(gy+safe,gz-safe),local(gy+safe,gz+safe),local(gy-safe,gz+safe)],future?color:cyan,alpha*.48);
+    if(!closed)this.lines.loop([local(gy-safe,gz-safe),local(gy+safe,gz-safe),local(gy+safe,gz+safe),local(gy-safe,gz+safe)],future?color:warning?[1,.65,.05]:cyan,alpha*(warning?.65+.35*shutter.charge:.48));
     if(future) return;
+    if(closed) {
+      const corners=[local(-h,-h),local(h,-h),local(h,h),local(-h,h)];
+      this.shutterPanels?.add(corners,color,alpha*(.22+.06*Math.sin(t*35)**2));
+      for(const sign of [-1,1])for(let j=0;j<14;j++) {
+        const y=-h+2*h*j/14,next=-h+2*h*(j+1)/14;
+        const z=sign*y+(j===0?0:.35*Math.sin(j*19+t*70));
+        const nz=sign*next+(j===13?0:.35*Math.sin((j+1)*19+t*70));
+        this.lines.line(local(y,clamp(z,-h,h)),local(next,clamp(nz,-h,h)),white,alpha*.85);
+      }
+    }
     const emit=(y1,z1,y2,z2)=>{
       if(Math.abs(y2-y1)+Math.abs(z2-z1)<.03) return;
       this.lines.line(local(y1,z1),local(y2,z2),color,alpha*.95);
@@ -422,6 +455,7 @@ export class Renderer {
   }
   render(g) {
     this.lines.reset(); this.cubes.reset();
+    this.shutterPanels?.reset();
     this.reassemblyLabel=null;
     const title=['title','quit_confirm'].includes(g.state),phase=g.state.endsWith('_intro'),preview=g.state==='course_materialize';
     if(!title&&this.camera.view?.enabled)this.camera.clearViewOffset();
@@ -435,7 +469,8 @@ export class Renderer {
     if(this.routeGuide)this.routeGuide.group.visible=false;
     updatePortalWhiteLight(this,g);
     this.gl.setClearColor(whiteVoid?0xffffff:0x000000,1);
-    this.stars.visible=!blank&&!bonusScene; this.stars.material.color.setHex(whiteVoid?0x444444:0xffffff);
+    if(this.stars.geometry)setStarPattern(this.stars,g.starPattern);
+    this.stars.visible=g.starPattern!==0&&!blank&&!bonusScene; this.stars.material.color.setHex(whiteVoid?0x444444:0xffffff);
     this.world.position.set(0,0,0); this.rotator.rotation.set(0,0,0); this.rotator.scale.setScalar(1);
     if(title) {
       this.titleFrame??=titleBounds(this.titleCells);
@@ -453,7 +488,7 @@ export class Renderer {
       this.camera.position.copy(vec(pose.camera));this.camera.lookAt(pose.target.x,pose.target.y,pose.target.z);
       if(pose.scale>.001)this.cubes.cube(pose.position,white,pose.scale,new V(1,.7,.25),pose.angle,pose.alpha);
     } else if(!blank) {
-      let center=(g.locate||g.level>=BALANCE.spaceStartLevel)?g.player.origin:g.course.center,zoom=(g.locate||g.level>=BALANCE.spaceStartLevel)?48:g.course.zoom;
+      let center=(g.locate||g.autoLocate)?g.player.origin:g.course.center,zoom=(g.locate||g.autoLocate)?48:g.course.zoom;
       if(preview) {
         const q=g.stateTime/7,out=smooth((q-.08)/.48),settle=smooth((q-.8)/.2);
         center=lerp(lerp(g.player.origin,g.course.center,out),center,settle);
@@ -478,6 +513,6 @@ export class Renderer {
     if(!bonusScene&&!ascending)this.camera.lookAt(0,0,0);
     if(g.state==='reassembly'&&this.width>0&&this.height>0)this.reassemblyLabel=this.reassemblyCaption();
     if(this.stars.visible)positionInfiniteStarfield(this.stars,this.camera,this.rotator.rotation);
-    this.lines.finish(); this.cubes.finish(); this.gl.render(this.scene,this.camera); this.effects(g);
+    this.lines.finish(); this.cubes.finish();this.shutterPanels?.finish(); this.gl.render(this.scene,this.camera); this.effects(g);
   }
 }

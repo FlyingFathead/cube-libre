@@ -55,7 +55,9 @@ def main():
     paths = ns['generate_audio_assets']()
     out = ROOT / 'web' / 'assets' / 'audio'
     out.mkdir(parents=True, exist_ok=True)
-    manifest = {}
+    # Preserve web-only additions when regenerating the original eighteen sounds.
+    manifest_path = out / 'manifest.json'
+    manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
     for name, source in paths.items():
         with wave.open(source) as wav:
             duration = wav.getnframes() / wav.getframerate()

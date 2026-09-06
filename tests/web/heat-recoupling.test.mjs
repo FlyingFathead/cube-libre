@@ -51,7 +51,7 @@ test('an accepted request finishes through subsequent heating; paused and bonus 
 
 test('the ordered milestone schedule drives banners and sequential introductions without consuming the clock',()=>{
   assert.deepEqual(LEVEL_FEATURES.map(f=>[f.level,f.banner]),[
-    [3,'SPACE ...'],[5,'TIME ...'],[10,'ENTROPY ...'],[15,'HEAT ...'],[20,'TIME ...'],[35,'TIME ...'],[50,'TIME ...']]);
+    [3,'SPACE ...'],[5,'TIME ...'],[7,'CHANGE ...'],[10,'ENTROPY ...'],[15,'HEAT ...'],[20,'TIME ...'],[35,'TIME ...'],[50,'TIME ...']]);
   assert.deepEqual(introductionsForLevel(3,false),[]);
   for(const feature of LEVEL_FEATURES) {
     assert.ok(feature.summary().length>20);

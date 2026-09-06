@@ -176,21 +176,27 @@ test('TIME returns before levels 20, 35 and 50 with the new allowance and no run
   assert.equal(g.state,'ascension');assert.equal(g.level,50);
 });
 
-test('all 50 legs can be traversed with rush, lasers, scarce re-coupling and the ten-second leg clock',()=>{
+test('all 50 legs can be traversed with timed shutter windows, rush, lasers and scarce re-coupling',()=>{
   const g=playing(50);
-  const targets=[...g.course.modules.slice(0,-1).map(m=>m.end()),g.course.portal.world(25)];
+  // Stop before the first grid on each leg, then use its open window to rush through.
+  const targets=g.course.modules.flatMap((m,i)=>[
+    {p:m.world(-16),leg:i,wait:true},{p:i===49?m.world(25):m.end(),leg:i,wait:false}
+  ]);
   let target=0,minLeft=Infinity;
-  for(let frame=0;frame<120*180&&g.state==='playing';frame++){
-    const delta=targets[target].sub(g.player.origin),input={rush:true};
+  for(let frame=0;frame<120*300&&g.state==='playing';frame++){
+    const stage=targets[target],delta=stage.p.sub(g.player.origin),input={rush:true};
     for(const axis of ['x','y','z'])input[axis]=Math.max(-1,Math.min(1,delta[axis]/(15.6/120)));
+    if(delta.length()<.03) {
+      const phase=g.shutters.phase(stage.leg,g.changeSettings,g.flags.change_1_random_per_leg);
+      if((!stage.wait||!phase.closed&&phase.untilChange>2.65)&&target<targets.length-1)target++;
+    }
     if(frame%252===0)g.requestRecouple(); // One legal C request every 2.1 seconds.
     g.tick(1/120,input);minLeft=Math.min(minLeft,g.legTime);
-    if(g.player.origin.sub(targets[target]).length()<.03&&target<targets.length-1)target++;
   }
   assert.equal(g.state,'ascension');assert.equal(g.completedLevel,50);
   assert.equal(g.course.modules.length,50);assert.equal(g.timedModule,49);
   assert.ok(g.runStats.recoupledCubes>0);assert.equal(g.course.collapsed.size,49);
-  assert.ok(g.player.alive.size>0);assert.ok(minLeft>5,'Rush route leaves maneuvering time on every leg');
+  assert.ok(g.player.alive.size>0);assert.ok(minLeft>2,'Waiting for shutters still leaves time on every leg');
 });
 
 test('HEAT shortens the out-of-bounds grace period by one second from level 15 onward',()=>{

@@ -1,8 +1,10 @@
 // Cube Libre: browser-independent simulation, ported from cube_libre_pygame.py.
 // Rendering, audio, persistence and input are injected by the browser adapter.
-import { C,VISUAL_EFFECTS,PLAYER_ROTATION,PLAYER_PROPULSION } from './config.mjs';
+import { C,VISUAL_EFFECTS,PLAYER_ROTATION,PLAYER_PROPULSION,CAMERA_RULES } from './config.mjs';
 import {BONUS_SCHEDULE,createBonus,scheduledBonus,recoveredShape,rotateQ} from './bonus.mjs';
 import { BALANCE,difficultyForLevel,introductionsForLevel,recouplingHeatBlocked } from './difficulty.mjs';
+import {CHANGES,CHANGE_NUMBERS,createChangeSettings,setChangeNumber,Shutters,shutterEnabled,shutterLoss} from './changes.mjs';
+import {CONFIG_COMMANDS,describeConsoleConfig} from './console-config.mjs';
 export { BALANCE } from './difficulty.mjs';
 export { C };
 export const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
@@ -152,6 +154,10 @@ export class Laser {
     const dist=v=>Math.abs(v-Math.round(v/this.spacing)*this.spacing);
     return dist(l.y)<this.radius+C.CELL_HALF*.18 || dist(l.z)<this.radius+C.CELL_HALF*.18;
   }
+  touchesShutter(p,t) {
+    const l=this.local(p,t);
+    return Math.abs(l.x)<=this.radius+C.CELL_HALF*.48&&Math.abs(l.y)<=this.half+C.CELL_HALF&&Math.abs(l.z)<=this.half+C.CELL_HALF;
+  }
 }
 
 export class Course {
@@ -293,6 +299,10 @@ export class Game {
   constructor({rng=Math.random,stats={},save=()=>{}}={}) {
     this.rng=rng; this.save=save; this.stats={best_escape:0,highest_level:1,best_score:0,...stats};
     this.flags={...C.DEBUG_FLAGS,shake:VISUAL_EFFECTS.shakingEnabled,spin:PLAYER_ROTATION.enabled,portal_white_light:VISUAL_EFFECTS.portalWhiteLight,culling:VISUAL_EFFECTS.courseCulling,rotation_shocks:VISUAL_EFFECTS.rotationShocks,microgravity:PLAYER_PROPULSION.enabled,overheat_blocks_recoupling:BALANCE.overheatBlocksRecoupling}; this.player=new Player(rng); this.t=0; this.angles=[0,0,0];
+    this.flags.change_1=CHANGES.change_1.enabled;this.flags.change_1_random_per_leg=CHANGES.change_1.randomPerLeg;
+    this.changeSettings=createChangeSettings();
+    this.autoLocateMinLevel=CAMERA_RULES.autoLocateMinLevel;
+    this.starPattern=VISUAL_EFFECTS.starPattern;
     this.level=1; this.score=0; this.locate=false; this.paused=false; this.help=false; this.events=[]; this.pendingIntroductions=[];
     this.consoleSettings={}; // Browser-owned booleans can join the same command interface.
     this.runStats={playSeconds:0,deaths:0,recoupledCubes:0,levelsCleared:0,bonusRounds:0,bonusPieces:0,bonusScore:0}; this.runSummary=null;
@@ -304,6 +314,7 @@ export class Game {
   messageSet(text,time=1.6) { this.message=text; this.messageTime=time; }
   setState(s) { this.state=s; this.stateTime=0; }
   get difficulty() { return difficultyForLevel(this.level); }
+  get autoLocate() { return this.autoLocateMinLevel===0||this.level>=this.autoLocateMinLevel; }
   get recouplingBlockedByHeat() { return recouplingHeatBlocked(this.level,this.heat>0,this.flags.overheat_blocks_recoupling); }
   resetLegClock() {
     this.legTime=this.difficulty.secondsPerLeg;
@@ -312,6 +323,7 @@ export class Game {
   resetAttempt() {
     this.player.reset(); this.course=new Course(this.level,this.flags.route3d); this.geometryVersion=(this.geometryVersion||0)+1;
     this.driftVelocity=new V();
+    this.shutters=new Shutters(this.rng);
     this.damageTimer=.45; this.legTime=this.difficulty.secondsPerLeg; this.timedModule=0; this.timeResetNotice=0;
     this.outsideTime=0; this.heat=0; this.lastHeat=0; this.coolTime=0; this.cool=0;
     this.recoupling=[]; this.recoupleTime=0; this.requests=[]; this.cooldown=0;
@@ -342,7 +354,7 @@ export class Game {
     this.introduceLevel(target);
   }
   introduceLevel(target) {
-    const phases=introductionsForLevel(target,this.flags.route3d);
+    const phases=introductionsForLevel(target,this.flags.route3d,this.changeSettings,this.flags);
     if(phases.length) {
       this.level=target; this.pendingIntroductions=phases.slice(1); this.setState(phases[0]);
     } else this.ready(target);
@@ -496,11 +508,44 @@ export class Game {
     this.outsideTime=0; this.lastHeat=0; this.heat=0;
     this.coolTime=Math.max(0,this.coolTime-dt); this.cool=smooth(this.coolTime/1.75); return 0;
   }
+  shutterState(l,time=this.shutters.time) {
+    if(this.state!=='playing'||!shutterEnabled(this.level,this.flags,this.changeSettings)||!this.course.activeLaser(l,this.player.origin,this.t))return null;
+    return this.shutters.phase(l.module.index,this.changeSettings,this.flags.change_1_random_per_leg,time);
+  }
+  updateShutters(dt) {
+    const before=this.shutters.time;this.shutters.tick(dt);
+    if(!shutterEnabled(this.level,this.flags,this.changeSettings))return;
+    const active=this.course.activeLasers(this.player.origin,this.t),audible=new Set();
+    for(const l of active) {
+      const phase=this.shutterState(l),leg=l.module.index;
+      if(!audible.has(leg)&&l.center.sub(this.player.origin).length()<28) {
+        audible.add(leg);const previous=this.shutters.phase(leg,this.changeSettings,this.flags.change_1_random_per_leg,before);
+        if(phase.closed&&!previous.closed)this.emit('shutter_close',l.center);
+        if(!phase.closed&&previous.closed)this.emit('shutter_open',l.center);
+      }
+      if(!phase.closed||this.shutters.contacts.get(l)===phase.cycle)continue;
+      const contact=[...this.player.alive].find(i=>this.course.jointAt(this.player.pos(i))<0&&l.touchesShutter(this.player.pos(i),this.t));
+      if(contact===undefined)continue;
+      // Consume this closure contact even during immunity: no delayed repeat bite.
+      this.shutters.contacts.set(l,phase.cycle);
+      if(!this.flags.damage||this.shutters.immunity>0)continue;
+      const loss=shutterLoss(this.player.alive.size,this.changeSettings.change_1_damage_fraction);
+      if(!loss)continue;
+      const hit=this.player.pos(contact),nearest=[...this.player.alive].sort((a,b)=>
+        Math.abs(l.local(this.player.pos(a),this.t).x)-Math.abs(l.local(this.player.pos(b),this.t).x));
+      for(const i of nearest.slice(0,loss))this.player.destroy(i,l.center,this.heat);
+      this.shutters.immunity=this.changeSettings.change_1_damage_cooldown;
+      this.kickRotation(hit,l.module.bx);this.shake=.35;this.lastHit='laser';this.hitTime=.3;
+      this.impacts.push({pos:hit,age:0,type:'laser',laser:l});
+      for(let i=0;i<32;i++)this.particles.push({pos:hit,vel:randV(this.rng,9),age:0,life:.4,color:[.55,.85,1]});
+      this.emit('crash');this.emit('structure_alert');this.messageSet(`SHUTTER HIT: -${loss} CUBES`,1.2);
+    }
+  }
   damage() {
     if(!this.flags.damage) return null;
     const p=this.player,candidates=[];
-    if(this.flags.lasers) {
-      const active=this.course.activeLasers(p.origin,this.t);
+    if(this.flags.lasers&&this.shutters.immunity<=0) {
+      const active=this.course.activeLasers(p.origin,this.t).filter(l=>!this.shutterState(l)?.closed);
       for(const i of p.alive) for(const l of active) if(this.course.jointAt(p.pos(i))<0&&l.hits(p.pos(i),this.t)) {
         const v=l.local(p.pos(i),this.t); candidates.push({i,l,exposure:Math.abs(v.x)+.04*(Math.abs(v.y)+Math.abs(v.z))}); break;
       }
@@ -576,13 +621,13 @@ export class Game {
     switch(this.state) {
       case 'opening_intro':
         if(this.stateTime>=OPENING_DURATION) {
-          const phases=introductionsForLevel(this.level,this.flags.route3d);
+          const phases=introductionsForLevel(this.level,this.flags.route3d,this.changeSettings,this.flags);
           this.openingTransition=true;this.pendingIntroductions=phases.slice(1);
           this.setState(phases[0]||'level_ready');
         } break;
       case 'level_ready':
         if(this.stateTime>=1.65) { this.setState('course_materialize'); this.emit('materialize'); } break;
-      case 'space_intro': case 'time_intro': case 'entropy_intro': case 'heat_intro':
+      case 'space_intro': case 'time_intro': case 'entropy_intro': case 'heat_intro': case 'change_1_intro':
         if(this.stateTime>=5) {
           if(this.pendingIntroductions.length) this.setState(this.pendingIntroductions.shift());
           else this.ready(this.level);
@@ -607,6 +652,7 @@ export class Game {
         });
         if(this.particles.length>300)this.particles.splice(0,this.particles.length-300);
         const heat=this.thermal(dt);
+        this.updateShutters(dt);
         if(this.difficulty.timed) {
           const loc=this.course.location(this.player.origin),j=this.course.jointAt(this.player.origin,.46);
           if(loc.index>this.timedModule) { this.timedModule=loc.index; this.resetLegClock(); }
@@ -646,7 +692,11 @@ export class Game {
     if(cmd==='test'&&arg==='bonus_round_1'||cmd==='view_bonus_001'||cmd==='bonus') {
       this.startBonus(cmd==='bonus'?(arg||'001'):'001',{preview:true});return `Bonus round 001 test · exit to level ${this.previewReturn.nextLevel}`;
     }
-    if(cmd==='test')throw Error('Available previews: test ending_1, test bonus_round_1');
+    if(cmd==='test'&&arg==='change_1') {
+      this.flags.change_1=true;this.flags.lasers=true;this.ready(Math.max(1,this.changeSettings.change_1_min_level));
+      this.setState(CHANGES.change_1.state);return `CHANGE 1 test · level ${this.level}`;
+    }
+    if(cmd==='test')throw Error('Available previews: test ending_1, test bonus_round_1, test change_1');
     const trueValues=['1','on','true','enabled','yes'],falseValues=['0','off','false','disabled','no'];
     const bool=s=>{if(trueValues.includes(s)) return true; if(falseValues.includes(s)) return false; throw Error('Expected true/false, on/off, 1/0 or enabled/disabled');};
     const number=(s,min,max)=>{const n=Number(s); if(s===undefined||!Number.isFinite(n)) throw Error('Expected a number'); return clamp(Math.trunc(n),min,max);};
@@ -656,13 +706,31 @@ export class Game {
         if(key==='spin'&&!v)this.player.setSpinAngles(0,0,0);
         if(key==='microgravity')this.driftVelocity=new V();
         if(key==='rotation_shocks'&&!v) {this.rotationShock.angle=new V();this.rotationShock.velocity=new V();}
-        if(key==='route3d') {this.course=new Course(this.level,v);this.geometryVersion++;}
+        if(key==='change_1'||key==='change_1_random_per_leg')this.shutters.restart();
+        if(key==='route3d') {this.course=new Course(this.level,v);this.geometryVersion++;this.shutters.restart();}
       }
     }]));
     settings.set('locate',{get:()=>this.locate,set:v=>{this.locate=v;}});
     for(const [key,setting] of Object.entries(this.consoleSettings))settings.set(key,setting);
     const values=new Map([['level',()=>this.level],['score',()=>this.score],['cubes',()=>this.player.alive.size]]);
-    const actions=new Set(['help','clear','cls','flags','restart','newrun','new','run','title','kill','heal','pos','where','route','test','bonus','view_end_anim_v1','view_bonus_001']);
+    const numeric=new Map(Object.keys(CHANGE_NUMBERS).map(key=>[key,{
+      get:()=>this.changeSettings[key],set:value=>{const n=setChangeNumber(this.changeSettings,key,value);this.shutters.restart();return n;}
+    }]));
+    numeric.set('auto_locate_min_level',{get:()=>this.autoLocateMinLevel,set:value=>{
+      const n=Number(value);if(value===undefined||!Number.isInteger(n)||n<0||n>1000000)throw Error('auto_locate_min_level expects an integer from 0 to 1000000');
+      this.autoLocateMinLevel=n;return n;
+    }});
+    for(const [key,setting] of numeric)values.set(key,setting.get);
+    numeric.set('star_pattern',{get:()=>this.starPattern,set:value=>{
+      const n=Number(value);if(value===undefined||!Number.isInteger(n)||n<0||n>2)throw Error('star_pattern expects 0, 1 or 2');
+      this.starPattern=n;return n;
+    }});
+    values.set('star_pattern',()=>this.starPattern);
+    const actions=new Set([...CONFIG_COMMANDS,'help','clear','cls','flags','restart','newrun','new','run','title','kill','heal','pos','where','route','test','bonus','view_end_anim_v1','view_bonus_001']);
+    if(CONFIG_COMMANDS.includes(cmd)) {
+      if(parts.length!==1)throw Error(`Usage: ${cmd}`);
+      return describeConsoleConfig(settings,values);
+    }
     const requireSetting=key=>{
       if(!key)throw Error(`Usage: ${cmd} <thing>${cmd==='set'?' [value]':''}`);
       if(settings.has(key)&&typeof settings.get(key).get()==='boolean')return settings.get(key);
@@ -674,9 +742,17 @@ export class Game {
       return `Status for ${key} is: ${requireSetting(key).get()?'Enabled':'Disabled'}`;
     };
     const setFlag=(key,v)=>{requireSetting(key).set(v);return `${key} set to ${v}`;};
-    if(cmd==='help'||cmd==='?') return 'help, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light culling microgravity overheat_blocks_recoupling locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nPreviews: test ending_1, test bonus_round_1, bonus <type>';
+    if(cmd==='help'||cmd==='?') return 'viewconfig / showconfig / showvars / viewvars / listvars / listconfig: list all settings\nhelp, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light culling microgravity overheat_blocks_recoupling change_1 change_1_random_per_leg locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nNumbers: '+[...numeric.keys()].join(' ')+'\nPreviews: test ending_1, test bonus_round_1, test change_1, bonus <type>';
     if(cmd==='flags')return [...settings.keys()].map(status).join('\n');
     if(['get','view','status'].includes(cmd)||['set','flag'].includes(cmd)&&value===undefined)return status(arg);
+    const numericKey=['set','flag'].includes(cmd)?arg:cmd;
+    if(numeric.has(numericKey)) {
+      const value=['set','flag'].includes(cmd)?parts[2]:arg;
+      if(value===undefined)return status(numericKey);
+      if(parts.length>(['set','flag'].includes(cmd)?3:2))throw Error(`Usage: set ${numericKey} <number>`);
+      if([...trueValues,...falseValues].includes(value)&&!['0','1'].includes(value))throw Error(`${numericKey} cannot be toggled with on/off!`);
+      return `${numericKey} set to ${numeric.get(numericKey).set(value)}`;
+    }
     if(cmd==='level'||cmd==='set'&&arg==='level') {
       const target=cmd==='level'?arg:value;
       if([...trueValues,...falseValues].includes(target)&&!['0','1'].includes(target))throw Error('level cannot be toggled with on/off!');

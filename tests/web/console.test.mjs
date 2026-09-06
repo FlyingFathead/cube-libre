@@ -3,6 +3,53 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {Game,V} from '../../web/js/core.mjs';
+import {CHANGE_NUMBERS} from '../../web/js/changes.mjs';
+
+test('all config listing aliases report live values from every registered setting without side effects',()=>{
+  const g=new Game();g.ready(7);g.player.setSpinAngles(5,10,15);g.shutters.tick(.75);
+  let muted=false;g.consoleSettings.mute={get:()=>muted,set:v=>{muted=v;}};
+  g.consoleSettings.future_setting={name:'Future setting',description:'Registered without editing the listing.',get:()=>true,set:()=>assert.fail('Listing must not call a setter')};
+  g.flags.future_flag=true;
+  const aliases=['viewconfig','showconfig','showvars','viewvars','listvars','listconfig'];
+  const snapshot=()=>JSON.stringify({flags:g.flags,pose:g.player.spinAngles,time:g.shutters.time,state:g.state,score:g.score,level:g.level,muted});
+  const before=snapshot(),course=g.course,output=g.command(aliases[0]);
+  for(const alias of aliases)assert.equal(g.command(`  ${alias.toUpperCase()}  `),output);
+  assert.equal(snapshot(),before);assert.equal(g.course,course);
+  const rows=output.split('\n').filter(line=>/^[a-z_0-9]+ \|/.test(line));
+  const names=rows.map(line=>line.split(' | ')[0]);
+  const expected=[...Object.keys(g.flags),'locate',...Object.keys(g.consoleSettings),'level','score','cubes',...Object.keys(CHANGE_NUMBERS),'star_pattern','auto_locate_min_level'];
+  assert.deepEqual(new Set(names),new Set(expected));assert.equal(names.length,expected.length);
+  for(const row of rows)assert.equal(row.split(' | ').length,4);
+  assert.match(output,/star_pattern \| 2 \| Background star pattern \| 0: no background stars; 1: original/);
+  assert.match(output,/change_1_min_level \| 7 \|/);
+  assert.match(output,/future_setting \| true \| Future setting \| Registered without editing the listing\./);
+  assert.match(output,/future_flag \| true \| Future flag \| Enable or disable future flag\./);
+  g.command('star_pattern 0');g.command('set change_1_interval 6');g.command('toggle mute');
+  g.command('score 432');g.command('cubes 64');
+  const changed=g.command('showvars');
+  for(const row of ['star_pattern | 0 |','change_1_interval | 6 |','mute | true |','score | 432 |','cubes | 64 |'])assert.ok(changed.includes(row),row);
+  for(const alias of aliases) {
+    assert.throws(()=>g.command(`${alias} extra`),/Usage:/);
+    assert.throws(()=>g.command(`toggle ${alias}`),/cannot be toggled/);
+  }
+});
+
+test('console keeps an entire long config response and Page Up/Down scroll the output',()=>{
+  const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
+  const elements={'console-log':{textContent:'',scrollTop:0,scrollHeight:10000},'console-input':{addEventListener:(name,callback)=>{elements.keydown=callback;}}};
+  const context=vm.createContext({$:id=>elements[id],log:[],history:[],historyIndex:0,clamp:(n,min,max)=>Math.min(max,Math.max(min,n))});
+  const start=source.indexOf('  function consoleLog('),end=source.indexOf('  function openConsole(',start);
+  vm.runInContext(source.slice(start,end),context);
+  vm.runInContext('consoleLog("old history"); consoleLog(Array.from({length:300},(_,i)=>"parameter_"+i).join("\\n"));',context);
+  assert.equal(elements['console-log'].textContent.split('\n').length,300);
+  assert.ok(elements['console-log'].textContent.startsWith('parameter_0\n'));
+  assert.ok(elements['console-log'].textContent.endsWith('parameter_299'));
+  const keys=source.indexOf("  $('console-input').addEventListener('keydown'"),keysEnd=source.indexOf("  $('console-close').onclick",keys);
+  vm.runInContext(source.slice(keys,keysEnd),context);
+  let prevented=0;const output=elements['console-log'];
+  elements.keydown({code:'PageUp',preventDefault(){prevented++;}});assert.equal(output.scrollTop,9800);
+  elements.keydown({code:'PageDown',preventDefault(){prevented++;}});assert.equal(output.scrollTop,10000);assert.equal(prevented,2);
+});
 
 test('every boolean shares toggle, explicit values, and non-mutating status aliases',()=>{
   const g=new Game();let muted=false;
@@ -68,7 +115,7 @@ test('browser console aliases save visual and movement preferences and status qu
   const game=new Game(),elements={'console-form':{},'console-input':{},'console-log':{}},saved=[],messages=[];
   vm.runInNewContext(source.slice(start,end),{$:id=>elements[id],game,history:[],historyIndex:0,log:[],consoleLog:line=>messages.push(line),syncAudio(){},write:(...entry)=>saved.push(entry)});
   const submit=value=>{elements['console-input'].value=value;elements['console-form'].onsubmit({preventDefault(){}});};
-  for(const [key,storage] of [['shake','shake'],['spin','spin'],['rotation_shocks','rotation-shocks'],['portal_white_light','portal-white-light'],['culling','culling'],['microgravity','microgravity'],['overheat_blocks_recoupling','overheat-blocks-recoupling']]) {
+  for(const [key,storage] of [['shake','shake'],['spin','spin'],['rotation_shocks','rotation-shocks'],['portal_white_light','portal-white-light'],['culling','culling'],['microgravity','microgravity'],['overheat_blocks_recoupling','overheat-blocks-recoupling'],['change_1','change-1'],['change_1_random_per_leg','change-1-random-per-leg']]) {
     submit(`toggle ${key}`);assert.deepEqual(saved.at(-1),[`cube-libre-${storage}-v1`,false]);
     assert.equal(messages.at(-1),`${key} set to false`);
     const writes=saved.length;for(const alias of ['set','view','status'])submit(`${alias} ${key}`);
