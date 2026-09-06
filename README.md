@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.24.0
+# Cube Libre — Web v0.24.1
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,7 +23,16 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.24.0 · Mobile controls beta
+## Web release 0.24.1 · Collapse collision fix
+
+Fix a sudden whole-body death reported during Android level 6 playtesting.
+Straying outside the route could make the visibility lookup fall back to leg 1;
+if that leg had collapsed, the game incorrectly destroyed every surviving cube.
+Being near a sealed corridor could also trigger the same false contact.
+Collapse now checks the actual corridor and turn-chamber volumes. Normal
+boundary damage, overheating, the leg timer and sealed backtracking still apply.
+
+## Mobile controls beta · Introduced in 0.24.0
 
 Android, iPhone and iPad visitors get two choices on the **MOBILE BROWSER DETECTED**
 screen: **TRY MOBILE BETA** or **USE KEYBOARD / CONTROLLER**. Space chooses the beta.

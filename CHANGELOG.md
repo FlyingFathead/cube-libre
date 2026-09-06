@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.24.1 — Physical collapse contact
+
+Based on published web v0.24.0 (`a278315`).
+
+- Fix instant whole-body deaths when drifting outside the route after an earlier
+  leg has collapsed. The visibility lookup's fallback to leg 1 was incorrectly
+  treated as lethal contact; reproduced with 119 surviving cubes and 29 seconds
+  still available. Also fix false contact in a sealed leg's broad nearby area.
+- Check actual corridor and turn-chamber volumes through the existing local
+  spatial index before applying collapse death. Keep ordinary boundary shaving,
+  heat, real sealed backtracking and timer expiry intact.
+- Add regression coverage for level 6 side drift and return at 30/60/120 FPS,
+  with microgravity on/off, plus physical contact across fifty-leg routes,
+  forward turns, legitimate sealed-section returns and timeout.
+
+Validation: all 145 automated test groups and static checks pass. The failure
+was reproduced in the v0.24.0 simulation and the new regression tests failed
+before the fix. The report came from Android playtesting; this patch still
+needs confirmation on the player's device.
+
+
 ## 0.24.0 — Mobile touch beta
 
 Based on published web v0.23.1 (`ddbd545`).

@@ -62,6 +62,19 @@ If startup still fails over HTTP, open the browser console (Firefox: Ctrl+Shift+
 and inspect the first red error. A WebGL error, missing file, or incorrect module
 MIME type requires a different fix; the loading screen alone does not identify it.
 
+## Collapse contact fix (web 0.24.1)
+
+A route-location hint is used for visibility and progress, not physical contact.
+Its fallback to leg 1 must never imply that the player touched a collapsed leg.
+`Course.collapsedSectionAt()` checks nearby corridor spans and turn-chamber
+bounds, with the existing cell-half padding, against the collapsed-section map.
+It uses the existing spatial index rather than scanning the full course.
+
+This fixes whole-body deaths while drifting outside a later leg or beside a
+sealed corridor, reported during Android level 6 playtesting. It does not remove
+timer expiry or real sealed backtracking. Boundary shaving and overheating
+remain active. Regression coverage is in `tests/web/collapse-contact.test.mjs`.
+
 ## Gameplay included
 
 | System | Port behavior |
@@ -805,14 +818,14 @@ Android and iOS/iPadOS before treating the beta as production mobile support.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.24.0**, based on published **0.23.1**, commit `ddbd545`. The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.24.1**, based on published **0.24.0**, commit `a278315`. The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.24.1`, `0.24.2`, etc. for fixes, and `0.25.0` for the
+For future releases, use `0.24.2`, `0.24.3`, etc. for fixes, and `0.25.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.24.0.zip` and `v0.24.0`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.24.1.zip` and `v0.24.1`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior

@@ -1,6 +1,7 @@
 # Cube Libre web progression
 
-Default schedule for web **0.24.0**, based on published v0.23.1 (`ddbd545`).
+Default schedule for web **0.24.1**, based on published v0.24.0 (`a278315`).
+The 0.24.1 patch fixes false collapse contact; no milestones or balance values change.
 [`featuresForSettings()`](../web/js/difficulty.mjs) combines `BALANCE` milestones
 with [`CHANGES` and `CHANGE_NUMBERS`](../web/js/changes.mjs), sorts by level, and
 supplies phase selection, banner titles and the Help table. `LEVEL_FEATURES` is a

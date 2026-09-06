@@ -207,6 +207,18 @@ export class Course {
       return l.x>=a&&l.x<=b&&Math.abs(l.y)<=7+pad&&Math.abs(l.z)<=7+pad;
     }) || this.jointAt(p,pad)>=0;
   }
+  collapsedSectionAt(p,pad=C.CELL_HALF) {
+    // location() is a broad visibility hint and falls back to leg zero when
+    // nothing is nearby. A lethal collapse requires physical containment.
+    const nearby=this.nearby(p,pad);
+    for(const m of nearby.modules) if(this.collapsed.has(m.index)) {
+      const l=m.local(p),[a,b]=this.span(m,pad);
+      if(l.x>=a&&l.x<=b&&Math.abs(l.y)<=7+pad&&Math.abs(l.z)<=7+pad)return m.index;
+    }
+    for(const j of nearby.joints) if(this.collapsed.has(j.index)&&
+      Math.abs(p.x-j.center.x)<=7+pad&&Math.abs(p.y-j.center.y)<=7+pad&&Math.abs(p.z-j.center.z)<=7+pad)return j.index;
+    return -1;
+  }
   location(p) {
     let index=0,x=-23,score=-Infinity;
     for(const m of this.nearby(p).modules) {
@@ -658,10 +670,10 @@ export class Game {
         const heat=this.thermal(dt);
         this.updateShutters(dt);
         if(this.difficulty.timed) {
-          const loc=this.course.location(this.player.origin),j=this.course.jointAt(this.player.origin,.46);
+          const loc=this.course.location(this.player.origin);
           if(loc.index>this.timedModule) { this.timedModule=loc.index; this.resetLegClock(); }
           else this.legTime=Math.max(0,this.legTime-dt);
-          if(this.legTime<=0||this.course.collapsed.has(loc.index)||(j>=0&&this.course.collapsed.has(j))) {
+          if(this.legTime<=0||this.course.collapsedSectionAt(this.player.origin)>=0) {
             this.player.alive.clear(); this.emit('collapse',this.player.origin); this.emit('laser_dissipate');
           }
         }
