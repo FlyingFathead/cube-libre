@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.20.1
+# Cube Libre — Web v0.21.0
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -22,7 +22,34 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.20.1
+## Web release 0.21.0
+
+**Microgravity is on by default in normal levels.** Movement keys apply thrust:
+the cube builds speed, coasts briefly when released, and brakes faster when you
+steer against its motion. Top speed stays 6 units/second, or 15.6 with Shift.
+The drift affects the actual body and collisions. Bonus rounds keep their floor
+rolling. Use **Help → Microgravity** or `set microgravity off` to compare with
+the original direct controls; `toggle microgravity` and `status microgravity`
+work too. The browser remembers the setting.
+
+**HEAT at level 15 now introduces both heat penalties:** the outside grace drops
+to 1.4 seconds, and new re-coupling requests are blocked while overheating.
+Cooling down restores re-coupling. The check uses the heat state, so future heat
+sources can reuse it. Refused requests cost no quota; a request already underway
+finishes. Use `set overheat_blocks_recoupling off` to disable this restriction.
+The flag defaults to on and is saved in Help and through the console.
+
+`BALANCE.heatMinLevel` in [`web/js/difficulty.mjs`](web/js/difficulty.mjs) defaults
+to **15**; **0 removes the level gate**. Both heat penalties and the HEAT banner
+share this setting. `LEVEL_FEATURES` supplies the ordered introduction schedule,
+banner titles and Help milestone table. See [the full progression list](docs/LEVEL_PROGRESSION.md).
+Thrust response and coasting are tuned in `PLAYER_PROPULSION` in `web/js/config.mjs`.
+
+The package also declares its JavaScript module type explicitly, so local checks
+recognize the bundled Three.js modules without depending on Node's automatic
+module detection. No npm installation is needed.
+
+### Retained from 0.20.1 and earlier
 
 The ending now lets **YOU'VE ASCENDED** finish fading in and holds it alone for
 two seconds before **... FOR NOW.** fades in underneath. The continue prompt
@@ -139,7 +166,8 @@ Time tightens from 30 seconds per leg at level 5 to 10 seconds at level 50.
 Entropy reduces re-coupling yield from 50% at level 10 to 1% at level 50, rounded
 to the nearest whole percent. **HEAT** arrives at level 15, shortening the
 out-of-bounds overheating grace period from 2.4 to 1.4 seconds. **TIME** returns
-at levels 20, 35 and 50 to announce the current allowance.
+at levels 20, 35 and 50 to announce the current allowance. From HEAT onward,
+active overheating also blocks new re-coupling requests when its flag is enabled.
 The route also grows by one leg each level, so the final level combines fifty
 legs with the strictest timer, heat and re-coupling settings.
 
@@ -198,6 +226,9 @@ The complete static game lives in `web/`, including its renderer, font and
 The included workflow checks the port and publishes `web/` at
 https://flyingfathead.github.io/cube-libre/.
 
+Repository description, homepage and topic commands are in
+[docs/GITHUB_METADATA.md](docs/GITHUB_METADATA.md).
+
 ## Development
 
 ```bash
@@ -207,8 +238,8 @@ node --test tests/web/*.test.mjs
 
 See [WEB_PORT.md](WEB_PORT.md) for gameplay details, browser differences,
 source layout, and optional regeneration using a separate PyGame checkout.
-Web 0.16.0 was playtested by the author. This release has automated
-checks; its new visual changes still need browser playtesting. The WebGL effects
+Web 0.20.1 was confirmed live and working by the author. This release has automated
+checks; its new movement feel and heat rule still need browser playtesting. The WebGL effects
 are recreated and are not pixel-identical to the desktop version.
 
 © 2024–2026 FlyingFathead. Original authorship and rights remain with the author. The bundled

@@ -62,13 +62,13 @@ test('queries preserve poses and route state, while setters apply the required s
   g.command('set level 20');assert.equal(g.level,20);assert.equal(g.flags.rotation_shocks,false);
 });
 
-test('browser console aliases save all visual preferences and status queries do not write',()=>{
+test('browser console aliases save visual and movement preferences and status queries do not write',()=>{
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
   const start=source.indexOf("$('console-form').onsubmit="),end=source.indexOf("  $('console-input').addEventListener",start);
   const game=new Game(),elements={'console-form':{},'console-input':{},'console-log':{}},saved=[],messages=[];
   vm.runInNewContext(source.slice(start,end),{$:id=>elements[id],game,history:[],historyIndex:0,log:[],consoleLog:line=>messages.push(line),syncAudio(){},write:(...entry)=>saved.push(entry)});
   const submit=value=>{elements['console-input'].value=value;elements['console-form'].onsubmit({preventDefault(){}});};
-  for(const [key,storage] of [['shake','shake'],['spin','spin'],['rotation_shocks','rotation-shocks'],['portal_white_light','portal-white-light'],['culling','culling']]) {
+  for(const [key,storage] of [['shake','shake'],['spin','spin'],['rotation_shocks','rotation-shocks'],['portal_white_light','portal-white-light'],['culling','culling'],['microgravity','microgravity'],['overheat_blocks_recoupling','overheat-blocks-recoupling']]) {
     submit(`toggle ${key}`);assert.deepEqual(saved.at(-1),[`cube-libre-${storage}-v1`,false]);
     assert.equal(messages.at(-1),`${key} set to false`);
     const writes=saved.length;for(const alias of ['set','view','status'])submit(`${alias} ${key}`);

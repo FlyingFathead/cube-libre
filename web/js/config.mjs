@@ -17,6 +17,16 @@ export const PLAYER_ROTATION=Object.freeze({
   degreesPerSecond:Object.freeze({x:3,y:6,z:2}),
 });
 
+// Gentle thrust and coasting in normal levels; speeds remain world-axis based.
+export const PLAYER_PROPULSION=Object.freeze({
+  enabled:true,
+  speed:6,
+  rushMultiplier:2.6,
+  thrustResponseSeconds:.14,
+  coastResponseSeconds:.22,
+  reverseResponseSeconds:.08,
+});
+
 // Gameplay constants from original ecf8f014 (0.15.79).
 export const C = {
   "_REQUIRED_PYTHON_MODULES": [

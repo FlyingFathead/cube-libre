@@ -1,6 +1,7 @@
 import {UpdateChecker,UPDATE_INTERVAL_MS} from './updates.mjs';
 import {BONUS_SCHEDULE,PIECES_RULES} from './bonus.mjs';
 import {observeTitleLayout} from './title-layout.mjs';
+import {LEVEL_FEATURES,introductionCard} from './difficulty.mjs';
 const $=id=>document.getElementById(id);
 function fail(error) {
   $('boot').hidden=false; $('boot-text').textContent=`Cube Libre could not start: ${error.message}. See the browser console for details.`;
@@ -31,6 +32,8 @@ async function main() {
   game.flags.portal_white_light=read('cube-libre-portal-white-light-v1',game.flags.portal_white_light)!==false;
   game.flags.culling=read('cube-libre-culling-v1',game.flags.culling)!==false;
   game.flags.rotation_shocks=read('cube-libre-rotation-shocks-v1',game.flags.rotation_shocks)!==false;
+  game.flags.microgravity=read('cube-libre-microgravity-v1',game.flags.microgravity)!==false;
+  game.flags.overheat_blocks_recoupling=read('cube-libre-overheat-blocks-recoupling-v1',game.flags.overheat_blocks_recoupling)!==false;
   const renderer=new Renderer($('scene'),$('fx'),titleCells);
   const keyboard=new Set(),pointers=new Map();
   const clearInput=()=>{keyboard.clear();pointers.clear();document.querySelectorAll('.held').forEach(b=>b.classList.remove('held'));};
@@ -85,6 +88,14 @@ async function main() {
     const spinToggle=document.createElement('input');spinToggle.type='checkbox';spinToggle.checked=game.flags.spin;
     spinToggle.addEventListener('change',()=>{game.command(`spin ${spinToggle.checked}`);write('cube-libre-spin-v1',game.flags.spin);});
     spinLabel.append(spinToggle,'Player auto-rotation (normal levels)');body.append(spinLabel);
+    const gravityLabel=document.createElement('label');gravityLabel.className='shake-setting';
+    const gravityToggle=document.createElement('input');gravityToggle.type='checkbox';gravityToggle.checked=game.flags.microgravity;
+    gravityToggle.addEventListener('change',()=>{game.command(`microgravity ${gravityToggle.checked}`);write('cube-libre-microgravity-v1',game.flags.microgravity);});
+    gravityLabel.append(gravityToggle,'Microgravity: thrust and coasting (normal levels)');body.append(gravityLabel);
+    const heatLabel=document.createElement('label');heatLabel.className='shake-setting';
+    const heatToggle=document.createElement('input');heatToggle.type='checkbox';heatToggle.checked=game.flags.overheat_blocks_recoupling;
+    heatToggle.addEventListener('change',()=>{game.command(`overheat_blocks_recoupling ${heatToggle.checked}`);write('cube-libre-overheat-blocks-recoupling-v1',game.flags.overheat_blocks_recoupling);});
+    heatLabel.append(heatToggle,`Overheating blocks re-coupling (from level ${BALANCE.heatStartLevel})`);body.append(heatLabel);
     const shockLabel=document.createElement('label');shockLabel.className='shake-setting';
     const shockToggle=document.createElement('input');shockToggle.type='checkbox';shockToggle.checked=game.flags.rotation_shocks;
     shockToggle.addEventListener('change',()=>{game.command(`rotation_shocks ${shockToggle.checked}`);write('cube-libre-rotation-shocks-v1',game.flags.rotation_shocks);});
@@ -102,12 +113,13 @@ async function main() {
       bonusHelp.textContent='BONUS ROUND: W / ↑ rolls toward the ramp, S / ↓ rolls back, A / D or ← / → rolls sideways. Hold Shift to rush. Touch loose pieces to collect them, then roll up the ramp into the portal before time runs out. The golden ring marks your body.';body.append(bonusHelp);
     }
     const p=document.createElement('p');p.textContent=inBonus?'BONUS CONTROLS · Recover what you can, then escape. Touching a loose piece collects it automatically.':'Reach the portal with as many of your 125 cubes as possible. The entire surviving body must enter. The view rotates; movement stays on the world axes.';body.append(p);
+    if(!inBonus) {const propulsionHelp=document.createElement('p');propulsionHelp.textContent='With microgravity enabled, hold movement keys to build speed, release to coast, and steer in the opposite direction to brake. Shift increases your top speed.';body.append(propulsionHelp);}
     const figure=document.createElement('figure');figure.className='keyboard-help';
     const map=document.createElement('div');map.className='keyboard-map-scroll';map.tabIndex=0;
     map.setAttribute('role','region');map.setAttribute('aria-label','Keyboard control map. Scroll sideways on smaller screens.');
     const diagram=document.createElement('img');
     diagram.src=(inBonus?new URL('../assets/keyboard-bonus-controls.svg',import.meta.url):new URL('../assets/keyboard-controls.svg',import.meta.url)).href;
-    diagram.alt=inBonus?'Bonus keyboard map: WASD or arrows roll on the floor, W goes toward the ramp, Shift rushes. Collect pieces by contact. H help, P pause, M mute, Esc menu.':'Keyboard map: A/D move along X; W/S move along Y from level 3; Q/E move along Z. Hold Shift to rush, C to recover loose cubes, L to locate your cube. Space or Enter starts a run or advances a level. H opens help, P pauses, M mutes, and Esc opens the menu.';
+    diagram.alt=inBonus?'Bonus keyboard map: WASD or arrows roll on the floor, W goes toward the ramp, Shift rushes. Collect pieces by contact. H help, P pause, M mute, Esc menu.':'Keyboard map: A/D move along X; W/S move along Y from SPACE; Q/E move along Z. Hold Shift to rush, C to recover loose cubes, L to locate your cube. Space or Enter starts a run or advances a level. H opens help, P pauses, M mutes, and Esc opens the menu.';
     diagram.width=1040;diagram.height=590;map.append(diagram);figure.append(map);
     const caption=document.createElement('figcaption');caption.textContent=inBonus?'W / ↑ goes toward the ramp. S / ↓ rolls back. A / D or ← / → rolls sideways. Hold Shift to rush. The camera follows you.':'Hold the movement keys to move. Matching colors mark each pair. The view rotates, so these directions rotate on screen too. On small screens, scroll the keyboard sideways.';figure.append(caption);body.append(figure);
     const table=document.createElement('table');
@@ -123,10 +135,20 @@ async function main() {
       ['M','Mute / unmute'],['Alt+F / Alt+Enter / F11','Fullscreen (or use the button)'],['Esc','Main menu confirmation'],
       ['Ctrl+Shift+F2','Reset run or retry current level'],['` / Ctrl+Shift+F1','Debug console']
     ])) {const tr=document.createElement('tr');for(const text of [keys,action]){const td=document.createElement('td');td.textContent=text;tr.append(td);}table.append(tr);}
-    body.append(table);const q=document.createElement('p');q.textContent=`Level 3 opens the Y axis. Time starts at level ${BALANCE.timeStartLevel}: ${C.TIME_PER_LEG_SECONDS} seconds per leg, gradually tightening to ${BALANCE.minSecondsPerLeg} seconds by level ${BALANCE.capLevel}. TIME returns at levels ${BALANCE.timeReminderLevels.join(', ')} to announce the allowance. Entropy starts at level ${BALANCE.entropyStartLevel}: re-coupling yield drops from ${C.RECOUPLING_GATHER_RATE*100}% to ${C.ENTROPY_RECOUPLING_GATHER_RATE*100}% per request, then gradually to ${BALANCE.minRecouplingRate*100}% by level ${BALANCE.capLevel}. Both stop tightening there. Heat arrives at level ${BALANCE.entropyStartLevel+BALANCE.heatDelayLevels}: the out-of-bounds overheating grace period drops from ${C.BOUNDARY_OVERHEAT_SECONDS.toFixed(1)} to ${(C.BOUNDARY_OVERHEAT_SECONDS-BALANCE.overheatGraceReductionSeconds).toFixed(1)} seconds. Repeated requests can recover more pieces before they expire. Lost cubes cost 100 potential points each. Death rebuilds your current level; your run score stays.`;body.append(q);
+    body.append(table);
+    const milestones=document.createElement('table'),heading=document.createElement('caption');
+    heading.textContent='What changes as you advance';milestones.append(heading);
+    const header=document.createElement('tr');
+    for(const text of ['Level','Banner','Change']) {const th=document.createElement('th');th.scope='col';th.textContent=text;header.append(th);}milestones.append(header);
+    for(const feature of LEVEL_FEATURES) {
+      const row=document.createElement('tr');
+      for(const text of [feature.level,feature.banner,feature.summary()]) {const cell=document.createElement('td');cell.textContent=text;row.append(cell);}milestones.append(row);
+    }
+    body.append(milestones);
+    const q=document.createElement('p');q.textContent='Each level adds one corridor leg, up to fifty. Repeated re-coupling requests can recover more pieces before they expire. Once HEAT is active, new requests are blocked while overheating if that option is enabled. Returning inside cools you immediately. A request already in progress finishes; refused requests use no quota. Lost cubes cost 100 potential points each. Death rebuilds your current level; your run score stays.';body.append(q);
     const bonusRules=document.createElement('p');bonusRules.textContent=`PICKING UP THE PIECES · Bonus round 001 follows level ${BONUS_SCHEDULE.firstLevel}, then every ${BONUS_SCHEDULE.interval} levels before the final level cap. Roll on a solid floor using WASD / arrow keys; Shift rushes. Collect the scattered pieces and take the ramp to the portal within ${PIECES_RULES.seconds} seconds. Each piece banks ${PIECES_RULES.pointsPerPiece} bonus points only if you escape. Running out of time forfeits this bonus; your existing score is kept and the next level follows. C and the corridor heat/entropy rules do not apply. Console: test bonus_round_1 previews the complete round.`;body.append(bonusRules);
     const rules=game.difficulty,current=document.createElement('p');
-    current.textContent=`Level ${game.level}: ${rules.timed?`${rules.secondsPerLeg.toFixed(1)} seconds per leg`:'no timer'} · ${Math.round(rules.recouplingRate*100)}% re-coupling yield per request · ${rules.overheatGraceSeconds.toFixed(1)} seconds before overheating outside.`;body.append(current);
+    current.textContent=`Level ${game.level}: ${rules.timed?`${rules.secondsPerLeg.toFixed(1)} seconds per leg`:'no timer'} · ${Math.round(rules.recouplingRate*100)}% re-coupling yield per request · ${rules.overheatGraceSeconds.toFixed(1)} seconds before overheating outside. Heat re-coupling restriction: ${game.flags.overheat_blocks_recoupling?(rules.heat?'active':'not yet active'):'disabled'}.`;body.append(current);
     const credits=document.createElement('p');credits.className='version-note';
     credits.append(`CUBE LIBRE v${release.version} | By FlyingFathead | `);
     const authorLink=document.createElement('a');authorLink.href='https://github.com/FlyingFathead';authorLink.textContent='github.com/FlyingFathead';authorLink.target='_blank';authorLink.rel='noopener';credits.append(authorLink);body.append(credits);
@@ -178,13 +200,15 @@ async function main() {
     if(['clear','cls'].includes(value.toLowerCase())) {log.length=0;$('console-log').textContent='';return;}
     consoleLog(`> ${value}`);
     try {
-      const previousShake=game.flags.shake,previousSpin=game.flags.spin,previousLight=game.flags.portal_white_light,previousCulling=game.flags.culling,previousShocks=game.flags.rotation_shocks;
+      const previousShake=game.flags.shake,previousSpin=game.flags.spin,previousLight=game.flags.portal_white_light,previousCulling=game.flags.culling,previousShocks=game.flags.rotation_shocks,previousGravity=game.flags.microgravity,previousHeatLock=game.flags.overheat_blocks_recoupling;
       consoleLog(game.command(value));
       if(game.flags.shake!==previousShake)write('cube-libre-shake-v1',game.flags.shake);
       if(game.flags.spin!==previousSpin)write('cube-libre-spin-v1',game.flags.spin);
       if(game.flags.portal_white_light!==previousLight)write('cube-libre-portal-white-light-v1',game.flags.portal_white_light);
       if(game.flags.culling!==previousCulling)write('cube-libre-culling-v1',game.flags.culling);
       if(game.flags.rotation_shocks!==previousShocks)write('cube-libre-rotation-shocks-v1',game.flags.rotation_shocks);
+      if(game.flags.microgravity!==previousGravity)write('cube-libre-microgravity-v1',game.flags.microgravity);
+      if(game.flags.overheat_blocks_recoupling!==previousHeatLock)write('cube-libre-overheat-blocks-recoupling-v1',game.flags.overheat_blocks_recoupling);
       if(/^(view_end_anim_v1|view_bonus_001|test\s+(ending_1|bonus_round_1)|bonus(?:\s+\S+)?)$/i.test(value)) { closeConsole();game.paused=false;game.help=false;syncAudio();focusGame();if(!audio.muted)audio.unlock().then(syncAudio,()=>{});return; }
     }catch(err){consoleLog(`ERROR: ${err.message}`);}
     // Commands that change state must still respect the open console's pause.
@@ -200,7 +224,7 @@ async function main() {
   $('modal').addEventListener('cancel',e=>{e.preventDefault();closeModal();});
   $('start').onclick=start;$('next').onclick=()=>{clearInput();if(game.state==='ended')start();else game.continue();};
   $('pause').onclick=pause;$('help').onclick=help;$('mute').onclick=mute;$('fullscreen').onclick=fullscreen;$('menu').onclick=menu;
-  $('locate').onclick=()=>{game.locate=!game.locate;game.messageSet(`LOCATE ${game.locate?'ON':'OFF'}${game.level>=3?' · AUTO TRACKING ACTIVE':''}`);};
+  $('locate').onclick=()=>{game.locate=!game.locate;game.messageSet(`LOCATE ${game.locate?'ON':'OFF'}${game.level>=BALANCE.spaceStartLevel?' · AUTO TRACKING ACTIVE':''}`);};
   $('touch-c').onclick=()=>game.requestRecouple();
   const keyCodes=new Set(['KeyA','KeyD','KeyW','KeyS','KeyQ','KeyE','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','ShiftLeft','ShiftRight','ControlLeft','ControlRight']);
   window.addEventListener('keydown',e=>{
@@ -346,7 +370,7 @@ async function main() {
       }
       $('touch-c').hidden=bonus;
     }
-    $('locate').setAttribute('aria-pressed',String(game.locate||game.level>=3));
+    $('locate').setAttribute('aria-pressed',String(game.locate||game.level>=BALANCE.spaceStartLevel));
     $('pause').textContent=game.paused?'Resume':'Pause';
     $('fullscreen').textContent=document.fullscreenElement?'Windowed':'Fullscreen';
     $('touch-controls').hidden=!((playing||bonusPlaying)&&matchMedia('(pointer: coarse)').matches&&!game.paused);
@@ -375,12 +399,9 @@ async function main() {
       $('next').textContent=game.bonusPreview?`Space / Enter / click for level ${game.previewReturn.nextLevel}`:'Space / Enter / click for the next level';
       $('next').hidden=game.stateTime<.4;
     } else if(phase) {
-      $('card-title').textContent={space_intro:'SPACE ...',time_intro:'TIME ...',entropy_intro:'ENTROPY ...',heat_intro:'HEAT ...'}[s];
-      $('card-subtitle').textContent={space_intro:'WORLD Y AXIS OPENS FROM HERE',
-        time_intro:`${game.difficulty.secondsPerLeg.toFixed(1)} SECONDS PER LEG\n${game.level===BALANCE.timeStartLevel?'THE CLOCK STARTS NOW':game.level>=BALANCE.capLevel?'THE FINAL TIME LIMIT':'THE CLOCK TIGHTENS'}`,
-        entropy_intro:`${Math.round(game.difficulty.recouplingRate*100)}% RE-COUPLING YIELD PER REQUEST\nFALLING TO ${BALANCE.minRecouplingRate*100}% BY LEVEL ${BALANCE.capLevel}`,
-        heat_intro:`OVERHEATING AFTER ${game.difficulty.overheatGraceSeconds.toFixed(1)} SECONDS\nOUTSIDE THE CORRIDOR`}[s];
-      $('card-detail').textContent=s==='heat_intro'?`PREVIOUSLY ${C.BOUNDARY_OVERHEAT_SECONDS.toFixed(1)} SECONDS`:'';$('card').style.opacity=String(smooth(game.stateTime/1.1)*(1-smooth((game.stateTime/5-.86)/.14)));
+      const card=introductionCard(s,game.level,game.flags);
+      $('card-title').textContent=card.title;$('card-subtitle').textContent=card.subtitle;$('card-detail').textContent=card.detail;
+      $('card').style.opacity=String(smooth(game.stateTime/1.1)*(1-smooth((game.stateTime/5-.86)/.14)));
     } else if(ready) {
       const rules=game.difficulty;
       $('card-title').textContent=`LEVEL ${game.level}`;$('card-subtitle').textContent='GET READY';
@@ -420,6 +441,7 @@ async function main() {
     const recovering=game.recoupling.length>0;
     $('recovery').hidden=!(playing&&(fragments.length||recovering||game.cooldown>0));
     $('recovery').textContent=game.cooldown>0?`RE-COUPLING ON COOLDOWN · ${game.cooldown.toFixed(1)}s`:recovering?`RE-COUPLING ${game.recoupling.length} CELLS · ${Math.round(clamp(game.recoupleTime/1.18)*100)}%`:
+      game.recouplingBlockedByHeat?`TOO HOT TO RE-COUPLE · RETURN INSIDE\n${fragments.length} LOOSE · EXPIRING IN ${remaining.toFixed(1)}s`:
       `${remaining<1.75?'LAST CHANCE! ':''}PRESS C TO RE-COUPLE · ${fragments.length} LOOSE\nCELLS EXPIRING IN ${remaining.toFixed(1)}s`;
     $('danger').hidden=!(playing&&game.outside);$('danger').className=game.heat>0?'hot':'';
     $('danger').textContent=game.heat>0?'OVERHEATING · RETURN TO COURSE':'DANGER · OUT OF BOUNDS';

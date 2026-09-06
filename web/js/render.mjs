@@ -5,7 +5,7 @@ import {AscensionScene,ascensionPose} from './ending.mjs';
 import {titleBounds,frameTitle} from './title-layout.mjs';
 import {updatePortalWhiteLight} from './portal-light.mjs';
 import {RouteGuide,detailWindow,overviewZoom,createInfiniteStarfield,positionInfiniteStarfield} from './space-view.mjs';
-import { C,V,cells,cellColor,clamp,smooth,mix,lerp,rotate,radians,portalMetrics } from './core.mjs';
+import { BALANCE,C,V,cells,cellColor,clamp,smooth,mix,lerp,rotate,radians,portalMetrics } from './core.mjs';
 
 const vec=p=>new T.Vector3(p.x,p.y,p.z);
 const white=[1,1,1],cyan=[0,1,.95],red=[1,.05,.03];
@@ -228,7 +228,7 @@ export class Renderer {
     for(const m of c.modules.slice(first,last+1)) {
       const i=m.index;
       const fade=preview?0:c.fade(i,p,t),alpha=(1-fade)*(fade>.01?.58+.42*(.5+.5*Math.sin(t*Math.PI*22+i)) : 1);
-      const future=!preview&&g.level>=3&&i>reveal;
+      const future=!preview&&g.level>=BALANCE.spaceStartLevel&&i>reveal;
       const col=future?[.45,.48,.52]:[.25,.62,.8];
       const [x0,x1]=c.span(m),map=(x,y,z)=>m.world(x,y,z);
       this.box(map,x0,x1,-7,7,-7,7,col,alpha*(future?.22:.48)*(.18+.82*progress));
@@ -265,7 +265,7 @@ export class Renderer {
     for(const l of c.moduleLasers.slice(first,last+1).flat()) {
       const i=l.module.index;
       const fade=preview?0:c.fade(i,p,t); if(fade>=.995) continue;
-      const future=!preview&&g.level>=3&&i>reveal;
+      const future=!preview&&g.level>=BALANCE.spaceStartLevel&&i>reveal;
       const rp=preview?smooth((progress-.24-i*.045)/.48):c.revealProgress(i,t);
       if(preview&&rp<=0) continue;
       this.laser(l,t,future,(1-fade)*(future?.22:rp),fade);
@@ -453,7 +453,7 @@ export class Renderer {
       this.camera.position.copy(vec(pose.camera));this.camera.lookAt(pose.target.x,pose.target.y,pose.target.z);
       if(pose.scale>.001)this.cubes.cube(pose.position,white,pose.scale,new V(1,.7,.25),pose.angle,pose.alpha);
     } else if(!blank) {
-      let center=(g.locate||g.level>=3)?g.player.origin:g.course.center,zoom=(g.locate||g.level>=3)?48:g.course.zoom;
+      let center=(g.locate||g.level>=BALANCE.spaceStartLevel)?g.player.origin:g.course.center,zoom=(g.locate||g.level>=BALANCE.spaceStartLevel)?48:g.course.zoom;
       if(preview) {
         const q=g.stateTime/7,out=smooth((q-.08)/.48),settle=smooth((q-.8)/.2);
         center=lerp(lerp(g.player.origin,g.course.center,out),center,settle);

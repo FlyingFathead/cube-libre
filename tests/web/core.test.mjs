@@ -39,8 +39,8 @@ test('compact re-coupling target priority matches Python',()=>{
   for(const r of ref.recovery){const p=new Player();p.alive=new Set(r.alive.map(c=>cells.findIndex(v=>v.every((n,i)=>n===c[i]))));
     assert.deepEqual(recoupleTargets(p,125-p.alive.size).map(i=>cells[i]),r.targets);}
 });
-test('movement is world-relative, rush is 2.6x, and preview time does not consume the leg clock',()=>{
-  const g=playing(5);g.flags.damage=false;g.flags.suction=false;
+test('direct-control mode keeps the original world-axis speeds and preview time does not consume the leg clock',()=>{
+  const g=playing(5);g.command('microgravity off');g.flags.damage=false;g.flags.suction=false;
   const before=g.player.origin;advance(g,1,{x:1,y:1,z:1});nearVector(g.player.origin.sub(before).array(),[6,6,6],1e-7);
   const p=g.player.origin;advance(g,1,{x:-1,rush:true});near(g.player.origin.x-p.x,-15.6);
   const intro=new Game();intro.ready(5);advance(intro,8);near(intro.legTime,30);

@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.21.0 — Thrust, drift and heat
+
+- Add gentle microgravity to normal levels, enabled by default. Movement keys
+  build velocity, released keys coast to rest, and opposite input brakes faster.
+  Preserve the original per-axis top speeds and Shift multiplier. Integrate
+  velocity and displacement across braking transitions for consistent motion
+  across frame rates. Keep bonus rolling and ascension motion independent.
+- Add saved Help and uniform console settings for `microgravity` and
+  `overheat_blocks_recoupling`. Disabling microgravity clears drift and restores
+  direct controls; retries, new levels and portal teleports clear drift too.
+- Introduce the re-coupling heat restriction with **HEAT at level 15**, alongside
+  the existing reduction from 2.4 to 1.4 seconds of outside grace. New requests
+  are blocked while overheating and permitted again when heat clears. Refused
+  requests consume no quota; accepted requests finish normally. The restriction
+  checks the heat state independently of its source.
+- Make `BALANCE.heatMinLevel` the shared heat gate. Default: 15. Zero removes the
+  level gate and introduces HEAT after the opening at level 1. The separate
+  `overheat_blocks_recoupling` flag defaults to true and can disable the request
+  restriction. `BALANCE.overheatBlocksRecoupling` sets its initial default.
+- Centralize phase levels, banners and descriptions in `LEVEL_FEATURES`. Use it
+  for phase sequencing and the Help milestone table. Explain both penalties on
+  HEAT's banner and show the restriction in the recovery HUD. Include a complete
+  progression reference in `docs/LEVEL_PROGRESSION.md`.
+- Include repository description, live-game homepage and topic commands in
+  `docs/GITHUB_METADATA.md`. Preserve the prominent README play link and logo.
+- Declare ES modules in the root `package.json`, allowing local syntax checks
+  to recognize bundled Three.js `.js` files without automatic module detection.
+  No npm installation is required.
+
+Validation: 93 test groups pass. The full suite and static gate pass with Node's
+automatic module detection disabled; an additional isolated configuration test
+verifies a zero heat minimum and two introductions sharing a level. Checks cover
+thrust, coasting, countersteering, saved flags, restart behavior, hot/cold request
+gates, quotas, and a complete fifty-leg run with both new mechanics enabled.
+The new movement feel and heat rule still need browser playtesting.
+
 ## 0.20.1 — Let the ending breathe
 
 - Let YOU'VE ASCENDED finish its 1.4-second fade, hold it alone for two seconds,

@@ -212,11 +212,22 @@ to the currently recoverable loose pieces **per request**. The original minimum
 of one piece, eight-second expiry, 1.18-second re-coupling duration, and request
 quota remain. Repeated requests can gather more of the remaining pieces.
 
-`web/js/difficulty.mjs` contains the settings: `entropyStartLevel` defaults to 10,
-`heatDelayLevels` to 5, `levelCap` to 50, and `capLevel` (the curve endpoint) to 50.
-The phase levels and end-of-run logic use these settings. HEAT is derived as five
-levels after the entropy introduction. It subtracts one second from the original
-2.4-second out-of-bounds grace period; subsequent heating and cooling rates remain.
+`web/js/difficulty.mjs` contains `BALANCE` and the ordered `LEVEL_FEATURES`
+registry. `spaceStartLevel` defaults to 3, `timeStartLevel` to 5,
+`entropyStartLevel` to 10, `heatMinLevel` to 15, and `levelCap` and `capLevel`
+(the curve endpoint) to 50. Phase selection, banner wording and the Help table
+use this schedule. See [the complete milestone list](docs/LEVEL_PROGRESSION.md).
+
+HEAT subtracts one second from the original 2.4-second outside grace period.
+From web 0.21.0, the same HEAT gate also blocks new re-coupling requests when
+`overheat_blocks_recoupling` is enabled and `game.heat > 0`. A minimum level of
+**0 removes the gate** and shows HEAT after the opening at level 1. The restriction
+uses the overheating state itself, so it can apply to future heat sources too.
+The current corridor heat becomes active after the outside grace period, and
+returning inside clears it immediately. Cooling restores the ability to request
+re-coupling. Refused requests consume no quota and do not change cooldown or
+fragments; any request already accepted finishes normally. Bonus collection is
+independent. Subsequent heating and cooling rates remain unchanged.
 
 TIME cards return at levels 20, 35 and 50 and show the effective allowance.
 Phase cards, pause and help do not consume the leg timer. New legs, retries and
@@ -224,16 +235,50 @@ reassembly all reset to the current level's allowance. Level-ready cards and Hel
 show the current rules. At level 50 the ten-second warning is active from the
 start of each timed leg.
 
-The movement speeds remain 6 units/second, or 15.6 with Shift. A straight 46-unit
-corridor takes about 7.7 seconds at normal speed, or 3 seconds rushing. A
+Top speeds remain 6 units/second, or 15.6 with Shift. At full speed, a straight
+46-unit corridor takes about 7.7 seconds, or 3 seconds rushing; thrust buildup
+and braking add maneuvering time. A
 simulation test traverses level 50 with rush, active lasers, actual turns and the
 ten-second timer. This demonstrates a viable route, not a guarantee of human
 playability or a complete balance assessment.
 
+## Microgravity and thrust (web 0.21.0)
+
+Normal levels use `PLAYER_PROPULSION` in `web/js/config.mjs`. This is controlled
+inertia: movement builds velocity, releasing keys coasts to rest, and opposite
+input brakes before accelerating the other way. There is no random force or
+downward pull; a newly spawned cube rests until thrust is applied.
+
+| Parameter | Default | Effect |
+| --- | --- | --- |
+| `enabled` | `true` | Initial `microgravity` preference |
+| `speed` | `6` | Maximum speed per world axis, units/second |
+| `rushMultiplier` | `2.6` | Shift maximum: 15.6 units/second |
+| `thrustResponseSeconds` | `0.14` | Approximately 0.32 seconds to reach 90% of target speed |
+| `coastResponseSeconds` | `0.22` | About 1.32 units of total coast from full normal speed; 3.43 from rush |
+| `reverseResponseSeconds` | `0.08` | Faster braking while input opposes current motion |
+
+The exponential response integrates displacement as well as velocity, including
+splitting a step when braking crosses zero. Different frame rates give matching
+trajectories. Existing per-axis speeds, Shift and portal suction are retained.
+Momentum affects physical positions and collisions; no extra GPU passes are used.
+Pause, Help and previews freeze travel. Retries, new levels and portal teleports
+clear drift. Turning microgravity off immediately clears stored velocity and
+restores direct controls. Bonus floor rolling and ascension have their own motion.
+
+Use `toggle microgravity`, `set microgravity off` or `status microgravity`.
+For the heat restriction, use `toggle overheat_blocks_recoupling`,
+`set overheat_blocks_recoupling false` or `status overheat_blocks_recoupling`.
+Both support all normal boolean aliases, have Help checkboxes, and persist as
+`cube-libre-microgravity-v1` and `cube-libre-overheat-blocks-recoupling-v1`.
+The default heat restriction lives in `BALANCE.overheatBlocksRecoupling`;
+its minimum level is `BALANCE.heatMinLevel`. These configuration numbers are
+edited in the file; the console flag changes the restriction's enabled state.
+
 ## Ascension and run statistics
 
 Clearing the current level cap awards the final portal score once, then replaces
-normal level advancement with a single cube ascending over 4.8 seconds. The scene
+normal level advancement with the ten-second starfield ascension scene. The scene
 fades completely white, holds white for two seconds, and fades in:
 
 > YOU'VE ASCENDED
@@ -447,7 +492,8 @@ setting unchanged. `toggle` takes only the name; use `set` for an explicit value
 
 Available booleans: `damage`, `lasers`, `bounds`, `noclip`, `portal`, `suction`,
 `route3d`, `shake`, `spin`, `rotation_shocks`, `portal_white_light`, `culling`,
-`locate` and browser audio `mute`. The visual preferences and mute are saved;
+`microgravity`, `overheat_blocks_recoupling`, `locate` and browser audio `mute`.
+The movement, heat restriction, visual preferences and mute settings are saved;
 debug flags and locate remain session controls. Numeric `level`, `score` and
 `cubes` also support status queries. `set level X` still starts the chosen level.
 Internal animation state and original Python reference constants are not console
@@ -525,14 +571,14 @@ clamping and attempt reset. For example, `set level 20` starts level 20.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.20.1**. The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.21.0**, based on the published **0.20.1** release. The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.20.2`, `0.20.3`, etc. for fixes, and `0.21.0` for the
+For future releases, use `0.21.1`, `0.21.2`, etc. for fixes, and `0.22.0` for the
 next feature release. Update `web/version.json` and the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.20.1.zip` and `v0.20.1`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.21.0.zip` and `v0.21.0`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior
@@ -553,7 +599,7 @@ version and commit fixed unless deliberately rebasing on a different PyGame sour
 - Scores are local to this browser and origin. They do not import the Python
   `cube_libre_scores.json`, sync between devices, or form an online leaderboard.
 - WebGL 2 and JavaScript are required. The author confirmed web
-  0.16.0 works. This release’s new visuals have not been browser-playtested in
+  0.20.1 is live and works. The new movement feel and heat rule have not been browser-playtested in
   the implementation session.
 
 ## Verify or regenerate
@@ -564,6 +610,10 @@ Use Node.js 22 or newer:
 node tools/check_web.mjs
 node --test tests/web/*.test.mjs
 ```
+
+The root `package.json` explicitly declares ES modules, including the bundled
+Three.js `.js` files. Keep it with the package when running checks. There are
+no npm dependencies to install.
 
 Optional regeneration requires a separate checkout of the original Python source.
 Use source commit `ecf8f0148713e5606e64624464eecc4545c71047` to reproduce the
@@ -588,7 +638,10 @@ cover rotated field damage, rendered poses, re-coupling, portal entry, pause and
 respawn behavior, saved settings, exclusion from bonus rounds, all fifty route
 lengths, spatial queries against full scans, overview framing, culling, collapse,
 starfield continuity, a complete 50-leg traversal, hit recoil and settling,
-uniform boolean aliases, precise errors, saved controls and audio mute.
+uniform boolean aliases, precise errors, saved controls and audio mute. Web
+0.21.0 adds frame-rate-independent thrust and braking, coasting limits, drift
+resets, heat gates including a zero minimum, quota preservation, cooling and
+shared milestone sequencing checks.
 
 The original synthesized WAV cache is approximately 10.5 MiB; the web audio is
 approximately 2.6 MiB with both codecs included (roughly 0.75 MiB for the preferred
@@ -609,7 +662,10 @@ and FFmpeg are developer tools only; visitors do not need them.
 | File | Purpose |
 | --- | --- |
 | `web/js/core.mjs` | Browser-independent simulation and debug commands |
-| `web/js/config.mjs` | Original configuration values and web visual/rotation defaults |
+| `web/js/config.mjs` | Original constants and web visual, rotation and propulsion defaults |
+| `web/js/difficulty.mjs` | Balance thresholds, ordered feature introductions, banners and heat restriction |
+| `docs/LEVEL_PROGRESSION.md` | Feature, banner and level reference |
+| `docs/GITHUB_METADATA.md` | Repository description, homepage and topic command |
 | `web/js/ending.mjs` | Blue-grid and starfield ascension scene and motion |
 | `web/js/portal-light.mjs` | Proximity-based portal halo and reusable glow sprite |
 | `web/js/space-view.mjs` | Cached ghost route, overview framing, detail window and infinite starfield |

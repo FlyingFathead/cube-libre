@@ -1,8 +1,8 @@
 // Cube Libre: browser-independent simulation, ported from cube_libre_pygame.py.
 // Rendering, audio, persistence and input are injected by the browser adapter.
-import { C,VISUAL_EFFECTS,PLAYER_ROTATION } from './config.mjs';
+import { C,VISUAL_EFFECTS,PLAYER_ROTATION,PLAYER_PROPULSION } from './config.mjs';
 import {BONUS_SCHEDULE,createBonus,scheduledBonus,recoveredShape,rotateQ} from './bonus.mjs';
-import { BALANCE,difficultyForLevel,introductionsForLevel } from './difficulty.mjs';
+import { BALANCE,difficultyForLevel,introductionsForLevel,recouplingHeatBlocked } from './difficulty.mjs';
 export { BALANCE } from './difficulty.mjs';
 export { C };
 export const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
@@ -111,7 +111,7 @@ export function routeDirections(count,route3d=true) {
   const dirs=[],boxes=[]; let cursor=new V(-23,0,0),last=null;
   const axes=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]].filter(d=>route3d||!d[1]);
   for(let i=0;i<count;i++) {
-    const preferred=(route3d && i+1>=3 ? C.COURSE_ROUTE_3D_SPINE:C.COURSE_ROUTE_2D_SPINE);
+    const preferred=(route3d && i+1>=BALANCE.spaceStartLevel ? C.COURSE_ROUTE_3D_SPINE:C.COURSE_ROUTE_2D_SPINE);
     const candidates=[preferred[i%preferred.length],...axes].filter(d=>!last||V.of(d).dot(last)===0);
     let found=false;
     for(const d of candidates) {
@@ -164,7 +164,7 @@ export class Course {
     this.joints=this.modules.slice(0,-1).map((m,i)=>({index:i,center:m.end(),open:[m.bx.mul(-1).array(),this.modules[i+1].bx.array()]}));
     this.moduleLasers=this.modules.map(m=>laserTemplates.map(t=>new Laser(t,m,level)));
     this.lasers=this.moduleLasers.flat();
-    this.revealed=new Map(level<3?this.modules.map(m=>[m.index,-9999]):[[0,-9999]]);
+    this.revealed=new Map(level<BALANCE.spaceStartLevel?this.modules.map(m=>[m.index,-9999]):[[0,-9999]]);
     this.collapsed=new Map();
     const pts=[];
     for(const m of this.modules) for(const x of this.span(m)) for(const y of [-7,7]) for(const z of [-7,7]) pts.push(m.world(x,y,z));
@@ -212,13 +212,13 @@ export class Course {
     return {index,x};
   }
   revealIndex(p) {
-    if(this.level<3) return this.modules.length-1;
+    if(this.level<BALANCE.spaceStartLevel) return this.modules.length-1;
     const j=this.jointAt(p,1.2);
     return j>=0?Math.min(this.modules.length-1,j+1):this.location(p).index;
   }
   revealProgress(i,t) { const start=this.revealed.get(i); return start===undefined?0:smooth((t-start)/1.45); }
   distanceFade(i,p) {
-    if(this.level<3)return 0;
+    if(this.level<BALANCE.spaceStartLevel)return 0;
     const {index,x}=this.location(p),collapse=i+1;
     if(index<collapse) return 0;
     if(index>collapse) return 1;
@@ -229,13 +229,13 @@ export class Course {
   fade(i,p,t) { return Math.max(this.distanceFade(i,p),this.collapsed.has(i)?smooth((t-this.collapsed.get(i))/1.25):0); }
   activeLaser(l,p,t) {
     const i=l.module.index,{index}=this.location(p);
-    if(this.level>=3 && (i<index-1||i>index+2||i>this.revealIndex(p))) return false;
-    const hardCulled=this.level>=3&&i<index&&this.collapsed.has(i)&&t-this.collapsed.get(i)>=1.25;
+    if(this.level>=BALANCE.spaceStartLevel && (i<index-1||i>index+2||i>this.revealIndex(p))) return false;
+    const hardCulled=this.level>=BALANCE.spaceStartLevel&&i<index&&this.collapsed.has(i)&&t-this.collapsed.get(i)>=1.25;
     return !hardCulled && this.revealProgress(i,t)>=.78 && this.distanceFade(i,p)<.98;
   }
   activeLasers(p,t) {
     const index=this.location(p).index,active=[];
-    const first=this.level<3?0:Math.max(0,index-1),last=this.level<3?this.modules.length-1:Math.min(this.modules.length-1,index+2);
+    const first=this.level<BALANCE.spaceStartLevel?0:Math.max(0,index-1),last=this.level<BALANCE.spaceStartLevel?this.modules.length-1:Math.min(this.modules.length-1,index+2);
     for(let i=first;i<=last;i++)for(const l of this.moduleLasers[i])if(this.activeLaser(l,p,t))active.push(l);
     return active;
   }
@@ -244,7 +244,7 @@ export class Course {
       this.revealed.set(i,t); emit('laser_reveal',this.modules[i].start);
     }
     const {index}=this.location(p);
-    for(let i=0;this.level>=3&&i<=index-1;i++) if(!this.collapsed.has(i)&&this.distanceFade(i,p)>=.04) {
+    for(let i=0;this.level>=BALANCE.spaceStartLevel&&i<=index-1;i++) if(!this.collapsed.has(i)&&this.distanceFade(i,p)>=.04) {
       this.collapsed.set(i,t); emit('collapse',this.modules[i].end()); emit('laser_dissipate');
     }
   }
@@ -292,7 +292,7 @@ export function beginRecouple(player,level) {
 export class Game {
   constructor({rng=Math.random,stats={},save=()=>{}}={}) {
     this.rng=rng; this.save=save; this.stats={best_escape:0,highest_level:1,best_score:0,...stats};
-    this.flags={...C.DEBUG_FLAGS,shake:VISUAL_EFFECTS.shakingEnabled,spin:PLAYER_ROTATION.enabled,portal_white_light:VISUAL_EFFECTS.portalWhiteLight,culling:VISUAL_EFFECTS.courseCulling,rotation_shocks:VISUAL_EFFECTS.rotationShocks}; this.player=new Player(rng); this.t=0; this.angles=[0,0,0];
+    this.flags={...C.DEBUG_FLAGS,shake:VISUAL_EFFECTS.shakingEnabled,spin:PLAYER_ROTATION.enabled,portal_white_light:VISUAL_EFFECTS.portalWhiteLight,culling:VISUAL_EFFECTS.courseCulling,rotation_shocks:VISUAL_EFFECTS.rotationShocks,microgravity:PLAYER_PROPULSION.enabled,overheat_blocks_recoupling:BALANCE.overheatBlocksRecoupling}; this.player=new Player(rng); this.t=0; this.angles=[0,0,0];
     this.level=1; this.score=0; this.locate=false; this.paused=false; this.help=false; this.events=[]; this.pendingIntroductions=[];
     this.consoleSettings={}; // Browser-owned booleans can join the same command interface.
     this.runStats={playSeconds:0,deaths:0,recoupledCubes:0,levelsCleared:0,bonusRounds:0,bonusPieces:0,bonusScore:0}; this.runSummary=null;
@@ -304,12 +304,14 @@ export class Game {
   messageSet(text,time=1.6) { this.message=text; this.messageTime=time; }
   setState(s) { this.state=s; this.stateTime=0; }
   get difficulty() { return difficultyForLevel(this.level); }
+  get recouplingBlockedByHeat() { return recouplingHeatBlocked(this.level,this.heat>0,this.flags.overheat_blocks_recoupling); }
   resetLegClock() {
     this.legTime=this.difficulty.secondsPerLeg;
     this.timeResetNotice=this.difficulty.timed?1.6:0;
   }
   resetAttempt() {
     this.player.reset(); this.course=new Course(this.level,this.flags.route3d); this.geometryVersion=(this.geometryVersion||0)+1;
+    this.driftVelocity=new V();
     this.damageTimer=.45; this.legTime=this.difficulty.secondsPerLeg; this.timedModule=0; this.timeResetNotice=0;
     this.outsideTime=0; this.heat=0; this.lastHeat=0; this.coolTime=0; this.cool=0;
     this.recoupling=[]; this.recoupleTime=0; this.requests=[]; this.cooldown=0;
@@ -408,6 +410,7 @@ export class Game {
   }
   requestRecouple() {
     if(this.state!=='playing'||this.paused||this.help) return;
+    if(this.recouplingBlockedByHeat) { this.messageSet('TOO HOT TO RE-COUPLE · RETURN INSIDE',1.45); return; }
     if(!this.recoupling.length&&!this.player.fragments.some(f=>f.age<7.95)) { this.messageSet('NO RECOVERABLE LOOSE CELLS',.75); return; }
     this.requests=this.requests.filter(t=>t>=this.t-10);
     if(this.requests.length>=5) { this.cooldown=Math.max(0,this.requests[0]+10-this.t); this.messageSet('RE-COUPLING ON COOLDOWN',1.45); return; }
@@ -417,12 +420,41 @@ export class Game {
     if(this.recoupling.length) { this.emit('recouple'); this.messageSet(`RE-COUPLING REQUESTED: ${this.recoupling.length} CELLS`); }
   }
   move(dt,input) {
-    const step=6*(input.rush?2.6:1)*dt;
-    this.player.origin=this.player.origin.add(new V(clamp(input.x||0,-1,1),clamp(input.y||0,-1,1),clamp(input.z||0,-1,1)).mul(step));
+    const rules=PLAYER_PROPULSION,speed=rules.speed*(input.rush?rules.rushMultiplier:1);
+    const target=new V(clamp(input.x||0,-1,1),clamp(input.y||0,-1,1),clamp(input.z||0,-1,1)).mul(speed);
+    if(this.flags.microgravity) {
+      const travel=new V();
+      for(const axis of ['x','y','z']) {
+        let velocity=this.driftVelocity[axis],remaining=dt;
+        const goal=target[axis];
+        // Integrate counter-thrust to the zero crossing, then accelerate anew.
+        // Splitting there keeps the response independent of the frame rate.
+        if(velocity*goal<0) {
+          const tau=rules.reverseResponseSeconds,crossing=tau*Math.log1p(-velocity/goal),brakeTime=Math.min(dt,crossing);
+          const gain=-Math.expm1(-brakeTime/tau);
+          travel[axis]=goal*brakeTime+(velocity-goal)*tau*gain;
+          velocity=dt>=crossing?0:velocity+(goal-velocity)*gain;
+          remaining-=brakeTime;
+        }
+        if(remaining>0) {
+          const tau=goal===0?rules.coastResponseSeconds:rules.thrustResponseSeconds,gain=-Math.expm1(-remaining/tau);
+          travel[axis]+=goal*remaining+(velocity-goal)*tau*gain;
+          velocity+=(goal-velocity)*gain;
+        }
+        this.driftVelocity[axis]=velocity;
+      }
+      this.player.origin=this.player.origin.add(travel);
+    } else {
+      this.driftVelocity=new V();this.player.origin=this.player.origin.add(target.mul(dt));
+    }
     if(this.flags.suction) suction(this.course,this.player,dt);
     if(!this.flags.noclip) {
       const b=this.course.bounds,p=this.player.origin;
-      p.x=clamp(p.x,b[0]-5,b[1]+5); p.y=clamp(p.y,b[2]-5,b[3]+5); p.z=clamp(p.z,b[4]-5,b[5]+5);
+      for(const [i,axis] of ['x','y','z'].entries()) {
+        const bounded=clamp(p[axis],b[i*2]-5,b[i*2+1]+5);
+        if(bounded!==p[axis])this.driftVelocity[axis]=0;
+        p[axis]=bounded;
+      }
     }
   }
   updatePlayerSpin(dt) {
@@ -543,7 +575,11 @@ export class Game {
     this.impacts=this.impacts.filter(p=>p.age<.22).slice(-80);
     switch(this.state) {
       case 'opening_intro':
-        if(this.stateTime>=OPENING_DURATION) { this.openingTransition=true; this.setState('level_ready'); } break;
+        if(this.stateTime>=OPENING_DURATION) {
+          const phases=introductionsForLevel(this.level,this.flags.route3d);
+          this.openingTransition=true;this.pendingIntroductions=phases.slice(1);
+          this.setState(phases[0]||'level_ready');
+        } break;
       case 'level_ready':
         if(this.stateTime>=1.65) { this.setState('course_materialize'); this.emit('materialize'); } break;
       case 'space_intro': case 'time_intro': case 'entropy_intro': case 'heat_intro':
@@ -618,6 +654,7 @@ export class Game {
       get:()=>this.flags[key],set:v=>{
         this.flags[key]=v;
         if(key==='spin'&&!v)this.player.setSpinAngles(0,0,0);
+        if(key==='microgravity')this.driftVelocity=new V();
         if(key==='rotation_shocks'&&!v) {this.rotationShock.angle=new V();this.rotationShock.velocity=new V();}
         if(key==='route3d') {this.course=new Course(this.level,v);this.geometryVersion++;}
       }
@@ -637,7 +674,7 @@ export class Game {
       return `Status for ${key} is: ${requireSetting(key).get()?'Enabled':'Disabled'}`;
     };
     const setFlag=(key,v)=>{requireSetting(key).set(v);return `${key} set to ${v}`;};
-    if(cmd==='help'||cmd==='?') return 'help, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light culling locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nPreviews: test ending_1, test bonus_round_1, bonus <type>';
+    if(cmd==='help'||cmd==='?') return 'help, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light culling microgravity overheat_blocks_recoupling locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nPreviews: test ending_1, test bonus_round_1, bonus <type>';
     if(cmd==='flags')return [...settings.keys()].map(status).join('\n');
     if(['get','view','status'].includes(cmd)||['set','flag'].includes(cmd)&&value===undefined)return status(arg);
     if(cmd==='level'||cmd==='set'&&arg==='level') {
@@ -657,7 +694,7 @@ export class Game {
     if(cmd==='title') {this.title(); return 'Title screen';}
     if(cmd==='kill') {this.player.alive.clear(); this.player.fragments=[]; return 'Cube killed';}
     if(cmd==='heal'||cmd==='cubes') {this.player.setCount(cmd==='heal'?125:number(arg,0,125)); return `Cubes: ${this.player.alive.size}`;}
-    if(cmd==='portal') {this.player.origin=this.course.portal.world(15); return 'Moved near portal';}
+    if(cmd==='portal') {this.player.origin=this.course.portal.world(15);this.driftVelocity=new V(); return 'Moved near portal';}
     if(cmd==='pos'||cmd==='where') return `Position ${this.player.origin.array().map(n=>n.toFixed(2)).join(', ')}\nLeg ${this.course.location(this.player.origin).index+1}/${this.course.modules.length}`;
     if(cmd==='route') return this.course.modules.map(m=>m.bx.array().join(',')).join(' → ');
     if(cmd==='score') {if(arg!==undefined) this.score=number(arg,0,Number.MAX_SAFE_INTEGER); return `Score: ${this.score}`;}
