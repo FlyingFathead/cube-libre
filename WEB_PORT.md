@@ -156,7 +156,7 @@ that destination. Bonus test points never alter score or records; entering the n
 regular level updates the highest-level record normally. The console closes and resumes simulation
 for these commands; this also fixes the old ending preview's accidental re-pause.
 
-## Update notification and mobile placeholder
+## Update notification and mobile entry
 
 `web/version.json` is the authoritative version file. After editing it or adding
 modules, run `node tools/prepare_web_release.mjs` and commit the generated
@@ -200,10 +200,12 @@ The new version becomes discoverable after a successful Pages deployment, not
 merely after editing a repository file or creating a Git tag. Older builds without
 the startup loader must first refresh into 0.23.0 or later.
 
-Mobile browsers show the requested desktop-play notice once per tab session, with
-**TAP HERE TO CONTINUE** and Space as an alternative. This is a placeholder, not a
-separate mobile version. The existing touch buttons remain available, with WASD
-labels adapted for the floor bonus. A full mobile control redesign is deferred.
+Mobile browsers show a beta notice once per tab session. **TRY MOBILE BETA**
+(or Space) saves touch mode; **USE KEYBOARD / CONTROLLER** saves desktop controls.
+The notice still recommends a desktop with a keyboard or analog controller.
+Automatic detection includes Android, iPhone, iPad, desktop-identifying iPads
+and coarse-pointer devices. An explicit saved choice overrides detection.
+
 Help ends with the current game version, author/profile link,
 **© 2024–2026 FlyingFathead**, and the PyGame v0.15.79 provenance.
 
@@ -408,10 +410,11 @@ flashes **TIME RESET ... FOR NOW** for 1.6 seconds when timed play begins, a new
 leg resets the clock, or a death/reassembly restarts it. Its lifetime and blinking
 pause with the game, and it shares the bottom stack with the other messages.
 
-## Tabbed Help and public options (web 0.23.1)
+## Tabbed Help and public options
 
-Help has three sections: **KEYBOARD**, **CONTROLLER** and **OPTIONS**. The connected
-controller determines the initial controls tab; either tab remains available.
+Help has four sections: **KEYBOARD**, **CONTROLLER**, **TOUCH** and **OPTIONS**.
+Touch mode opens Touch; otherwise a connected controller opens Controller.
+The settings cog opens Options directly. Every tab remains available.
 Keyboard maps adapt to normal/bonus play. A tablist uses roving keyboard focus,
 Left/Right arrows and Home/End. Clicking a tab or activating it with controller A
 shows exactly one panel. The right stick scrolls that panel, and inactive-panel
@@ -420,7 +423,8 @@ visible while content scrolls, including in narrow windows. Credits stay beneath
 the tabs. Game rules/milestones are inside a disclosure under Keyboard controls;
 controller navigation can focus and open that disclosure too.
 
-The public options allow only `shake`, `rotation_shocks` and `portal_white_light`.
+Public Options includes input mode, optional touch helper areas, and the visual
+effects `shake`, `rotation_shocks` and `portal_white_light`.
 They retain browser persistence and the existing console aliases. `spin` affects
 physical collisions; `microgravity`, the HEAT restriction and shutters affect
 rules. Culling exposes extra route detail when disabled. These settings stay
@@ -735,11 +739,65 @@ Holding LB/X does not repeatedly spend the re-coupling quota.
 `cube-libre-controller-deadzone-v1`. Both use set/view/status; the boolean supports
 toggle. A controller start proceeds without waiting for browser audio permission;
 a click or keyboard gesture can enable sound afterward. No npm dependency,
-custom button-remapping UI, rumble or dedicated mobile edition is added.
+custom controller button-remapping UI or rumble is added. Touch beta uses the same game.
 
 Reference: [MDN Gamepad API](https://developer.mozilla.org/en-US/docs/Web/API/Gamepad_API/Using_the_Gamepad_API),
 [standard mapping](https://w3c.github.io/gamepad/#remapping).
 
+
+## Mobile touch beta (web 0.24.0)
+
+`web/js/mobile.mjs` translates pointer gestures into ordinary movement inputs.
+It never changes player positions directly. `Renderer.touchView` projects the
+surviving cell centres and provides the camera basis; a bounded SVG overlay draws
+an orb and six labelled axis handles. Overlapping or view-aligned handles fan
+apart, so a depth-facing axis always has a touchable target. The selected world
+axis and its drag direction are locked until release. An outer-side grab selects
+the closest handle; a centre grab produces view-relative planar thrust. Bonus
+play instead maps dragging to floor X/Z, with forward toward the ramp.
+
+The initial touch anchors the grey rush ring. Analog strength reaches normal
+thrust before the ring; crossing it engages the existing rush multiplier. Moving
+10 CSS pixels back inside disengages rush, avoiding boundary chatter. Released
+input becomes zero; the existing propulsion model supplies coasting and braking.
+All gestures are cleared on pause, Help, mode changes, resize, visibility loss
+and pointer cancellation. A held finger needs a new press to start again.
+Orientation changes and leaving fullscreen during touch play pause the game.
+
+The circular re-couple control checks the actual fragment lifetime, recovery,
+heat and request quota. Disabled states cannot waste requests. Pointer presses
+trigger once; normal keyboard activation is also supported. Optional thumb drag
+and view-depth areas can be enabled in Options. They are hidden by default.
+
+| Console setting | Default | Meaning / range |
+| --- | --- | --- |
+| `mobile_mode` | `0` | 0 automatic, 1 touch beta, 2 keyboard/controller; saved |
+| `touch_helpers` | `false` | Extra drag/depth thumb areas; saved boolean |
+| `touch_rush_radius` | `56` | Rush distance in CSS pixels; 38–140 |
+| `touch_deadzone` | `6` | Ignore small finger motion in CSS pixels; 0–24 |
+| `touch_grab_radius` | `44` | Minimum grab-region radius in CSS pixels; 24–100 |
+| `mobile_pixel_ratio` | `1.25` | Touch drawing-resolution cap; 0.5–2 |
+
+These settings appear in `viewconfig` and support `set`, `view` and `status`;
+`touch_helpers` also supports `toggle` and all usual boolean aliases. Numeric
+tuning other than input mode lasts for this page session. Preferences use
+`cube-libre-input-mode-v1` and `cube-libre-touch-helpers-v1`. They never overwrite
+saved gameplay flags or records. Ordinary desktop drawing retains its ratio cap.
+
+Fullscreen is an enhancement; touch controls must also work in a normal browser
+view. iPhone users can use Safari's home-screen web-app launch when available.
+No service worker, offline cache or native app is included. CSS suppresses page
+panning/zooming on game controls and leaves Help scrollable. Safe-area insets keep
+actions away from cutouts and system edges; OS navigation cannot be locked out.
+Sound starts from a gesture, with touch play continuing while audio downloads.
+
+Validation covers all six pulls, changing view orientation, tiny surviving
+bodies, free dragging, analog thrust/coasting, rush hysteresis, two-finger helper
+input, cancelled gestures, pauses, recouple states, saved modes, entry choices,
+Help tabs and bonus rolling. The touch diagram is visually checked. Real mobile
+hardware, browser layout and performance testing remain outstanding: the cloud
+browser could not access the local preview. Test landscape and portrait on
+Android and iOS/iPadOS before treating the beta as production mobile support.
 
 ## Versioning
 
@@ -747,14 +805,14 @@ Reference: [MDN Gamepad API](https://developer.mozilla.org/en-US/docs/Web/API/Ga
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.23.1**, based on published **0.23.0**, commit `acbb831`. The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.24.0**, based on published **0.23.1**, commit `ddbd545`. The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.23.2`, `0.23.3`, etc. for fixes, and `0.24.0` for the
+For future releases, use `0.24.1`, `0.24.2`, etc. for fixes, and `0.25.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.23.1.zip` and `v0.23.1`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.24.0.zip` and `v0.24.0`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior

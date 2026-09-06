@@ -7,7 +7,7 @@
   <meta name="description" content="Cube Libre web version by FlyingFathead. A rotating 3D survival puzzle. Reach the portal with your remaining pieces.">
   <title>Cube Libre · FlyingFathead</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=0.23.1">
+  <link rel="stylesheet" href="./style.css?v=0.24.0">
 </head>
 <body>
   <main id="game" tabindex="-1" aria-label="Cube Libre game">
@@ -17,8 +17,9 @@
     <div id="title" hidden>
       <button id="start" aria-label="Start a new run"><canvas id="start-dots" aria-hidden="true"></canvas><span class="sr-only">Space / Enter = New run</span></button>
       <div class="title-info">
-        <p><b>A / D</b> move X <span>·</span> <b>W / S</b> move Y <span>·</span> <b>Q / E</b> move Z</p>
-        <p><b>Shift</b> rush <span>·</span> <b>C</b> re-couple <span>·</span> <b>H</b> help</p>
+        <p class="title-keyboard-tip"><b>A / D</b> move X <span>·</span> <b>W / S</b> move Y <span>·</span> <b>Q / E</b> move Z</p>
+        <p class="title-keyboard-tip"><b>Shift</b> rush <span>·</span> <b>C</b> re-couple <span>·</span> <b>H</b> help</p>
+        <p id="title-touch-tip" hidden>TOUCH BETA · Grab a side of the orb and pull<br>Beyond the grey ring: rush · RECOUPLE to recover</p>
         <p id="controller-status" role="status"></p>
         <p id="title-stats" title="Top level is your personal best saved in this browser, across runs."></p>
         <p class="credits">by <a href="https://github.com/FlyingFathead/cube-libre" target="_blank" rel="noopener">FlyingFathead</a> <span>·</span> <a href="https://github.com/FlyingFathead/cube-libre-pygame" target="_blank" rel="noopener">PyGame original</a> <span>·</span> w/ thanks to ChaosWhisperer</p>
@@ -56,19 +57,30 @@
       <div id="time-reset" role="status" hidden>TIME RESET ... FOR NOW</div>
       <div id="countdown" role="timer" aria-live="off" hidden><strong id="countdown-text"></strong></div>
       <div id="audio-status" role="status"></div>
-      <div id="touch-controls" aria-label="Touch movement controls" hidden>
-        <div class="touch-pad"><button data-key="KeyW" aria-label="Move positive Y">W +Y</button><button data-key="KeyA" aria-label="Move negative X">A −X</button><button data-key="KeyS" aria-label="Move negative Y">S −Y</button><button data-key="KeyD" aria-label="Move positive X">D +X</button></div>
-        <div class="touch-pad"><button data-key="KeyQ" aria-label="Move positive Z">Q +Z</button><button data-key="KeyE" aria-label="Move negative Z">E −Z</button><button data-key="ShiftLeft">Rush</button><button id="touch-c">Re-couple</button></div>
-      </div>
     <nav id="toolbar" aria-label="Game controls" hidden>
       <button id="pause" title="Pause / resume (P)">Pause</button>
       <button id="locate" title="Locate camera (L)" aria-pressed="false">Locate</button>
       <button id="help" title="Help (H)">Help</button>
+      <button id="settings" title="Settings and input mode" aria-label="Settings">⚙</button>
       <button id="mute" title="Mute / unmute (M)" aria-pressed="false">Sound on</button>
       <button id="fullscreen" title="Fullscreen (Alt+F / F11)">Fullscreen</button>
       <button id="menu" title="Main menu (Esc)">Menu</button>
     </nav>
     </div>
+    <svg id="touch-guide" aria-hidden="true" hidden>
+      <defs><radialGradient id="touch-orb-fill"><stop offset="0" stop-color="#779fa0" stop-opacity="0.01"/><stop offset="1" stop-color="#afd3d4" stop-opacity="0.12"/></radialGradient><marker id="touch-arrow-tip" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 6 3 0 6Z" fill="#d8efed"/></marker></defs>
+      <circle id="touch-grab"/>
+      <g id="touch-axes"><line id="touch-axis-line-0" class="axis-x" marker-end="url(#touch-arrow-tip)"/><circle id="touch-axis-dot-0" class="axis-x" r="18"/><text id="touch-axis-text-0" class="axis-x" text-anchor="middle"></text><line id="touch-axis-line-1" class="axis-x" marker-end="url(#touch-arrow-tip)"/><circle id="touch-axis-dot-1" class="axis-x" r="18"/><text id="touch-axis-text-1" class="axis-x" text-anchor="middle"></text><line id="touch-axis-line-2" class="axis-y" marker-end="url(#touch-arrow-tip)"/><circle id="touch-axis-dot-2" class="axis-y" r="18"/><text id="touch-axis-text-2" class="axis-y" text-anchor="middle"></text><line id="touch-axis-line-3" class="axis-y" marker-end="url(#touch-arrow-tip)"/><circle id="touch-axis-dot-3" class="axis-y" r="18"/><text id="touch-axis-text-3" class="axis-y" text-anchor="middle"></text><line id="touch-axis-line-4" class="axis-z" marker-end="url(#touch-arrow-tip)"/><circle id="touch-axis-dot-4" class="axis-z" r="18"/><text id="touch-axis-text-4" class="axis-z" text-anchor="middle"></text><line id="touch-axis-line-5" class="axis-z" marker-end="url(#touch-arrow-tip)"/><circle id="touch-axis-dot-5" class="axis-z" r="18"/><text id="touch-axis-text-5" class="axis-z" text-anchor="middle"></text></g><line id="touch-tether"/>
+      <circle id="touch-ring"/><circle id="touch-knob" r="9"/>
+      <text id="touch-rush-label" text-anchor="middle"></text>
+    </svg>
+    <section id="touch-controls" aria-label="Touch controls" hidden>
+      <div class="touch-left"><div id="touch-steer" role="group" aria-label="Drag to steer; beyond the grey ring to rush"><span>✥</span><small>DRAG</small></div></div>
+      <div class="touch-right">
+        <div id="touch-depth" role="group" aria-label="Drag up to move away from the camera; down to move toward it"><span>↑ AWAY</span><strong>DEPTH</strong><span>↓ TOWARD</span></div>
+        <div id="touch-recoup-wrap"><button id="touch-c" aria-label="Re-couple: no pieces" disabled><svg viewBox="0 0 60 60" aria-hidden="true"><path d="M30 5 53 18 53 43 30 56 7 43 7 18Z"/><path d="m7 18 23 13 23-13M30 31v25M18.5 11.5l23 13v25M41.5 11.5l-23 13v25M7 30.5l23 13 23-13"/></svg></button><strong>RECOUPLE</strong><small id="touch-recouple-status">NO PIECES</small></div>
+      </div>
+    </section>
     <dialog id="modal" aria-labelledby="modal-title"><h2 id="modal-title"></h2><div id="modal-body"></div><div id="modal-actions"></div></dialog>
     <dialog id="console" aria-labelledby="console-title">
       <header><h2 id="console-title">CUBE LIBRE CONSOLE</h2><button id="console-close" aria-label="Close console">Close</button></header>
@@ -77,27 +89,28 @@
     </dialog>
     <noscript>Cube Libre requires JavaScript and WebGL 2. Enable JavaScript to play.</noscript>
   </main>
-  <script id="release-data" type="application/json">{"name":"Cube Libre","edition":"web","version":"0.23.1","repository":"https://github.com/FlyingFathead/cube-libre","upstream":{"edition":"pygame","version":"0.15.79","repository":"https://github.com/FlyingFathead/cube-libre-pygame","commit":"ecf8f0148713e5606e64624464eecc4545c71047"}}</script>
+  <script id="release-data" type="application/json">{"name":"Cube Libre","edition":"web","version":"0.24.0","repository":"https://github.com/FlyingFathead/cube-libre","upstream":{"edition":"pygame","version":"0.15.79","repository":"https://github.com/FlyingFathead/cube-libre-pygame","commit":"ecf8f0148713e5606e64624464eecc4545c71047"}}</script>
   <script id="release-imports" type="importmap">{
   "imports": {
-    "./js/app.mjs": "./js/app.mjs?v=0.23.1",
-    "./js/audio.mjs": "./js/audio.mjs?v=0.23.1",
-    "./js/bonus.mjs": "./js/bonus.mjs?v=0.23.1",
-    "./js/changes.mjs": "./js/changes.mjs?v=0.23.1",
-    "./js/config.mjs": "./js/config.mjs?v=0.23.1",
-    "./js/console-config.mjs": "./js/console-config.mjs?v=0.23.1",
-    "./js/core.mjs": "./js/core.mjs?v=0.23.1",
-    "./js/difficulty.mjs": "./js/difficulty.mjs?v=0.23.1",
-    "./js/ending.mjs": "./js/ending.mjs?v=0.23.1",
-    "./js/gamepad.mjs": "./js/gamepad.mjs?v=0.23.1",
-    "./js/help-tabs.mjs": "./js/help-tabs.mjs?v=0.23.1",
-    "./js/portal-light.mjs": "./js/portal-light.mjs?v=0.23.1",
-    "./js/render.mjs": "./js/render.mjs?v=0.23.1",
-    "./js/space-view.mjs": "./js/space-view.mjs?v=0.23.1",
-    "./js/title-layout.mjs": "./js/title-layout.mjs?v=0.23.1",
-    "./js/updates.mjs": "./js/updates.mjs?v=0.23.1",
-    "./vendor/three.core.min.js": "./vendor/three.core.min.js?v=0.23.1",
-    "./vendor/three.module.min.js": "./vendor/three.module.min.js?v=0.23.1"
+    "./js/app.mjs": "./js/app.mjs?v=0.24.0",
+    "./js/audio.mjs": "./js/audio.mjs?v=0.24.0",
+    "./js/bonus.mjs": "./js/bonus.mjs?v=0.24.0",
+    "./js/changes.mjs": "./js/changes.mjs?v=0.24.0",
+    "./js/config.mjs": "./js/config.mjs?v=0.24.0",
+    "./js/console-config.mjs": "./js/console-config.mjs?v=0.24.0",
+    "./js/core.mjs": "./js/core.mjs?v=0.24.0",
+    "./js/difficulty.mjs": "./js/difficulty.mjs?v=0.24.0",
+    "./js/ending.mjs": "./js/ending.mjs?v=0.24.0",
+    "./js/gamepad.mjs": "./js/gamepad.mjs?v=0.24.0",
+    "./js/help-tabs.mjs": "./js/help-tabs.mjs?v=0.24.0",
+    "./js/mobile.mjs": "./js/mobile.mjs?v=0.24.0",
+    "./js/portal-light.mjs": "./js/portal-light.mjs?v=0.24.0",
+    "./js/render.mjs": "./js/render.mjs?v=0.24.0",
+    "./js/space-view.mjs": "./js/space-view.mjs?v=0.24.0",
+    "./js/title-layout.mjs": "./js/title-layout.mjs?v=0.24.0",
+    "./js/updates.mjs": "./js/updates.mjs?v=0.24.0",
+    "./vendor/three.core.min.js": "./vendor/three.core.min.js?v=0.24.0",
+    "./vendor/three.module.min.js": "./vendor/three.module.min.js?v=0.24.0"
   }
 }</script>
   <script>

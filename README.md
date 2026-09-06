@@ -1,9 +1,10 @@
-# Cube Libre — Web v0.23.1
+# Cube Libre — Web v0.24.0
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
 <p align="center"><strong>Play now in your browser. No download or installation needed.</strong><br>
-Best played on a desktop computer with a keyboard or an analog game controller.</p>
+Best played on a desktop computer with a keyboard or an analog game controller.<br>
+<strong>Mobile touch controls are now available in beta.</strong></p>
 
 <p align="center">
   <a href="https://flyingfathead.github.io/cube-libre/">
@@ -22,21 +23,46 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.23.1
+## Web release 0.24.0 · Mobile controls beta
 
-Help is now split into **KEYBOARD | CONTROLLER | OPTIONS**. Each controls tab
-contains its diagram and action list; the keyboard map adapts for bonus rounds.
-Options contains only **Shaking and heat flashes**, **Hit rotation shocks** and
-**Portal white light**. Tabs and the Back button remain visible while the active
-section scrolls. Mouse, keyboard arrows/Tab and controller navigation work across
-the sections. Game rules and milestones are collapsed beneath the keyboard list;
-credits remain at the bottom.
+Android, iPhone and iPad visitors get two choices on the **MOBILE BROWSER DETECTED**
+screen: **TRY MOBILE BETA** or **USE KEYBOARD / CONTROLLER**. Space chooses the beta.
+The choice is saved in this browser. The same game and Pages address serve both
+control modes; a desktop keyboard or analog controller remains recommended.
 
-Gameplay switches are console-only: body auto-rotation, microgravity, the heat
-re-coupling restriction and all shutter switches. Culling is console-only too,
-since disabling it exposes extra route detail. Their existing saved values and
-console aliases remain available for development. No gameplay tuning is exposed
-in Options. The separate reset dialog is now labeled **RESTART / RETRY**.
+**Grab the cube itself.** A faint orb surrounds your surviving pieces, with
+cyan X, gold Y and pink Z pull arrows. Grab a labelled side and drag along its
+beam to move on that axis. The selected axis stays locked until you release,
+even as the view rotates. All six grab points remain touchable as overlays,
+including underneath/far-side directions and when only one mini-cube survives.
+Grab near the orb's centre for free dragging in the screen plane.
+
+A **grey ring marks the rush threshold** around your initial touch point.
+Pull beyond it to rush; return inside to slow down. Release to coast, or pull
+opposite your current movement to brake. Existing acceleration, speed limits,
+collisions, timers, heat, entropy and shutter rules still apply.
+
+The circular **RECOUPLE** button has a whole-cube symbol. It lights up when
+pieces are available and dims when there is nothing to recover. Its small label
+also explains active recovery, heat restrictions and cooldown. A press requests
+re-coupling once; holding it does not repeatedly spend your quota.
+
+**⚙ opens Options directly.** Choose Automatic, Touch beta or Keyboard/controller.
+Optional extra drag/depth thumb areas are off by default. Help now has
+**KEYBOARD | CONTROLLER | TOUCH | OPTIONS**, including a touch diagram.
+Gameplay difficulty switches remain console-only; public Options covers input
+preferences and the existing visual effects. In bonus rounds, drag to roll on
+the floor and collect by contact; axis/depth and re-coupling controls are hidden.
+
+Touch mode caps drawing resolution at 1.25 device pixels per CSS pixel. Controls
+respect screen insets, gestures release on interruptions, and orientation changes
+pause play. Fullscreen is optional, including on iPhone. System navigation
+remains available. Touch starts proceed while audio loads in the background.
+
+**Beta testing:** automated input, projection and regression checks pass; the
+Help diagram was visually inspected. The browser preview could not access the
+local game in this environment. Real Android/iPhone/iPad gameplay, layout,
+frame rate and control comfort still need device testing. Landscape is suggested.
 
 ### Retained from 0.23.0
 
@@ -263,9 +289,8 @@ and on return to the tab. A newer version pauses play and shows the update notic
 Space dismisses it, and F5 / Refresh reloads the game. Deployment on GitHub Pages
 is enough; there is no GitHub API or separate update server.
 
-Help includes **© 2024–2026 FlyingFathead**. Mobile browsers get a desktop-play
-notice with **TAP HERE TO CONTINUE**. This is a placeholder for future mobile work;
-existing touch buttons are available, but a dedicated mobile edition is deferred.
+Help includes **© 2024–2026 FlyingFathead**. The mobile notice offers the touch
+beta or keyboard/controller mode. You can change the choice later through ⚙ Options.
 
 ## Difficulty and the current ending
 

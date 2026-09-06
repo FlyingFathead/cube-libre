@@ -28,7 +28,7 @@ const html=readFileSync(resolve(web,'index.html'),'utf8');
 for(const m of html.matchAll(/(?:src|href)="([^"]+)"/g))resolveRef(resolve(web,'index.html'),m[1]);
 const ids=[...html.matchAll(/id="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length,'Duplicate HTML id');
 const app=readFileSync(resolve(web,'js/app.mjs'),'utf8');
-for(const m of app.matchAll(/\$\('([^']+)'\)/g))assert.ok(ids.includes(m[1]),`Unknown UI id: ${m[1]}`);
+for(const src of [app,readFileSync(resolve(web,'js/mobile.mjs'),'utf8')])for(const m of src.matchAll(/\$\('([^']+)'\)/g))assert.ok(ids.includes(m[1]),`Unknown UI id: ${m[1]}`);
 const manifest=JSON.parse(readFileSync(resolve(web,'assets/audio/manifest.json')));
 const release=JSON.parse(readFileSync(resolve(web,'version.json')));
 assert.match(release.version,/^\d+\.\d+\.\d+$/,'Expected a major.minor.patch web version');

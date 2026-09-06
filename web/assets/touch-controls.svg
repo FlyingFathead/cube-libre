@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="480" viewBox="0 0 600 480">
+ <defs><radialGradient id="orb"><stop stop-color="#072128" stop-opacity="0"/><stop offset="1" stop-color="#7aafb7" stop-opacity=".2"/></radialGradient></defs>
+ <rect width="600" height="480" rx="18" fill="#071218"/>
+ <g font-family="monospace" text-anchor="middle" fill="#dcf7f3">
+  <text x="270" y="42" font-size="25">GRAB A SIDE · PULL</text>
+  <text x="550" y="44" font-size="33">⚙</text><text x="550" y="69" font-size="14">Options</text>
+  <circle cx="250" cy="215" r="88" fill="url(#orb)" stroke="#6c9397"/>
+  <g stroke-width="2" fill="#061217">
+   <path d="M162 215H338" stroke="#88eaff"/><path d="m206 139 88 152" stroke="#ffdb75"/><path d="m206 291 88-152" stroke="#f4a7ed"/>
+   <g stroke="#88eaff"><circle cx="162" cy="215" r="22"/><circle cx="338" cy="215" r="22"/></g>
+   <g stroke="#ffdb75"><circle cx="206" cy="139" r="22"/><circle cx="294" cy="291" r="22"/></g>
+   <g stroke="#f4a7ed"><circle cx="206" cy="291" r="22"/><circle cx="294" cy="139" r="22"/></g>
+   <path d="m225 201 25-15 25 15v28l-25 15-25-15z m0 0 25 14 25-14 m-25 14v29" stroke="#d5fff3" fill="#244044"/>
+  </g>
+  <g font-size="20" font-weight="bold"><text x="162" y="222" fill="#88eaff">−X</text><text x="338" y="222" fill="#88eaff">+X</text><text x="206" y="146" fill="#ffdb75">+Y</text><text x="294" y="298" fill="#ffdb75">−Y</text><text x="294" y="146" fill="#f4a7ed">+Z</text><text x="206" y="298" fill="#f4a7ed">−Z</text></g>
+  <circle cx="338" cy="215" r="63" fill="none" stroke="#a2a8aa" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M360 215H466l-12-8m12 8-12 8" stroke="#a7fff4" stroke-width="3" fill="none"/>
+  <circle cx="480" cy="215" r="10" fill="#a7fff4"/><text x="480" y="184" font-size="23" fill="#fff1a9">RUSH</text>
+  <text x="180" y="366" font-size="20">Grey ring marks rush</text><text x="180" y="394" font-size="20">Release to coast</text>
+  <circle cx="480" cy="362" r="38" fill="#0a4442" stroke="#a7fff4" stroke-width="2"/>
+  <path d="m461 352 19-11 19 11v22l-19 11-19-11z m0 0 19 11 19-11 m-19 11v22" stroke="#d5fff3" fill="#244044" stroke-width="2"/>
+  <text x="480" y="427" font-size="20">RECOUPLE</text>
+  <text x="300" y="460" font-size="19">Grab the centre for free dragging.</text>
+ </g>
+</svg>

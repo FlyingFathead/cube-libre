@@ -31,7 +31,7 @@ test('offline, invalid JSON, missing files and overlapping checks never interrup
 test('update and mobile notices pause the real modal flow and Space dismisses without advancing play',async()=>{
   const {readFileSync}=await import('node:fs'),{default:vm}=await import('node:vm');
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
-  const element=()=>({open:false,dataset:{},children:[],textContent:'',append(...xs){this.children.push(...xs);},replaceChildren(){this.children=[];},querySelector(){return this.children[0];},focus(){},showModal(){this.open=true;},close(){this.open=false;}});
+  const element=()=>({open:false,dataset:{},children:[],textContent:'',append(...xs){this.children.push(...xs);},replaceChildren(){this.children=[];},get firstElementChild(){return this.children[0];},click(){this.onclick?.();},querySelector(){return this.children[0];},focus(){},showModal(){this.open=true;},close(){this.open=false;}});
   const elements={modal:element(),'modal-title':element(),'modal-body':element(),'modal-actions':element(),console:element()};
   const handlers={},context={$:id=>elements[id],document:{createElement:element},window:{addEventListener(type,fn){handlers[type]=fn;}},game:{paused:false,help:false},previousPaused:false,modalKind:null,clearInput(){},syncAudio(){},focusGame(){}};
   const modalStart=source.indexOf('  function closeModal()'),modalEnd=source.indexOf('  function pause()',modalStart);

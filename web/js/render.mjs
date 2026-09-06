@@ -234,9 +234,24 @@ export class Renderer {
   }
   resize() {
     const w=this.canvas.clientWidth,h=this.canvas.clientHeight;
+    if(w<=0||h<=0)return;
+    this.gl.setPixelRatio(Math.min(devicePixelRatio||1,this.pixelRatioCap??2));
     this.width=w; this.height=h; this.gl.setSize(w,h,false); this.camera.aspect=w/h; this.camera.updateProjectionMatrix();
-    const ratio=Math.min(devicePixelRatio||1,2); this.fx.width=Math.round(w*ratio); this.fx.height=Math.round(h*ratio);
+    const ratio=Math.min(devicePixelRatio||1,this.pixelRatioCap??2); this.fx.width=Math.round(w*ratio); this.fx.height=Math.round(h*ratio);
     this.ctx.setTransform(ratio,0,0,ratio,0,0);
+  }
+  touchView(g) {
+    this.camera.updateMatrixWorld();this.world.updateWorldMatrix(true,false);
+    const inv=this.world.getWorldQuaternion(new T.Quaternion()).invert();
+    const cameraRotation=this.camera.getWorldQuaternion(new T.Quaternion());
+    const axis=(x,y,z)=>new T.Vector3(x,y,z).applyQuaternion(cameraRotation).applyQuaternion(inv);
+    const basis={right:axis(1,0,0),up:axis(0,1,0),forward:axis(0,0,-1)};
+    const positions=g.state==='bonus_playing'?[new T.Vector3(g.bonus.x,g.bonus.y,g.bonus.z)]:[...g.player.alive].map(i=>vec(g.player.pos(i)));
+    const center=new T.Vector3();for(const point of positions)center.add(point);center.multiplyScalar(1/Math.max(1,positions.length));
+    const project=point=>point.clone().applyMatrix4(this.world.matrixWorld).project(this.camera);
+    const p=project(center),x=(p.x+1)*this.width/2,y=(1-p.y)*this.height/2;
+    let radius=0;for(const point of positions){const q=project(point);radius=Math.max(radius,Math.hypot((q.x-p.x)*this.width/2,(q.y-p.y)*this.height/2));}
+    return {x,y,radius:Math.min(radius+8,100),basis,visible:positions.length>0&&p.z>=-1&&p.z<=1&&x>=0&&x<=this.width&&y>=0&&y<=this.height};
   }
   box(map,x0,x1,y0,y1,z0,z1,color,alpha) {
     const pts=boxCorners.map(c=>map(c[0]<0?x0:x1,c[1]<0?y0:y1,c[2]<0?z0:z1));

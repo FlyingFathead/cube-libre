@@ -1,3 +1,4 @@
+import {MobileControls,detectMobile,MOBILE_NOTICE,createTouchHelp,createMobileOptions} from './mobile.mjs';
 import {createHelpTabs,createVisualOptions} from './help-tabs.mjs';
 import {GamepadInput,emptyMovement,mergeMovement,navigateControllerMenu} from './gamepad.mjs';
 import {shutterGateCount,shutterInterval} from './changes.mjs';
@@ -50,22 +51,29 @@ async function main() {
   let controllerMovement=emptyMovement(),controllerAction=false,controllerAudioPending=false;
   game.consoleSettings.controller={get:()=>controller.enabled,set:value=>{controller.enabled=value;controller.suspend();controllerMovement=emptyMovement();write('cube-libre-controller-v1',value);}};
   game.consoleNumbers.controller_deadzone={get:()=>controller.deadzone,set:value=>{const n=controller.setDeadzone(value);controllerMovement=emptyMovement();write('cube-libre-controller-deadzone-v1',n);return n;}};
-  const keyboard=new Set(),pointers=new Map();
-  const clearInput=()=>{controller.suspend();controllerMovement=emptyMovement();keyboard.clear();pointers.clear();document.querySelectorAll('.held').forEach(b=>b.classList.remove('held'));};
+  const keyboard=new Set(),pointers=new Map();let mobile=null;
+  const clearInput=()=>{mobile?.reset();controller.suspend();controllerMovement=emptyMovement();keyboard.clear();pointers.clear();document.querySelectorAll('.held').forEach(b=>b.classList.remove('held'));};
   let loadingStart=false,audioProgress='',audioWarning='',modalKind=null,previousPaused=false,consolePaused=false,raf=0;
   const audio=new GameAudio((done,total)=>{audioProgress=`Loading audio ${done}/${total}`;});
   audio.mute(read('cube-libre-muted-v1',false)===true);
   game.consoleSettings.mute={get:()=>audio.muted,set:value=>{void mute(value);}};
   const focusGame=()=>{$('game').focus({preventScroll:true});};
   const syncAudio=()=>audio.pause(game.paused||game.help||document.hidden);
+  const mobileBrowser=detectMobile();
+  mobile=new MobileControls({document,game,renderer,detected:mobileBrowser,read,write,focus:focusGame});
+  game.consoleSettings.touch_helpers={get:()=>mobile.helpers,set:value=>mobile.setHelpers(value),name:'Extra touch areas',description:'Show optional drag/depth thumb areas alongside the cube orb. Saved; off by default.'};
+  game.consoleNumbers.mobile_mode={get:()=>mobile.mode,set:value=>mobile.setMode(value),name:'Mobile input mode',description:'0 automatic, 1 touch beta, 2 keyboard/controller. Saved in this browser.'};
+  for(const [key,property,min,max] of [['touch_rush_radius','rushRadius',38,140],['touch_deadzone','deadzone',0,24],['touch_grab_radius','grabRadius',24,100],['mobile_pixel_ratio','pixelRatio',.5,2]]) {
+    game.consoleNumbers[key]={get:()=>mobile.rules[property],set:value=>{const n=Number(value);if(!Number.isFinite(n)||n<min||n>max)throw Error(`${key} expects ${min}–${max}`);mobile.rules[property]=n;mobile.reset();if(property==='pixelRatio')mobile.applyMode();return n;}};
+  }
   async function start(options={}) {
     const fromController=options.controller===true||controllerAction;
     if(loadingStart) return;
     loadingStart=true; $('start').disabled=true;
-    if(!audio.muted&&fromController) {
-      // A gamepad press may not unlock Web Audio. Start play immediately and allow
-      // a later pointer/keyboard gesture to enable sound, without hanging at start.
-      controllerAudioPending=true;audioWarning='Click the game or press a keyboard key once to enable sound.';
+    if(!audio.muted&&(fromController||mobile?.enabled)) {
+      // Start touch play without waiting for mobile audio downloads. Gamepads may
+      // also need a later pointer/keyboard gesture to unlock the audio context.
+      controllerAudioPending=true;audioWarning=fromController?'Click the game or press a keyboard key once to enable sound.':'Sound is loading; tap the game if it stays silent.';
       void audio.unlock().then(()=>{controllerAudioPending=false;audioWarning=audio.failed.length?'Some audio could not load.':'';syncAudio();},()=>{controllerAudioPending=false;audioWarning='Audio unavailable. The game will play silently.';});
     } else if(!audio.muted) {
       try {await audio.unlock();if(audio.failed.length)audioWarning=`${audio.failed.length} sound(s) unavailable; play continues.`;}
@@ -125,7 +133,7 @@ async function main() {
     const hint=document.createElement('p');hint.textContent='Connect your controller by USB or Bluetooth, focus this page, and press then release a controller button. Firefox exposes controllers after you interact with them. Use an Xbox-style controller recognized by the browser. If sound stays silent, click the game or press a keyboard key once.';section.append(hint);
     return section;
   }
-  function help() {
+  function help(section='') {
     if(modalKind==='help') return closeModal();
     const inBonus=game.state.startsWith('bonus_');
     const body=document.createElement('div'),keyboardBody=document.createElement('div');
@@ -173,11 +181,13 @@ async function main() {
     const bonusRules=document.createElement('p');bonusRules.textContent=`PICKING UP THE PIECES · Bonus round 001 follows level ${BONUS_SCHEDULE.firstLevel}, then every ${BONUS_SCHEDULE.interval} levels before the final level cap. Roll on a solid floor using WASD / arrow keys; Shift rushes. Collect the scattered pieces and take the ramp to the portal within ${PIECES_RULES.seconds} seconds. Each piece banks ${PIECES_RULES.pointsPerPiece} bonus points only if you escape. Running out of time forfeits this bonus; your existing score is kept and the next level follows. C and the corridor heat/entropy rules do not apply.`;rulesDetails.append(bonusRules);
     const rules=game.difficulty,current=document.createElement('p');
     current.textContent=`Level ${game.level}: ${rules.timed?`${rules.secondsPerLeg.toFixed(1)} seconds per leg`:'no timer'} · ${Math.round(rules.recouplingRate*100)}% re-coupling yield per request · ${rules.overheatGraceSeconds.toFixed(1)} seconds before overheating outside. Heat re-coupling restriction: ${game.flags.overheat_blocks_recoupling?(rules.heat?'active':'not yet active'):'disabled'}.`;rulesDetails.append(current);
+    const options=createVisualOptions(document,game,write);options.prepend(createMobileOptions(document,mobile));
     body.append(createHelpTabs(document,[
       {id:'keyboard',label:'KEYBOARD',body:keyboardBody},
       {id:'controller',label:'CONTROLLER',body:controllerHelp(inBonus)},
-      {id:'options',label:'OPTIONS',body:createVisualOptions(document,game,write)}
-    ],controller.enabled&&controller.connected?'controller':'keyboard'));
+      {id:'touch',label:'TOUCH',body:createTouchHelp(document,inBonus,releaseAssetURL('../assets/touch-controls.svg',import.meta.url).href)},
+      {id:'options',label:'OPTIONS',body:options}
+    ],section==='options'?'options':mobile.enabled?'touch':controller.enabled&&controller.connected?'controller':'keyboard'));
     const creditBlock=document.createElement('footer');creditBlock.className='help-credits';body.append(creditBlock);
     const credits=document.createElement('p');credits.className='version-note';
     credits.append(`CUBE LIBRE v${release.version} | By FlyingFathead | `);
@@ -208,8 +218,8 @@ async function main() {
     try {
       if(document.fullscreenElement) await document.exitFullscreen();
       else if($('game').requestFullscreen) await $('game').requestFullscreen();
-      else audioWarning='Use your browser’s fullscreen option on this device.';
-    } catch {audioWarning='Fullscreen was unavailable. Try the browser’s fullscreen option.';}
+      else modal('fullscreen','PLAYING ON THIS DEVICE','You can play in this browser view. On iPhone, Safari → Share → Add to Home Screen → Open as Web App gives an app-style view.',[['Continue',closeModal]]);
+    } catch {audioWarning='Fullscreen unavailable; you can keep playing in this view.';}
     clearInput();
   }
   const log=[];const history=[];let historyIndex=0;
@@ -259,14 +269,14 @@ async function main() {
   $('console').addEventListener('cancel',e=>{e.preventDefault();closeConsole();});
   $('modal').addEventListener('cancel',e=>{e.preventDefault();closeModal();});
   $('start').onclick=start;$('next').onclick=()=>{clearInput();if(game.state==='ended')start();else game.continue();};
+  $('settings').onclick=()=>help('options');
   $('pause').onclick=pause;$('help').onclick=help;$('mute').onclick=mute;$('fullscreen').onclick=fullscreen;$('menu').onclick=menu;
   $('locate').onclick=()=>{game.locate=!game.locate;game.messageSet(`LOCATE ${game.locate?'ON':'OFF'}${game.autoLocate?' · AUTO TRACKING ACTIVE':''}`);};
-  $('touch-c').onclick=()=>game.requestRecouple();
   const keyCodes=new Set(['KeyA','KeyD','KeyW','KeyS','KeyQ','KeyE','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','ShiftLeft','ShiftRight','ControlLeft','ControlRight']);
   window.addEventListener('keydown',e=>{
     const code=e.code;
     if(e.metaKey) return;
-    if(['update','mobile'].includes(modalKind)&&code==='Space') {e.preventDefault();if(!e.repeat)closeModal();return;}
+    if(['update','mobile'].includes(modalKind)&&code==='Space') {e.preventDefault();if(!e.repeat){if(modalKind==='mobile')$('modal-actions').firstElementChild.click();else closeModal();}return;}
     if(code==='Backquote'||(e.ctrlKey&&e.shiftKey&&code==='F1')) {
       e.preventDefault();if(!e.repeat){if($('console').open)closeConsole();else openConsole();}return;
     }
@@ -293,11 +303,6 @@ async function main() {
   window.addEventListener('keyup',e=>keyboard.delete(e.code));
   window.addEventListener('blur',()=>{clearInput();if(game.state!=='title'&&game.state!=='ended'&&!game.paused)pause();});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdates();if(document.hidden){clearInput();if(game.state!=='title'&&game.state!=='ended'&&!game.paused)pause();}syncAudio();});
-  for(const button of document.querySelectorAll('[data-key]')) {
-    button.addEventListener('pointerdown',e=>{e.preventDefault();button.setPointerCapture(e.pointerId);pointers.set(e.pointerId,button.dataset.key);button.classList.add('held');});
-    const up=e=>{pointers.delete(e.pointerId);if(![...pointers.values()].includes(button.dataset.key))button.classList.remove('held');};
-    button.addEventListener('pointerup',up);button.addEventListener('pointercancel',up);button.addEventListener('lostpointercapture',up);
-  }
   $('scene').addEventListener('pointerdown',()=>focusGame());
   $('ending').addEventListener('click',e=>{
     e.preventDefault();e.stopPropagation();if(e.detail>1)return;
@@ -305,8 +310,14 @@ async function main() {
   });
   $('scene').addEventListener('webglcontextlost',e=>{e.preventDefault();game.paused=true;syncAudio();cancelAnimationFrame(raf);fail(Error('The graphics context was lost. Reload to restart'));});
   const titleLayout=observeTitleLayout(renderer,{canvas:$('scene'),start:$('start'),info:document.querySelector('.title-info'),title:$('title')});
-  window.addEventListener('resize',()=>{renderer.resize();titleLayout.invalidate();});
-  document.addEventListener('fullscreenchange',()=>{clearInput();renderer.resize();titleLayout.invalidate();});
+  let portrait=renderer.height>=renderer.width;
+  window.addEventListener('resize',()=>{
+    renderer.resize();mobile.resize();titleLayout.invalidate();
+    const next=renderer.height>=renderer.width;
+    if(next!==portrait&&mobile.canPlay())pause();portrait=next;
+  });
+  window.addEventListener('orientationchange',()=>{clearInput();if(mobile.enabled&&['playing','bonus_playing'].includes(game.state)&&!game.paused)pause();});
+  document.addEventListener('fullscreenchange',()=>{clearInput();renderer.resize();mobile.resize();titleLayout.invalidate();if(mobile.enabled&&!document.fullscreenElement&&['playing','bonus_playing'].includes(game.state)&&!game.paused)pause();});
 
   function updateController(now,dt) {
     const frame=controller.poll(now/1000,{focused:!document.hidden&&document.hasFocus(),bonus:game.state.startsWith('bonus_')});
@@ -350,13 +361,14 @@ async function main() {
     } finally {controllerAction=false;}
   }
   function input() {
+    const combined=mergeMovement(controllerMovement,mobile.movement());
     const held=new Set([...keyboard,...pointers.values()]),has=(...keys)=>keys.some(k=>held.has(k));
-    if(game.state.startsWith('bonus_'))return mergeMovement({x:Number(has('KeyD','ArrowRight'))-Number(has('KeyA','ArrowLeft')),z:Number(has('KeyS','ArrowDown','KeyQ'))-Number(has('KeyW','ArrowUp','KeyE')),rush:has('ShiftLeft','ShiftRight')},controllerMovement);
+    if(game.state.startsWith('bonus_'))return mergeMovement({x:Number(has('KeyD','ArrowRight'))-Number(has('KeyA','ArrowLeft')),z:Number(has('KeyS','ArrowDown','KeyQ'))-Number(has('KeyW','ArrowUp','KeyE')),rush:has('ShiftLeft','ShiftRight')},combined);
     const ctrl=has('ControlLeft','ControlRight');
     let z=Number(has('KeyQ'))-Number(has('KeyE'));
     if(ctrl&&z===0)z=Number(has('KeyA','ArrowLeft'))-Number(has('KeyD','ArrowRight'));
     return mergeMovement({x:ctrl?0:Number(has('KeyD','ArrowRight'))-Number(has('KeyA','ArrowLeft')),
-      y:Number(has('KeyW','ArrowUp'))-Number(has('KeyS','ArrowDown')),z,rush:has('ShiftLeft','ShiftRight')},controllerMovement);
+      y:Number(has('KeyW','ArrowUp'))-Number(has('KeyS','ArrowDown')),z,rush:has('ShiftLeft','ShiftRight')},combined);
   }
   let dotsSize='';
   function dots(text,t) {
@@ -372,7 +384,7 @@ async function main() {
     ctx.globalAlpha=1;ctx.shadowBlur=0;
   }
   let lastHUD=-1;
-  let lastSummary=null,lastBonusControls=null;
+  let lastSummary=null;
   const openingLines=[...document.querySelectorAll('#opening p')];
   function ui() {
     if(pendingUpdate&&!document.hidden&&!loadingStart&&!$('modal').open&&!$('console').open) {
@@ -437,26 +449,17 @@ async function main() {
     $('mute').textContent=audio.muted?'Sound off':'Sound on';$('mute').setAttribute('aria-pressed',String(audio.muted));
     $('locate').hidden=title||bonus;
     $('bonus-instructions').hidden=!bonusPlaying;
-    if(lastBonusControls!==bonus) {
-      lastBonusControls=bonus;
-      for(const key of ['KeyW','KeyS','KeyQ','KeyE']) {
-        const button=document.querySelector(`[data-key="${key}"]`);
-        button.hidden=bonus&&['KeyQ','KeyE'].includes(key);
-        const label=key==='KeyW'?(bonus?'W Forward':'W +Y'):key==='KeyS'?(bonus?'S Back':'S −Y'):key==='KeyQ'?'Q +Z':'E −Z';
-        button.textContent=label;button.setAttribute('aria-label',label);
-      }
-      $('touch-c').hidden=bonus;
-    }
     $('locate').setAttribute('aria-pressed',String(game.locate||game.autoLocate));
     $('pause').textContent=game.paused?'Resume':'Pause';
     $('fullscreen').textContent=document.fullscreenElement?'Windowed':'Fullscreen';
-    $('touch-controls').hidden=!((playing||bonusPlaying)&&matchMedia('(pointer: coarse)').matches&&!game.paused);
+    mobile.sync();
+    $('bonus-instructions').textContent=mobile.enabled?'Drag to roll · Beyond ring: rush · Collect pieces and reach the ramp': 'WASD / arrows: roll · Shift: rush · Collect pieces, then take the ramp to the portal';
     $('audio-status').textContent=loadingStart?audioProgress:audioWarning;
     if(title) {
       const connected=controller.enabled&&controller.connected;
       const status=controller.status==='disabled'?'Controller input disabled · H for Help':controller.status==='unavailable'?'Controller input unavailable in this browser':controller.status==='unmapped'?'Controller detected; Xbox-style button mapping unavailable. Try reconnecting by USB.':connected?'CONTROLLER: A start · LB / X re-couple · RB rush · View help':'Keyboard or controller · Press and release a controller button to connect';
       if($('controller-status').textContent!==status)$('controller-status').textContent=status;
-      dots(loadingStart?'LOADING AUDIO - PLEASE WAIT':connected?'A / SPACE / ENTER = NEW RUN':'SPACE / ENTER = NEW RUN',game.t);
+      dots(loadingStart?'LOADING AUDIO - PLEASE WAIT':mobile.enabled?'TAP = NEW RUN':connected?'A / SPACE / ENTER = NEW RUN':'SPACE / ENTER = NEW RUN',game.t);
       $('title-stats').textContent=`Score ${game.score} · Best escape ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${BALANCE.levelCap}`;
     }
     const phase=s.endsWith('_intro')&&!opening&&!bonusIntro,ready=s==='level_ready',result=s==='result_overlay',rebuild=s==='reassembly',ended=s==='ended';
@@ -522,15 +525,17 @@ async function main() {
     $('recovery').hidden=!(playing&&(fragments.length||recovering||game.cooldown>0));
     $('recovery').textContent=game.cooldown>0?`RE-COUPLING ON COOLDOWN · ${game.cooldown.toFixed(1)}s`:recovering?`RE-COUPLING ${game.recoupling.length} CELLS · ${Math.round(clamp(game.recoupleTime/1.18)*100)}%`:
       game.recouplingBlockedByHeat?`TOO HOT TO RE-COUPLE · RETURN INSIDE\n${fragments.length} LOOSE · EXPIRING IN ${remaining.toFixed(1)}s`:
-      `${remaining<1.75?'LAST CHANCE! ':''}PRESS C / LB / X TO RE-COUPLE · ${fragments.length} LOOSE\nCELLS EXPIRING IN ${remaining.toFixed(1)}s`;
+      `${remaining<1.75?'LAST CHANCE! ':''}${mobile.enabled?'TAP RECOUPLE':'PRESS C / LB / X TO RE-COUPLE'} · ${fragments.length} LOOSE\nCELLS EXPIRING IN ${remaining.toFixed(1)}s`;
     $('danger').hidden=!(playing&&game.outside);$('danger').className=game.heat>0?'hot':'';
     $('danger').textContent=game.heat>0?'OVERHEATING · RETURN TO COURSE':'DANGER · OUT OF BOUNDS';
   }
   $('boot').hidden=true;focusGame();
-  const mobileBrowser=navigator.userAgentData?.mobile===true||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)||/Macintosh/i.test(navigator.userAgent)&&navigator.maxTouchPoints>1;
   if(mobileBrowser) {
-    let seen=false;try{seen=sessionStorage.getItem('cube-libre-mobile-notice')==='1';sessionStorage.setItem('cube-libre-mobile-notice','1');}catch{}
-    if(!seen)modal('mobile','MOBILE BROWSER DETECTED','THIS GAME SHOULD BE PLAYED\nON A DESKTOP COMPUTER\n\nBUT HAVE IT YOUR WAY...\n\nPRESS SPACE TO CONTINUE',[['TAP HERE TO CONTINUE',closeModal]]);
+    let seen=false;try{seen=sessionStorage.getItem('cube-libre-mobile-beta-notice-v1')==='1';sessionStorage.setItem('cube-libre-mobile-beta-notice-v1','1');}catch{}
+    if(!seen)modal('mobile','MOBILE BROWSER DETECTED',MOBILE_NOTICE,[
+      ['TRY MOBILE BETA',()=>{mobile.setMode(1);closeModal();}],
+      ['USE KEYBOARD / CONTROLLER',()=>{mobile.setMode(2);closeModal();}]
+    ]);
   }
   checkUpdates();setInterval(checkUpdates,UPDATE_INTERVAL_MS);
   // Fixed simulation steps preserve laser collision and quota timing on high-refresh displays.
@@ -539,10 +544,10 @@ async function main() {
   function frame(now) {
     try {
       const dt=Math.min((now-previous)/1000,.1);previous=now;
-      updateController(now,dt);
+      updateController(now,dt);mobile.sync();
       if(game.paused||document.hidden)accumulator=0;
       else {accumulator+=dt;while(accumulator>=1/120){game.tick(1/120,input());accumulator-=1/120;}}
-      audio.update(game);ui();titleLayout.update();renderer.render(game);
+      audio.update(game);ui();titleLayout.update();renderer.render(game);mobile.sync();mobile.draw();
       if(renderer.reassemblyLabel) {
         $('card').style.setProperty('--reassembly-label-x',`${renderer.reassemblyLabel.x}px`);
         $('card').style.setProperty('--reassembly-label-y',`${renderer.reassemblyLabel.y}px`);

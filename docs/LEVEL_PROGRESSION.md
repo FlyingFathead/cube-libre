@@ -1,6 +1,6 @@
 # Cube Libre web progression
 
-Default schedule for web **0.23.1**, based on published v0.23.0 (`acbb831`).
+Default schedule for web **0.24.0**, based on published v0.23.1 (`ddbd545`).
 [`featuresForSettings()`](../web/js/difficulty.mjs) combines `BALANCE` milestones
 with [`CHANGES` and `CHANGE_NUMBERS`](../web/js/changes.mjs), sorts by level, and
 supplies phase selection, banner titles and the Help table. `LEVEL_FEATURES` is a
@@ -195,9 +195,16 @@ There is no runtime console setter for those two limits in this release.
 
 ## Public Options versus developer configuration
 
-Help → Options contains only shaking/heat flashes, hit rotation shocks and portal
-white light. Body auto-rotation, microgravity, HEAT restrictions, shutters and
+Help → Options contains input mode, optional extra touch areas, shaking/heat
+flashes, hit rotation shocks and portal white light. Body auto-rotation, microgravity, HEAT restrictions, shutters and
 culling remain editable through the debug console; they have no public checkboxes.
 All listed commands and persistence rules still apply. Help opening/tab switching
-never resets saved gameplay flags. Keyboard and Controller each have their own
+never resets saved gameplay flags. Keyboard, Controller and Touch each have their own
 Help tab; the milestone table is under Keyboard → GAME RULES & LEVEL PROGRESSION.
+
+
+Mobile beta introduces no level-dependent rule changes. `mobile_mode` selects
+0 automatic / 1 touch / 2 keyboard-controller; `touch_helpers` toggles optional
+extra thumb areas. Both are saved and listed in `viewconfig`. Touch sensitivity
+and drawing resolution have session console settings documented in
+[WEB_PORT.md](../WEB_PORT.md#mobile-touch-beta-web-0240).

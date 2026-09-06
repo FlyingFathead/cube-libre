@@ -175,3 +175,87 @@ dialog{color:#d2ebf0;background:#030a0f;border:1px solid #39c4cf;border-radius:9
 #modal[data-kind="help"] .help-credits p { font-size:.7rem; line-height:1.35; margin:.15rem 0; overflow-wrap:anywhere; }
 #modal[data-kind="help"] #modal-actions { flex:none; margin-top:.6rem; }
 @media(max-height:560px) { #modal[data-kind="help"] { padding:.65rem; } #modal[data-kind="help"] #modal-title { font-size:1rem; margin-bottom:.2rem; } .help-tab-list { padding-bottom:.35rem; } .help-credits { padding-top:.3rem; } }
+
+/* Touch beta. Keep every active target inside the device's safe area. */
+.help-tab-list{grid-template-columns:repeat(4,minmax(0,1fr))}
+.input-mode-options{display:flex;gap:.5rem;flex-wrap:wrap;margin:.7rem 0 1.4rem}
+.input-mode-options button{min-height:44px}
+.touch-help-map{display:block;width:100%;height:auto;border:1px solid #263e4b;border-radius:9px;margin:1rem 0}
+#game[data-mobile-mode=true] #scene,#touch-controls{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{overscroll-behavior:none}
+#game[data-mobile-mode=true] .title-keyboard-tip{display:none}
+#game[data-mobile-mode=true] #controller-status{display:none}
+#game[data-mobile-mode=true] #toolbar button{min-height:44px;touch-action:manipulation}
+#game[data-mobile-mode=true] #timer{right:max(18px,env(safe-area-inset-right));pointer-events:none}
+#game[data-mobile-mode=true] #hud{pointer-events:none;max-width:66%;min-width:0;font-size:.72rem}
+#game[data-mobile-mode=true] #hud strong{font-size:.82rem}
+#game[data-mobile-mode=true] #records{display:none}
+#game[data-mobile-mode=true] #title-touch-tip{line-height:1.5}
+#touch-controls{position:absolute;inset-inline:max(22px,env(safe-area-inset-left)) max(22px,env(safe-area-inset-right));bottom:calc(76px + env(safe-area-inset-bottom));display:flex;align-items:flex-end;justify-content:space-between;gap:12px;z-index:7;pointer-events:none}
+.touch-left,.touch-right{pointer-events:none;display:flex;align-items:flex-end;gap:12px}
+#touch-steer,#touch-depth,#touch-c{pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#touch-steer{width:108px;height:108px;border:2px solid #92a3a58c;border-radius:50%;background:#051319b8;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#cfdddd;box-shadow:inset 0 0 0 18px #b7c4c408}
+#touch-steer span{font-size:36px;line-height:1.1}#touch-steer small{font-size:12px;margin-top:8px}
+#touch-depth{width:68px;height:142px;background:#061820c9;border:1px solid #618a92;border-radius:28px;display:flex;flex-direction:column;justify-content:space-around;text-align:center;padding:9px 3px;font-size:10px;color:#acccce}
+#touch-depth strong{font-size:11px;color:#fff}
+#touch-recoup-wrap{display:flex;align-items:center;flex-direction:column;gap:5px;min-width:82px;font-size:11px;color:#d1eee9;text-shadow:0 1px 3px #000}
+#touch-c{width:76px;height:76px;border:2px solid #9fffea;border-radius:50%;padding:12px;background:#0c4947de;box-shadow:0 0 14px #70ffd525}
+#touch-c svg{width:100%;height:100%;fill:#acd4c833;stroke:#cbfff3;stroke-width:2;stroke-linejoin:round}
+#touch-c:disabled{cursor:default;opacity:.4;background:#252d30;box-shadow:none;border-color:#8b979a}
+#touch-recouple-status{font-size:10px;color:#a9c5c4;min-height:12px}
+#touch-steer.held,#touch-depth.held{border-color:#a3fff0;background:#123d43bf}
+#touch-guide{position:absolute;inset:0;width:100%;height:100%;overflow:hidden;z-index:6;pointer-events:none}
+#touch-grab{fill:transparent;stroke:#d6fff152;stroke-width:1.5;stroke-dasharray:4 7}
+#touch-ring{fill:#a8afb50d;stroke:#92999be6;stroke-width:2;stroke-dasharray:6 5}
+#touch-tether{stroke:#89ffeac0;stroke-width:2}
+#touch-knob{fill:#c7fff1;stroke:#052122;stroke-width:2}
+#touch-rush-label{font-size:11px;fill:#dae2e4;paint-order:stroke;stroke:#000;stroke-width:3px;stroke-linejoin:round}
+#touch-guide.rushing #touch-ring{stroke:#fff2ad;fill:#ffca2215;stroke-dasharray:none}
+#touch-guide.rushing #touch-rush-label{fill:#fff2ad}
+#game[data-mobile-mode=true] #bottom-ui{gap:4px;padding-bottom:176px}
+#game[data-mobile-mode=true] #toolbar{position:absolute;bottom:0;max-width:100%}
+#game[data-mobile-mode=true] #bottom-ui:has(#toolbar[hidden]){display:none}
+#game[data-mobile-mode=true]:has(#title:not([hidden])) #bottom-ui{padding-bottom:0}
+#game[data-mobile-mode=true] #recovery,#game[data-mobile-mode=true] #bonus-instructions{font-size:.68rem;line-height:1.35;padding:.4rem .5rem}
+#game[data-mobile-mode=true] #notice,#game[data-mobile-mode=true] #danger{font-size:.75rem;pointer-events:none}
+#game[data-mobile-mode=true] #danger{padding:.4rem .6rem}
+#game[data-mobile-mode=true] #card h1{font-size:clamp(1.4rem,5vw,3.3rem)}
+#game[data-mobile-mode=true] #card button{min-height:44px}
+@media (min-width:600px) and (max-height:600px){
+ #game[data-mobile-mode=true] #bottom-ui{padding-bottom:52px}
+ #game[data-mobile-mode=true] #bottom-ui>:not(#toolbar){max-width:calc(100% - 350px)}
+ #game[data-mobile-mode=true] #hud p{margin:.2rem 0}
+ #game[data-mobile-mode=true] #time-reset,#game[data-mobile-mode=true] #countdown{font-size:.75rem;padding:.3rem .5rem}
+ #game[data-mobile-mode=true] .title-info{bottom:62px;font-size:.75rem;padding:.3rem .7rem}
+ #game[data-mobile-mode=true] .title-info p{margin:.15rem 0}
+ #game[data-mobile-mode=true] #start{height:32px}
+}
+@media (max-width:380px){
+ #touch-controls{inset-inline:max(16px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-right));gap:8px}
+ #touch-steer{width:108px;height:108px}.touch-right{gap:8px}
+ #touch-depth{width:56px;height:130px}#touch-c{width:68px;height:68px}#touch-recoup-wrap{min-width:74px}
+ .help-tab-list{gap:.2rem}.help-tab-list button{font-size:.64rem}
+ #game[data-mobile-mode=true] #toolbar{gap:3px}#game[data-mobile-mode=true] #toolbar button{font-size:.68rem;padding:.3rem .4rem}
+}
+#touch-grab{fill:url(#touch-orb-fill);stroke:#cfebeb75;stroke-dasharray:none}
+#touch-axes line{stroke-width:1.5;opacity:.5}
+#touch-axes circle{fill:#061217e8;stroke-width:1.5}
+#touch-axes text{font-size:11px;font-weight:bold;paint-order:stroke;stroke:#061217;stroke-width:2px;fill:#fff}
+#touch-axes .axis-x{stroke:#88eaff}#touch-axes .axis-y{stroke:#ffdb75}#touch-axes .axis-z{stroke:#f4a7ed}
+#touch-axes text.axis-x{fill:#88eaff;stroke:#061217}#touch-axes text.axis-y{fill:#ffdb75;stroke:#061217}#touch-axes text.axis-z{fill:#f4a7ed;stroke:#061217}
+#touch-axes .selected{stroke-width:3px;opacity:1}#touch-axes circle.selected{fill:#285456ef}
+#settings{font-size:1.3rem;padding:.2rem .65rem;min-width:44px}
+#game[data-mobile-mode=true] #help{display:none}
+#game[data-mobile-mode=true] #toolbar button{width:44px;min-width:44px;min-height:44px;font-size:.65rem;padding:2px}
+#game[data-mobile-mode=true] #settings{font-size:1.4rem}
+#game[data-mobile-mode=true] #locate,#game[data-mobile-mode=true] #mute,#game[data-mobile-mode=true] #fullscreen,#game[data-mobile-mode=true] #menu{font-size:0}
+#game[data-mobile-mode=true] #locate::before{content:'◎';font-size:24px}
+#game[data-mobile-mode=true] #mute::before{content:'♪';font-size:25px}
+#game[data-mobile-mode=true] #mute[aria-pressed=true]::before{content:'♪̸'}
+#game[data-mobile-mode=true] #fullscreen::before{content:'⛶';font-size:24px}
+#game[data-mobile-mode=true] #menu::before{content:'⌂';font-size:24px}
+#modal[data-kind="mobile"][open]{display:flex;flex-direction:column;max-height:calc(100dvh - 24px)}
+#modal[data-kind="mobile"] #modal-title,#modal[data-kind="mobile"] #modal-actions{flex:none}
+#modal[data-kind="mobile"] #modal-body{min-height:0;overflow:auto;overscroll-behavior:contain}
+#modal[data-kind="mobile"] #modal-actions button{min-height:44px}
+@media(max-height:500px){#modal[data-kind="mobile"]{padding:.75rem}#modal[data-kind="mobile"] p{font-size:.83rem;line-height:1.4}#modal[data-kind="mobile"] #modal-title{font-size:1.05rem;margin-bottom:.4rem}#modal[data-kind="mobile"] #modal-actions{margin-top:.6rem}}

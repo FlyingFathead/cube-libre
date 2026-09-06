@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.24.0 — Mobile touch beta
+
+Based on published web v0.23.1 (`ddbd545`).
+
+- Offer TRY MOBILE BETA or USE KEYBOARD / CONTROLLER on the mobile notice.
+  Space chooses touch; remember the choice and provide an Options override.
+  Detect Android, iPhone, iPad and coarse-pointer devices without excluding Apple.
+- Surround surviving pieces with a faint orb and six coloured axial pull handles.
+  Grab a side and drag along its beam; lock the selected axis until release.
+  Keep far-side/depth handles touchable and fan overlapping handles apart.
+  Centre dragging steers in the view plane; bonus dragging rolls on the floor.
+- Show a grey rush threshold anchored at the initial touch. Retain existing
+  thrust, coasting, speed limits, collisions and every difficulty rule.
+- Add a circular whole-cube RECOUPLE button that dims when unavailable and reports
+  loose pieces, active recovery, heat or cooldown. Request once per press.
+- Add a settings cog, a TOUCH Help tab and diagram. Keep extra drag/depth thumb
+  areas optional and off by default. Keep gameplay tuning console-only.
+- Clear captured gestures on interruptions and pause on orientation changes or
+  leaving fullscreen. Respect safe-area insets and retain non-fullscreen play.
+  Cap touch drawing resolution at 1.25; start touch play while audio loads.
+- Expose input mode, helper areas, touch thresholds and pixel-ratio tuning through
+  the existing console configuration registry. Update release metadata and docs.
+
+Validation: all 141 automated test groups and static checks pass; the touch Help
+SVG was visually inspected. Tests cover axial and free pulls, rotated camera
+bases, single-cell grabbing, rush/coast, simultaneous helpers, cancellation,
+recouple availability, entry choices and saved modes. Real mobile hardware,
+browser layout and performance playtesting remain outstanding; the browser
+preview could not access the local game in this environment.
+
+
 ## 0.23.1 — Controls without difficulty switches
 
 Based on published web v0.23.0 (`acbb831`).
