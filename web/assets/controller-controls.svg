@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="650" viewBox="0 0 1040 650" role="img" aria-labelledby="title desc">
+<title id="title">Cube Libre Xbox-style controller map</title>
+<desc id="desc">Left stick or D-pad moves X and Y in normal levels, or rolls on the floor in bonus rounds. Left trigger moves positive Z, right trigger negative Z. Left bumper or X re-couples; right bumper rushes. A confirms, B goes back, Y locates the cube. View opens Help and Menu pauses. The right stick scrolls dialogs.</desc>
+<defs><style>
+text{font-family:DejaVu Sans,Arial,sans-serif;fill:#dceaf1} .title{font-size:26px;font-weight:700;letter-spacing:2px}.sub{font-size:15px;fill:#95b0c2}.key{font-size:19px;font-weight:700}.note{font-size:15px}.label{fill:#071520;stroke:#355464;stroke-width:1.5}.line{fill:none;stroke:#73dbe4;stroke-width:2;stroke-linejoin:round}.green{fill:#a3ffb2}.gold{fill:#ffe090}.muted{fill:#9db4c4}
+</style></defs>
+<rect width="1040" height="650" rx="18" fill="#030b12"/>
+<text x="520" y="43" text-anchor="middle" class="title">CUBE LIBRE · CONTROLLER</text>
+<text x="520" y="72" text-anchor="middle" class="sub">Analog movement · Keep your thumb on the stick while re-coupling</text>
+<!-- Callouts use the physical Xbox layout, with the important bumper actions at the top. -->
+<rect class="label" x="22" y="110" width="224" height="66" rx="8"/>
+<text x="38" y="138" class="key green">LB · RE-COUPLE</text><text x="38" y="161" class="note">X also works · press to gather</text>
+<rect class="label" x="794" y="110" width="224" height="66" rx="8"/>
+<text x="810" y="138" class="key gold">RB · RUSH</text><text x="810" y="161" class="note">Hold while moving</text>
+<text x="354" y="121" text-anchor="middle" class="key">LT: +Z</text><text x="686" y="121" text-anchor="middle" class="key">RT: −Z</text>
+<text x="520" y="149" text-anchor="middle" class="sub">Triggers: normal levels only</text>
+<!-- Controller body and shoulders. -->
+<path d="M347 207 Q343 179 363 177 L409 177 L423 214 M617 214 L631 177 L677 177 Q697 179 693 207" fill="#182e3d" stroke="#6b929f" stroke-width="2"/>
+<path d="M354 218 C302 221 283 276 272 330 L248 467 Q241 501 267 513 Q287 519 307 496 L382 428 Q395 421 423 425 L617 425 Q645 421 658 428 L733 496 Q753 519 773 513 Q799 501 792 467 L768 330 C757 276 738 221 686 218 Z" fill="#132432" stroke="#8caabc" stroke-width="3"/>
+<rect x="333" y="201" width="108" height="24" rx="9" fill="#244935" stroke="#a3ffb2" stroke-width="2"/><text x="387" y="219" text-anchor="middle" class="note green">LB</text>
+<rect x="599" y="201" width="108" height="24" rx="9" fill="#49432a" stroke="#ffe090" stroke-width="2"/><text x="653" y="219" text-anchor="middle" class="note gold">RB</text>
+<path class="line" d="M246 142 H290 V211 H333"/><path class="line" d="M794 142 H750 V211 H707"/>
+<path class="line" d="M354 128 V173 M686 128 V173"/>
+<!-- Left stick. -->
+<circle cx="379" cy="302" r="45" fill="#07121e" stroke="#73dbe4" stroke-width="2"/><circle cx="379" cy="302" r="30" fill="#283f4e" stroke="#86a7b5" stroke-width="2"/>
+<path d="M375 260 l4 -5 4 5 M375 344 l4 5 4 -5 M337 298 l-5 4 5 4 M421 298 l5 4 -5 4" class="line"/>
+<rect class="label" x="22" y="269" width="224" height="76" rx="8"/><text x="38" y="296" class="key">LEFT STICK</text><text x="38" y="319" class="note">X / Y · up = +Y, right = +X</text><text x="38" y="339" class="note">Bonus: roll on the floor</text><path class="line" d="M246 305 H329"/>
+<!-- D-pad and right stick. -->
+<path d="M426 366 H446 V386 H466 V406 H446 V426 H426 V406 H406 V386 H426 Z" fill="#07121e" stroke="#8caabc" stroke-width="2"/>
+<rect class="label" x="22" y="398" width="224" height="67" rx="8"/><text x="38" y="425" class="key">D-PAD</text><text x="38" y="449" class="note">Move / select menu items</text><path class="line" d="M246 431 H345 L398 399"/>
+<circle cx="601" cy="391" r="42" fill="#07121e" stroke="#73dbe4" stroke-width="2"/><circle cx="601" cy="391" r="28" fill="#283f4e" stroke="#86a7b5" stroke-width="2"/>
+<rect class="label" x="794" y="411" width="224" height="66" rx="8"/><text x="810" y="438" class="key">RIGHT STICK</text><text x="810" y="461" class="note">Scroll Help and dialogs</text><path class="line" d="M794 445 H697 L650 401"/>
+<!-- View and Menu. -->
+<circle cx="497" cy="283" r="15" fill="#07121e" stroke="#8caabc"/><rect x="490" y="280" width="9" height="7" fill="none" stroke="#dceaf1"/><rect x="494" y="277" width="9" height="7" fill="none" stroke="#dceaf1"/>
+<circle cx="551" cy="283" r="15" fill="#07121e" stroke="#8caabc"/><path d="M544 279 H558 M544 283 H558 M544 287 H558" stroke="#dceaf1"/>
+<text x="497" y="320" text-anchor="middle" class="note">VIEW</text><text x="497" y="341" text-anchor="middle" class="sub">Help</text><text x="554" y="320" text-anchor="middle" class="note">MENU</text><text x="554" y="341" text-anchor="middle" class="sub">Pause</text>
+<!-- Face buttons. -->
+<circle cx="686" cy="265" r="18" fill="#11202b" stroke="#ffdb5d" stroke-width="2"/><text x="686" y="272" text-anchor="middle" class="key" style="fill:#ffdb5d">Y</text>
+<circle cx="650" cy="302" r="18" fill="#11202b" stroke="#72baff" stroke-width="2"/><text x="650" y="309" text-anchor="middle" class="key" style="fill:#72baff">X</text>
+<circle cx="722" cy="302" r="18" fill="#11202b" stroke="#ff8888" stroke-width="2"/><text x="722" y="309" text-anchor="middle" class="key" style="fill:#ff8888">B</text>
+<circle cx="686" cy="339" r="18" fill="#11202b" stroke="#a3ffb2" stroke-width="2"/><text x="686" y="346" text-anchor="middle" class="key green">A</text>
+<rect class="label" x="794" y="246" width="224" height="130" rx="8"/>
+<text x="810" y="274" class="key green" style="font-size:16px">A · CONFIRM / START</text><text x="810" y="303" class="key" style="fill:#ff8888">B · BACK / MENU</text><text x="810" y="332" class="key" style="fill:#72baff">X · RE-COUPLE</text><text x="810" y="361" class="key" style="fill:#ffdb5d">Y · LOCATE CUBE</text><path class="line" d="M743 302 H786"/>
+<path d="M32 539 H1008" stroke="#355464"/>
+<text x="520" y="568" text-anchor="middle" class="note"><tspan class="green" font-weight="700">NORMAL LEVELS:</tspan> LB / X re-couples · LT / RT moves on Z · RB rushes</text>
+<text x="520" y="595" text-anchor="middle" class="note"><tspan class="gold" font-weight="700">BONUS ROUND:</tspan> Left stick rolls · RB rushes · Pieces are picked up by contact</text>
+<text x="520" y="628" text-anchor="middle" class="sub">Menus: D-pad or left stick selects · A activates · B returns · Right stick scrolls</text>
+</svg>

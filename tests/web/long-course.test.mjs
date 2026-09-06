@@ -63,7 +63,7 @@ test('the overview contains only cached ghost outlines and the exit, while gamep
     assert.equal(cap.r.routeGuide.lines.visible,true);assert.equal(cap.r.routeGuide.marker.visible,true);
     geometry??=cap.r.routeGuide.lines.geometry;assert.equal(cap.r.routeGuide.lines.geometry,geometry);
   }
-  assert.equal(geometry.getAttribute('position').count,24*(50+49));
+  assert.equal(geometry.getAttribute('position').count,8*50);
   g.flags.culling=true;g.setState('playing');g.t=5;
   for(const index of [0,10,25,48,49]) {
     g.player.origin=g.course.modules[index].world(0);g.course.update(g.player.origin,0,()=>{});
@@ -144,4 +144,22 @@ test('culling boolean/number console settings persist and leave nearby collision
   game.command('culling 0');game.newRun();assert.equal(game.flags.culling,false);
   const fresh=new Game(),load=source.split('\n').find(line=>line.includes('game.flags.culling=read('));
   vm.runInNewContext(load,{game:fresh,read:()=>false});assert.equal(fresh.flags.culling,false);
+});
+
+
+test('minimal preview caps draw work, fades after configurable legs, and reuses geometry when tuned',()=>{
+  const g=new Game();g.ready(50);g.setState('course_materialize');g.stateTime=4;
+  const cap=captureCourse();cap.r.course(g,true);const guide=cap.r.routeGuide,geo=guide.lines.geometry,u=guide.lines.material.uniforms;
+  assert.equal(geo.attributes.position.count,400);assert.equal(geo.drawRange.count,400);
+  assert.equal(u.fadeAfter.value,2);assert.equal(u.farOpacity.value,.12);assert.equal(u.previewCount.value,50);
+  const position=geo.attributes.position,route=geo.attributes.routePosition;
+  for(let i=0;i<400;i++) {const leg=Math.floor(i/8),p=g.course.modules[leg].local(new V(position.getX(i),position.getY(i),position.getZ(i)));
+    assert.equal(Math.abs(p.y),7);assert.equal(Math.abs(p.z),7);assert.equal(route.getX(i),leg+i%2);}
+  for(const key of ['preview_max_legs','preview_fade_after_legs','preview_opacity','preview_far_opacity'])assert.match(g.command('viewconfig'),new RegExp(key));
+  g.command('set preview_max_legs 12');g.command('set preview_fade_after_legs 4');g.command('set preview_opacity 0.4');g.command('set preview_far_opacity 0.05');cap.r.course(g,true);
+  assert.equal(guide.lines.geometry,geo);assert.equal(geo.drawRange.count,96);assert.equal(u.fadeAfter.value,4);assert.equal(u.farOpacity.value,.05);
+  for(const cmd of ['set preview_max_legs -1','set preview_fade_after_legs 1.5','set preview_opacity 2','set preview_far_opacity NaN'])assert.throws(()=>g.command(cmd));
+  g.command('toggle preview_outline');cap.r.course(g,true);assert.equal(guide.lines.visible,false);assert.equal(guide.marker.visible,true);
+  g.command('toggle preview_outline');g.command('set preview_max_legs 0');cap.r.course(g,true);assert.equal(geo.drawRange.count,0);assert.equal(guide.lines.visible,false);
+  assert.equal(cap.lasers.length,0);guide.dispose();
 });

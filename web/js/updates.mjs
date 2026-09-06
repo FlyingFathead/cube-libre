@@ -26,3 +26,8 @@ export class UpdateChecker {
     finally {this.pending=false;}
   }
 }
+
+// Give non-module assets the same release identity as the complete module graph.
+export function releaseAssetURL(path,base,version=globalThis.CUBE_LIBRE_RELEASE?.version) {
+  const url=new URL(path,base);if(version)url.searchParams.set('v',version);return url;
+}

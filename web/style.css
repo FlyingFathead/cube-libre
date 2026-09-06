@@ -151,3 +151,5 @@ dialog{color:#d2ebf0;background:#030a0f;border:1px solid #39c4cf;border-radius:9
 #modal[data-kind="mobile"] #modal-actions { justify-content: center; }
 .shake-setting { display: flex; align-items: center; gap: .65rem; width: fit-content; min-height: 44px; margin-bottom: .75rem; cursor: pointer; font-size: 1rem; }
 .shake-setting input { width: 20px; height: 20px; margin: 0; accent-color: #75e8d6; cursor: pointer; }
+
+#controller-status{color:#a3ffb2;font-size:.8125rem}.controller-help{margin:1rem 0 1.5rem}.controller-help h3{color:#a3ffb2;font-size:1.05rem}.controller-help table{margin-bottom:1rem}button:focus,a:focus,input:focus{outline:2px solid #ffcf00;outline-offset:3px}

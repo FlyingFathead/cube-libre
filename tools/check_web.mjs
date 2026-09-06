@@ -34,6 +34,14 @@ const release=JSON.parse(readFileSync(resolve(web,'version.json')));
 assert.match(release.version,/^\d+\.\d+\.\d+$/,'Expected a major.minor.patch web version');
 assert.equal(release.edition,'web');
 assert.equal(release.repository,'https://github.com/FlyingFathead/cube-libre');
+const embedded=JSON.parse(html.match(/<script id="release-data" type="application\/json">([\s\S]*?)<\/script>/)[1]);
+assert.deepEqual(embedded,release,'Run node tools/prepare_web_release.mjs after changing web/version.json');
+const imports=JSON.parse(html.match(/<script id="release-imports" type="importmap">([\s\S]*?)<\/script>/)[1]).imports;
+const modules=files.filter(p=>/\.(mjs|js)$/.test(p)).map(p=>'./'+relative(web,p).replaceAll('\\','/')).sort();
+assert.deepEqual(Object.keys(imports).sort(),modules,'Regenerate the release import map after adding/removing modules');
+for(const path of modules)assert.equal(imports[path],`${path}?v=${release.version}`,'Every transitive module needs the current release URL');
+assert.ok(html.includes(`href="./style.css?v=${release.version}"`),'Stylesheet release does not match');
+
 const reference=JSON.parse(readFileSync(resolve(root,'tests/web/python-reference.json')));
 assert.equal(release.upstream.commit,reference.source_commit,'PyGame provenance must match the reference fixtures');
 assert.equal(Object.keys(manifest).length,20);

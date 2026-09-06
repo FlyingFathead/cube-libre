@@ -1,6 +1,6 @@
 // Cube Libre: browser-independent simulation, ported from cube_libre_pygame.py.
 // Rendering, audio, persistence and input are injected by the browser adapter.
-import { C,VISUAL_EFFECTS,PLAYER_ROTATION,PLAYER_PROPULSION,CAMERA_RULES } from './config.mjs';
+import { C,VISUAL_EFFECTS,PLAYER_ROTATION,PLAYER_PROPULSION,CAMERA_RULES,PREVIEW_NUMBERS } from './config.mjs';
 import {BONUS_SCHEDULE,createBonus,scheduledBonus,recoveredShape,rotateQ} from './bonus.mjs';
 import { BALANCE,difficultyForLevel,introductionsForLevel,recouplingHeatBlocked } from './difficulty.mjs';
 import {CHANGES,CHANGE_NUMBERS,createChangeSettings,setChangeNumber,Shutters,shutterEnabled,shutterLoss} from './changes.mjs';
@@ -298,13 +298,14 @@ export function beginRecouple(player,level) {
 export class Game {
   constructor({rng=Math.random,stats={},save=()=>{}}={}) {
     this.rng=rng; this.save=save; this.stats={best_escape:0,highest_level:1,best_score:0,...stats};
-    this.flags={...C.DEBUG_FLAGS,shake:VISUAL_EFFECTS.shakingEnabled,spin:PLAYER_ROTATION.enabled,portal_white_light:VISUAL_EFFECTS.portalWhiteLight,culling:VISUAL_EFFECTS.courseCulling,rotation_shocks:VISUAL_EFFECTS.rotationShocks,microgravity:PLAYER_PROPULSION.enabled,overheat_blocks_recoupling:BALANCE.overheatBlocksRecoupling}; this.player=new Player(rng); this.t=0; this.angles=[0,0,0];
-    this.flags.change_1=CHANGES.change_1.enabled;this.flags.change_1_random_per_leg=CHANGES.change_1.randomPerLeg;
+    this.flags={...C.DEBUG_FLAGS,shake:VISUAL_EFFECTS.shakingEnabled,spin:PLAYER_ROTATION.enabled,portal_white_light:VISUAL_EFFECTS.portalWhiteLight,culling:VISUAL_EFFECTS.courseCulling,preview_outline:VISUAL_EFFECTS.previewOutline,rotation_shocks:VISUAL_EFFECTS.rotationShocks,microgravity:PLAYER_PROPULSION.enabled,overheat_blocks_recoupling:BALANCE.overheatBlocksRecoupling}; this.player=new Player(rng); this.t=0; this.angles=[0,0,0];
+    this.flags.change_1=CHANGES.change_1.enabled;this.flags.change_1_random_per_leg=CHANGES.change_1.randomPerLeg;this.flags.change_1_no_repeat_leg=CHANGES.change_1.noRepeatLeg;
     this.changeSettings=createChangeSettings();
     this.autoLocateMinLevel=CAMERA_RULES.autoLocateMinLevel;
+    this.previewSettings=Object.fromEntries(Object.entries(PREVIEW_NUMBERS).map(([k,r])=>[k,r.value]));
     this.starPattern=VISUAL_EFFECTS.starPattern;
     this.level=1; this.score=0; this.locate=false; this.paused=false; this.help=false; this.events=[]; this.pendingIntroductions=[];
-    this.consoleSettings={}; // Browser-owned booleans can join the same command interface.
+    this.consoleSettings={};this.consoleNumbers={}; // Browser-owned controls join the same command interface.
     this.runStats={playSeconds:0,deaths:0,recoupledCubes:0,levelsCleared:0,bonusRounds:0,bonusPieces:0,bonusScore:0}; this.runSummary=null;
     this.bonusesPlayedAfter=new Set();this.bonus=null;this.previewReturn=null;
     this.state='title'; this.stateTime=0; this.message=''; this.messageTime=0; this.resetAttempt();
@@ -510,19 +511,22 @@ export class Game {
   }
   shutterState(l,time=this.shutters.time) {
     if(this.state!=='playing'||!shutterEnabled(this.level,this.flags,this.changeSettings)||!this.course.activeLaser(l,this.player.origin,this.t))return null;
-    return this.shutters.phase(l.module.index,this.changeSettings,this.flags.change_1_random_per_leg,time);
+    const grids=this.course.moduleLasers[l.module.index];
+    return this.shutters.stateFor(l.module.index,grids.indexOf(l),time);
   }
   updateShutters(dt) {
-    const before=this.shutters.time;this.shutters.tick(dt);
+    this.shutters.tick(dt);
     if(!shutterEnabled(this.level,this.flags,this.changeSettings))return;
-    const active=this.course.activeLasers(this.player.origin,this.t),audible=new Set();
-    for(const l of active) {
-      const phase=this.shutterState(l),leg=l.module.index;
-      if(!audible.has(leg)&&l.center.sub(this.player.origin).length()<28) {
-        audible.add(leg);const previous=this.shutters.phase(leg,this.changeSettings,this.flags.change_1_random_per_leg,before);
-        if(phase.closed&&!previous.closed)this.emit('shutter_close',l.center);
-        if(!phase.closed&&previous.closed)this.emit('shutter_open',l.center);
-      }
+    const active=this.course.activeLasers(this.player.origin,this.t),current=this.course.location(this.player.origin).index;
+    const nearby=active.filter(l=>!this.flags.culling||l.module.index>=current-1&&l.module.index<=current+1);
+    const legs=new Map(nearby.map(l=>[l.module.index,this.course.moduleLasers[l.module.index].length]));
+    const events=this.shutters.schedule(legs,this.level,this.changeSettings,this.flags.change_1_random_per_leg,this.flags.change_1_no_repeat_leg);
+    for(const event of events) {
+      const grid=nearby.find(l=>l.module.index===event.leg&&event.gates.includes(this.course.moduleLasers[event.leg].indexOf(l))&&l.center.sub(this.player.origin).length()<28);
+      if(grid)this.emit(event.name,grid.center);
+    }
+    for(const l of nearby) {
+      const phase=this.shutterState(l);if(!phase)continue;
       if(!phase.closed||this.shutters.contacts.get(l)===phase.cycle)continue;
       const contact=[...this.player.alive].find(i=>this.course.jointAt(this.player.pos(i))<0&&l.touchesShutter(this.player.pos(i),this.t));
       if(contact===undefined)continue;
@@ -688,6 +692,11 @@ export class Game {
   }
   command(text) {
     const parts=text.trim().toLowerCase().split(/\s+/),[cmd,arg,value]=parts;
+    const topLevelCommand=['toplevel','top_level'].includes(cmd);
+    if(topLevelCommand) {
+      if(parts.length===1)return `TOP LEVEL: ${this.stats.highest_level}/${BALANCE.levelCap}`;
+      if(parts.length!==2||arg!=='reset')throw Error(`Usage: ${cmd} [reset]`);
+    }
     if(cmd==='view_end_anim_v1'||cmd==='test'&&arg==='ending_1') { this.beginAscension(true); return 'End animation preview'; }
     if(cmd==='test'&&arg==='bonus_round_1'||cmd==='view_bonus_001'||cmd==='bonus') {
       this.startBonus(cmd==='bonus'?(arg||'001'):'001',{preview:true});return `Bonus round 001 test · exit to level ${this.previewReturn.nextLevel}`;
@@ -697,6 +706,12 @@ export class Game {
       this.setState(CHANGES.change_1.state);return `CHANGE 1 test · level ${this.level}`;
     }
     if(cmd==='test')throw Error('Available previews: test ending_1, test bonus_round_1, test change_1');
+    if(cmd==='reset'||topLevelCommand) {
+      if(cmd==='reset'&&!['top level','top_level','toplevel','highest_level'].includes(parts.slice(1).join(' ')))
+        throw Error('Usage: reset top level (aliases: reset top_level, reset toplevel, reset highest_level)');
+      this.stats.highest_level=1;this.persist();
+      return `Top level reset to 1/${BALANCE.levelCap}. Best score and best escape kept.`;
+    }
     const trueValues=['1','on','true','enabled','yes'],falseValues=['0','off','false','disabled','no'];
     const bool=s=>{if(trueValues.includes(s)) return true; if(falseValues.includes(s)) return false; throw Error('Expected true/false, on/off, 1/0 or enabled/disabled');};
     const number=(s,min,max)=>{const n=Number(s); if(s===undefined||!Number.isFinite(n)) throw Error('Expected a number'); return clamp(Math.trunc(n),min,max);};
@@ -706,13 +721,13 @@ export class Game {
         if(key==='spin'&&!v)this.player.setSpinAngles(0,0,0);
         if(key==='microgravity')this.driftVelocity=new V();
         if(key==='rotation_shocks'&&!v) {this.rotationShock.angle=new V();this.rotationShock.velocity=new V();}
-        if(key==='change_1'||key==='change_1_random_per_leg')this.shutters.restart();
+        if(key.startsWith('change_1'))this.shutters.restart();
         if(key==='route3d') {this.course=new Course(this.level,v);this.geometryVersion++;this.shutters.restart();}
       }
     }]));
     settings.set('locate',{get:()=>this.locate,set:v=>{this.locate=v;}});
     for(const [key,setting] of Object.entries(this.consoleSettings))settings.set(key,setting);
-    const values=new Map([['level',()=>this.level],['score',()=>this.score],['cubes',()=>this.player.alive.size]]);
+    const values=new Map([['level',()=>this.level],['score',()=>this.score],['cubes',()=>this.player.alive.size],['top_level',()=>this.stats.highest_level]]);
     const numeric=new Map(Object.keys(CHANGE_NUMBERS).map(key=>[key,{
       get:()=>this.changeSettings[key],set:value=>{const n=setChangeNumber(this.changeSettings,key,value);this.shutters.restart();return n;}
     }]));
@@ -720,13 +735,18 @@ export class Game {
       const n=Number(value);if(value===undefined||!Number.isInteger(n)||n<0||n>1000000)throw Error('auto_locate_min_level expects an integer from 0 to 1000000');
       this.autoLocateMinLevel=n;return n;
     }});
+    for(const [key,rule] of Object.entries(PREVIEW_NUMBERS))numeric.set(key,{get:()=>this.previewSettings[key],set:value=>{
+      const n=Number(value);if(value===undefined||String(value).trim()===''||!Number.isFinite(n)||n<rule.min||n>rule.max||rule.integer&&!Number.isInteger(n))throw Error(`${key} expects ${rule.integer?'an integer':'a number'} from ${rule.min} to ${rule.max}`);
+      this.previewSettings[key]=n;return n;
+    }});
     for(const [key,setting] of numeric)values.set(key,setting.get);
     numeric.set('star_pattern',{get:()=>this.starPattern,set:value=>{
       const n=Number(value);if(value===undefined||!Number.isInteger(n)||n<0||n>2)throw Error('star_pattern expects 0, 1 or 2');
       this.starPattern=n;return n;
     }});
     values.set('star_pattern',()=>this.starPattern);
-    const actions=new Set([...CONFIG_COMMANDS,'help','clear','cls','flags','restart','newrun','new','run','title','kill','heal','pos','where','route','test','bonus','view_end_anim_v1','view_bonus_001']);
+    for(const [key,setting] of Object.entries(this.consoleNumbers)){numeric.set(key,setting);values.set(key,setting.get);}
+    const actions=new Set([...CONFIG_COMMANDS,'help','clear','cls','flags','reset','toplevel','restart','newrun','new','run','title','kill','heal','pos','where','route','test','bonus','view_end_anim_v1','view_bonus_001']);
     if(CONFIG_COMMANDS.includes(cmd)) {
       if(parts.length!==1)throw Error(`Usage: ${cmd}`);
       return describeConsoleConfig(settings,values);
@@ -742,9 +762,9 @@ export class Game {
       return `Status for ${key} is: ${requireSetting(key).get()?'Enabled':'Disabled'}`;
     };
     const setFlag=(key,v)=>{requireSetting(key).set(v);return `${key} set to ${v}`;};
-    if(cmd==='help'||cmd==='?') return 'viewconfig / showconfig / showvars / viewvars / listvars / listconfig: list all settings\nhelp, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light culling microgravity overheat_blocks_recoupling change_1 change_1_random_per_leg locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nNumbers: '+[...numeric.keys()].join(' ')+'\nPreviews: test ending_1, test bonus_round_1, test change_1, bonus <type>';
+    if(cmd==='help'||cmd==='?') return 'viewconfig / showconfig / showvars / viewvars / listvars / listconfig: list all settings\nhelp, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light culling microgravity overheat_blocks_recoupling change_1 change_1_random_per_leg change_1_no_repeat_leg locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nNumbers: '+[...numeric.keys()].join(' ')+'\nRecords: toplevel / top_level (query); toplevel reset / top_level reset / reset top level (reset); keeps other records\nPreviews: test ending_1, test bonus_round_1, test change_1, bonus <type>';
     if(cmd==='flags')return [...settings.keys()].map(status).join('\n');
-    if(['get','view','status'].includes(cmd)||['set','flag'].includes(cmd)&&value===undefined)return status(arg);
+    if(['get','view','status'].includes(cmd)||['set','flag'].includes(cmd)&&value===undefined)return status(arg==='toplevel'?'top_level':arg);
     const numericKey=['set','flag'].includes(cmd)?arg:cmd;
     if(numeric.has(numericKey)) {
       const value=['set','flag'].includes(cmd)?parts[2]:arg;

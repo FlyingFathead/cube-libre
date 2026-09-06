@@ -1,3 +1,4 @@
+import {releaseAssetURL} from './updates.mjs';
 import {clamp,smooth,portalMetrics} from './core.mjs';
 const root=new URL('../assets/audio/',import.meta.url);
 const volumes={crash:.70,structure_alert:.48,portal:.88,laser_reveal:.64,laser_dissipate:.62,
@@ -14,12 +15,12 @@ export class GameAudio {
     this.preload=this.fetchAll(); this.preload.catch(()=>{});
   }
   async fetchAll() {
-    const response=await fetch(new URL('manifest.json',root),{signal:AbortSignal.timeout(20000)});
+    const response=await fetch(releaseAssetURL('manifest.json',root),{signal:AbortSignal.timeout(20000)});
     if(!response.ok) throw Error(`Audio manifest: HTTP ${response.status}`);
     this.manifest=await response.json(); const names=Object.keys(this.manifest); let done=0;
     await Promise.all(names.map(async name=>{
       try {
-        const res=await fetch(new URL(`${name}.${this.preferred}`,root),{signal:AbortSignal.timeout(30000)});
+        const res=await fetch(releaseAssetURL(`${name}.${this.preferred}`,root),{signal:AbortSignal.timeout(30000)});
         if(!res.ok) throw Error(`HTTP ${res.status}`);
         this.encoded.set(name,await res.arrayBuffer());
       } catch {this.failed.push(name);}
@@ -45,7 +46,7 @@ export class GameAudio {
         try { if(!data) throw Error('Missing preferred codec'); buffer=await this.ctx.decodeAudioData(data.slice(0)); }
         catch {
           const fallback=this.preferred==='ogg'?'mp3':'ogg';
-          const res=await fetch(new URL(`${name}.${fallback}`,root),{signal:AbortSignal.timeout(15000)});
+          const res=await fetch(releaseAssetURL(`${name}.${fallback}`,root),{signal:AbortSignal.timeout(15000)});
           if(!res.ok) throw Error(`HTTP ${res.status}`);
           buffer=await this.ctx.decodeAudioData(await res.arrayBuffer());
         }

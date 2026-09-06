@@ -1,5 +1,5 @@
 import { C } from './config.mjs';
-import {CHANGES,createChangeSettings} from './changes.mjs';
+import {CHANGES,createChangeSettings,shutterGateCount,shutterInterval} from './changes.mjs';
 
 // Web balance: gentle introductions, then a bounded ramp toward level 50.
 // Change the phase levels and late-game limits here; config.mjs retains the PyGame baseline.
@@ -70,7 +70,7 @@ const BASE_FEATURES=Object.freeze([
 export function featuresForSettings(settings=createChangeSettings()) {
   return [...BASE_FEATURES,...Object.entries(CHANGES).map(([id,change])=>({
     id,level:Math.max(1,settings[`${id}_min_level`]),state:change.state,banner:change.banner,flag:id,
-    summary:()=>`Laser shutters close every ${settings[`${id}_interval`]} seconds for ${settings[`${id}_closed_seconds`]} seconds; contact costs ${Math.round(settings[`${id}_damage_fraction`]*100)}% of remaining cubes, rounded down.`
+    summary:()=>`${shutterGateCount(Math.max(1,settings[`${id}_min_level`]),settings)} shutter gate(s) per leg initially; ${shutterGateCount(settings[`${id}_ramp_end_level`],settings)} by level ${settings[`${id}_ramp_end_level`]}. At most ${settings.change_1_max_simultaneous} close together in the scene, with at least ${shutterInterval(settings)} seconds between groups; contact costs ${Math.round(settings[`${id}_damage_fraction`]*100)}% of remaining cubes, rounded down.`
   }))].sort((a,b)=>a.level-b.level);
 }
 export const LEVEL_FEATURES=Object.freeze(featuresForSettings().map(Object.freeze));

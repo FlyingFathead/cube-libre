@@ -7,7 +7,7 @@
   <meta name="description" content="Cube Libre web version by FlyingFathead. A rotating 3D survival puzzle. Reach the portal with your remaining pieces.">
   <title>Cube Libre · FlyingFathead</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style.css?v=0.23.0">
 </head>
 <body>
   <main id="game" tabindex="-1" aria-label="Cube Libre game">
@@ -19,6 +19,7 @@
       <div class="title-info">
         <p><b>A / D</b> move X <span>·</span> <b>W / S</b> move Y <span>·</span> <b>Q / E</b> move Z</p>
         <p><b>Shift</b> rush <span>·</span> <b>C</b> re-couple <span>·</span> <b>H</b> help</p>
+        <p id="controller-status" role="status"></p>
         <p id="title-stats" title="Top level is your personal best saved in this browser, across runs."></p>
         <p class="credits">by <a href="https://github.com/FlyingFathead/cube-libre" target="_blank" rel="noopener">FlyingFathead</a> <span>·</span> <a href="https://github.com/FlyingFathead/cube-libre-pygame" target="_blank" rel="noopener">PyGame original</a> <span>·</span> w/ thanks to ChaosWhisperer</p>
         <p id="title-version" class="version-note"></p>
@@ -76,20 +77,68 @@
     </dialog>
     <noscript>Cube Libre requires JavaScript and WebGL 2. Enable JavaScript to play.</noscript>
   </main>
+  <script id="release-data" type="application/json">{"name":"Cube Libre","edition":"web","version":"0.23.0","repository":"https://github.com/FlyingFathead/cube-libre","upstream":{"edition":"pygame","version":"0.15.79","repository":"https://github.com/FlyingFathead/cube-libre-pygame","commit":"ecf8f0148713e5606e64624464eecc4545c71047"}}</script>
+  <script id="release-imports" type="importmap">{
+  "imports": {
+    "./js/app.mjs": "./js/app.mjs?v=0.23.0",
+    "./js/audio.mjs": "./js/audio.mjs?v=0.23.0",
+    "./js/bonus.mjs": "./js/bonus.mjs?v=0.23.0",
+    "./js/changes.mjs": "./js/changes.mjs?v=0.23.0",
+    "./js/config.mjs": "./js/config.mjs?v=0.23.0",
+    "./js/console-config.mjs": "./js/console-config.mjs?v=0.23.0",
+    "./js/core.mjs": "./js/core.mjs?v=0.23.0",
+    "./js/difficulty.mjs": "./js/difficulty.mjs?v=0.23.0",
+    "./js/ending.mjs": "./js/ending.mjs?v=0.23.0",
+    "./js/gamepad.mjs": "./js/gamepad.mjs?v=0.23.0",
+    "./js/portal-light.mjs": "./js/portal-light.mjs?v=0.23.0",
+    "./js/render.mjs": "./js/render.mjs?v=0.23.0",
+    "./js/space-view.mjs": "./js/space-view.mjs?v=0.23.0",
+    "./js/title-layout.mjs": "./js/title-layout.mjs?v=0.23.0",
+    "./js/updates.mjs": "./js/updates.mjs?v=0.23.0",
+    "./vendor/three.core.min.js": "./vendor/three.core.min.js?v=0.23.0",
+    "./vendor/three.module.min.js": "./vendor/three.module.min.js?v=0.23.0"
+  }
+}</script>
   <script>
-    (() => {
+    (async () => {
       const message = document.getElementById('boot-text');
       const reload = document.getElementById('reload');
       if (location.protocol === 'file:') {
         message.textContent = 'Run this game through a local HTTP server. From the repository folder, run: python -m http.server 8000 --directory web (Windows: py instead of python). Then open http://localhost:8000/.';
         return;
       }
-      import('./js/app.mjs').catch(error => {
-        message.textContent = 'Could not load the game scripts: ' + error.message + '. Check that all ZIP contents were extracted and the server serves JavaScript modules correctly. See the browser console for details.';
+      const bundled = JSON.parse(document.getElementById('release-data').textContent);
+      const fail = error => {
+        message.textContent = 'Could not load the game: ' + error.message;
         reload.hidden = false;
         reload.onclick = () => location.reload();
         console.error(error);
-      });
+      };
+      try {
+        let latest = null;
+        try {
+          const url = new URL('./version.json', location.href);
+          url.searchParams.set('boot', String(Date.now()));
+          const response = await fetch(url, {cache: 'no-store', signal: AbortSignal.timeout(4000)});
+          if (response.ok) latest = await response.json();
+        } catch {} // An unavailable check must not block a matching cached build.
+        const isNewer = (a,b) => { const x=a.split('.').map(Number),y=b.split('.').map(Number); for(let i=0;i<3;i++)if(x[i]!==y[i])return x[i]>y[i]; return false; };
+        if (latest?.edition === 'web' && /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(latest.version) && isNewer(latest.version, bundled.version)) {
+          const fresh = new URL(location.href);
+          if (fresh.searchParams.get('release') === latest.version) {
+            throw Error('The deployment is still updating. Reload shortly to get matching game files.');
+          }
+          message.textContent = 'Game updated to v' + latest.version + '. Loading the new release…';
+          fresh.searchParams.set('release', latest.version);
+          fresh.searchParams.set('boot', String(Date.now()));
+          location.replace(fresh.href);
+          return;
+        }
+        // The displayed version belongs to the code/import map in THIS page.
+        // Never label cached scripts with a newer version fetched separately.
+        globalThis.CUBE_LIBRE_RELEASE = Object.freeze(bundled);
+        await import('./js/app.mjs');
+      } catch (error) { fail(error); }
     })();
   </script>
 </body>

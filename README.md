@@ -1,9 +1,9 @@
-# Cube Libre — Web v0.22.1
+# Cube Libre — Web v0.23.0
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
 <p align="center"><strong>Play now in your browser. No download or installation needed.</strong><br>
-Best played on a desktop computer with a keyboard.</p>
+Best played on a desktop computer with a keyboard or an analog game controller.</p>
 
 <p align="center">
   <a href="https://flyingfathead.github.io/cube-libre/">
@@ -22,41 +22,72 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.22.1
+## Web release 0.23.0
 
-The title screen, level result and records display now show **TOP LEVEL: 7/50**
-(for example): your highest level reached, followed by the configured campaign
-cap. This is your personal best saved in this browser across runs. Debug level
-jumps also update that record. Hovering over the title or HUD records explains
-that the value is saved across runs.
+**Xbox-style controllers are supported**, including analog movement and menus.
+Use the left stick for X/Y, LT / RT for Z, **LB to re-couple** (X also works), and
+RB to rush. In bonus rounds, the stick rolls on the floor and pieces are picked
+up by contact. Help now includes a labeled controller diagram and action list
+alongside the keyboard map. Press and release a controller button while the page
+is focused to let Firefox detect it. Click or press a keyboard key once if the
+browser needs that gesture to enable sound.
 
-### Retained from 0.22.0
+**Shutters now leave usable openings.** CHANGE still arrives at level 7, starting
+with one eligible gate per leg. The pool increases to two at level 22, three at
+36 and four at 50. At most **two gates close at once across the active scene**,
+in one leg. The next zap must use another nearby, revealed leg; if no alternative
+is available, it waits. Gates are selected randomly by default.
 
-**CHANGE ... arrives at level 7: THE LASERS NOW OPEN AND CLOSE.** Electric
-shutters seal the entire laser square on a **4-second cycle**, with an amber
-warning for 0.4 seconds before a 0.8-second closure. Closing makes an electric
-BZZZT; reopening makes a whoosh. Each leg gets its own stable random timing.
-Contact with a closed shutter removes **50% of the remaining cubes, rounded down**,
-preserving the last cube. A hit grants **1.5 seconds of protection from all laser
-grids**, and the same grid cannot hit twice in one closure. Boundaries and the
-clock still apply. Pause and Help freeze the shutter cycle.
+The default interval is four seconds, including a 0.4-second warning and a
+0.8-second closure. There is at least 1.2 seconds of open rest before another
+warning; increasing this setting extends the interval when necessary. A closed
+shutter still removes half the remaining cubes, rounded down, preserves the
+last cube, and grants 1.5 seconds of protection from all laser grids.
+The ten-second level-50 leg allowance is unchanged.
 
-Open the console with backtick or Ctrl+Shift+F1:
+All of this can be tuned in the debug console (backtick or Ctrl+Shift+F1):
 
 ```text
-test change_1
-set change_1_interval 4
-set change_1_min_level 7
-toggle change_1_random_per_leg
-toggle change_1
+set change_1_max_simultaneous 2
+set change_1_no_repeat_leg true
+set change_1_gates_per_leg 0
+set change_1_gate_cooldown 1.2
 viewconfig
 ```
 
-`test change_1` enables lasers and shutters, then starts the configured introduction
-level with its CHANGE banner. It replaces the current level; it is a gameplay debug
-command. All shutter timing and damage settings are listed in
-[the progression reference](docs/LEVEL_PROGRESSION.md). The feature and random-timing
-booleans are saved; numeric shutter changes last for the current browser session.
+`change_1_gates_per_leg 0` uses the level ramp; 1–5 overrides the count.
+Introduction level, start/end counts, ramp endpoint, warning/closure duration,
+interval, damage, immunity and randomness are also editable. See the complete
+[settings and progression table](docs/LEVEL_PROGRESSION.md). Boolean preferences
+are saved; numeric shutter tuning lasts for the page session.
+
+**The opening map preview is just four exterior lines per corridor**, with no
+laser gates or shutter previews. It shows up to 50 legs and fades gradually after
+the first two, keeping the distant exit visible. Fifty legs use 200 line segments
+in a reusable buffer. Tune it with:
+
+```text
+set preview_max_legs 50
+set preview_fade_after_legs 2
+set preview_opacity 0.24
+set preview_far_opacity 0.12
+toggle preview_outline
+```
+
+The top-right timer now shows **LEG 1/50**, using the actual route length.
+**TOP LEVEL: 7/50** remains your highest reached level saved in this browser
+across runs, including debug level jumps. Query it with `toplevel` or `top_level`.
+Use `toplevel reset`, `top_level reset` or `reset top level` to reset that record
+to 1, keeping your best score, best escape, preferences and current run.
+
+**Startup checks the deployed version before play.** A cached older entrypoint
+loads a fresh page automatically; JavaScript dependencies, styles and fetched
+assets use release-specific URLs. The running version label stays tied to that
+build. During an active run, updates still show a dismissible notice instead of
+automatically interrupting the run. No GitHub API or separate server is needed.
+Refresh once after deploying this update to install the new startup behavior.
+
+### Existing camera, sky and configuration tools
 
 **The camera follows the cube from the first level.** The minimum is now
 `auto_locate_min_level = 0`, meaning always on. Full-maze opening overviews still
@@ -212,7 +243,7 @@ finish beyond the back of the platform. `view_end_anim_v1`
 remains an alias for the ending. Bonus types, timing and scheduling are configured
 in [`web/js/bonus.mjs`](web/js/bonus.mjs), ready for future round types.
 
-The game checks its deployed `web/version.json` for updates every two minutes
+After the startup check, the game checks its deployed `web/version.json` for updates every two minutes
 and on return to the tab. A newer version pauses play and shows the update notice;
 Space dismisses it, and F5 / Refresh reloads the game. Deployment on GitHub Pages
 is enough; there is no GitHub API or separate update server.
@@ -249,7 +280,7 @@ for development and deployment details.
 
 ## Play and controls
 
-Use a browser with JavaScript and WebGL 2. Audio starts after interaction.
+Use a browser with JavaScript, import maps and WebGL 2. Audio starts after interaction.
 
 | Key | Action |
 | --- | --- |
@@ -263,6 +294,27 @@ Use a browser with JavaScript and WebGL 2. Audio starts after interaction.
 | P | Pause |
 | M | Mute |
 | Esc | Menu |
+
+### Xbox-style controller
+
+| Input | Action |
+| --- | --- |
+| Left stick / D-pad | Move X/Y; roll on the floor in bonus rounds |
+| LT / RT | Move +Z / −Z in normal levels |
+| **LB / X** | **Re-couple** on each press |
+| RB | Hold to rush |
+| A | Start / confirm / continue |
+| B | Back / menu |
+| Y | Locate cube |
+| View / Back | Help |
+| Menu / Start | Pause / resume |
+| Right stick | Scroll Help and dialogs |
+
+In menus, use the D-pad or left stick to select, then A to activate.
+Only one controller controls the game at a time. Disconnecting it pauses play.
+`toggle controller` and `set controller_deadzone 0.18` are saved console settings.
+A standard browser gamepad mapping is required; custom remapping and rumble are
+not included in this release. Hardware/controller playtesting is still needed.
 
 ## Run locally
 
@@ -299,10 +351,18 @@ node --test tests/web/*.test.mjs
 
 See [WEB_PORT.md](WEB_PORT.md) for gameplay details, browser differences,
 source layout, and optional regeneration using a separate PyGame checkout.
-Web 0.22.0 is the published baseline. This label-only patch passes static checks
-and display spot checks. The previous release passed all 108 test groups.
-Browser playtesting of the new label remains outstanding. The WebGL effects
-are recreated and are not pixel-identical to the desktop version.
+Web 0.22.1 (`51e047b`) is the published baseline. This release passes 124 automated
+test groups and static checks, including a complete level-50 traversal, controller
+input and menu dispatch, shutter limits, startup cache handling and preview
+geometry. The controller mapping and new visual balance need browser/hardware
+playtesting. WebGL effects are recreated and are not pixel-identical to the desktop version.
+
+After changing the version or adding/removing modules, regenerate the committed
+startup metadata before the checks:
+
+```bash
+node tools/prepare_web_release.mjs
+```
 
 © 2024–2026 FlyingFathead. Original authorship and rights remain with the author. The bundled
 [Three.js MIT license](web/vendor/THREE-LICENSE.txt) applies to Three.js.

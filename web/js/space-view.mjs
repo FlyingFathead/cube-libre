@@ -17,28 +17,31 @@ export function overviewZoom(course) {
 export class RouteGuide {
   constructor(parent,course) {
     this.course=course;this.group=new T.Group();parent.add(this.group);
-    const positions=[],legs=[];
-    const box=(map,lo,hi,index)=>{
-      for(let axis=0;axis<3;axis++)for(const a of [0,1])for(const b of [0,1]) {
-        const j=(axis+1)%3,k=(axis+2)%3,start=[...lo],end=[...lo];
-        start[j]=end[j]=(a?hi:lo)[j];start[k]=end[k]=(b?hi:lo)[k];end[axis]=hi[axis];
-        positions.push(...map(...start).array(),...map(...end).array());legs.push(index,index);
+    const positions=[],legs=[],routePositions=[];
+    // Four longitudinal exterior edges per leg; no wall lattice, caps, joint
+    // boxes, gates or generated meshes. Fifty legs are only 200 line segments.
+    for(const m of course.modules) {
+      const [a,b]=course.span(m);
+      for(const y of [-7,7])for(const z of [-7,7]) {
+        positions.push(...m.world(a,y,z).array(),...m.world(b,y,z).array());
+        legs.push(m.index,m.index);routePositions.push(m.index,m.index+1);
       }
-    };
-    for(const m of course.modules) {const [a,b]=course.span(m);box((x,y,z)=>m.world(x,y,z),[a,-7,-7],[b,7,7],m.index);}
-    for(const j of course.joints)box((x,y,z)=>j.center.add(new V(x,y,z)),[-7,-7,-7],[7,7,7],j.index);
+    }
     const geometry=new T.BufferGeometry();
     geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));
     geometry.setAttribute('leg',new T.Float32BufferAttribute(legs,1));
+    geometry.setAttribute('routePosition',new T.Float32BufferAttribute(routePositions,1));
     const material=new T.ShaderMaterial({transparent:true,depthWrite:false,
-      uniforms:{active:{value:0},trail:{value:0},opacity:{value:1},detailFirst:{value:0},detailLast:{value:-1}},
-      vertexShader:`attribute float leg; uniform float active; uniform float trail;
+      uniforms:{active:{value:0},trail:{value:0},opacity:{value:1},detailFirst:{value:0},detailLast:{value:-1},previewMode:{value:0},fadeAfter:{value:2},previewCount:{value:50},farOpacity:{value:.12}},
+      vertexShader:`attribute float leg; attribute float routePosition;
+        uniform float previewMode; uniform float fadeAfter; uniform float previewCount; uniform float farOpacity; uniform float active; uniform float trail;
         uniform float detailFirst; uniform float detailLast; varying float alpha;
         void main(){alpha=leg<active-2.0?0.0:leg<active-1.0?1.0-trail:1.0;
           if(leg>=detailFirst&&leg<=detailLast)alpha=0.0;
+          if(previewMode>0.5)alpha*=mix(1.0,farOpacity,clamp((routePosition-fadeAfter)/max(1.0,previewCount-fadeAfter),0.0,1.0));
           gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
       fragmentShader:`uniform float opacity; varying float alpha;
-        void main(){gl_FragColor=vec4(.46,.5,.57,alpha*opacity*.3);}`,
+        void main(){gl_FragColor=vec4(.60,.60,.62,alpha*opacity);}`,
     });
     this.lines=new T.LineSegments(geometry,material);this.group.add(this.lines);
     const end=course.portal.world(20),markerGeo=new T.BufferGeometry();
@@ -49,11 +52,15 @@ export class RouteGuide {
   }
   update(g,window,preview) {
     this.group.visible=true;
-    this.lines.visible=preview||!g.flags.culling;
+    const settings=g.previewSettings,count=Math.min(this.course.modules.length,settings.preview_max_legs);
+    this.lines.visible=preview?g.flags.preview_outline&&count>0:!g.flags.culling;
+    this.lines.geometry.setDrawRange(0,(preview?count:this.course.modules.length)*8);
     const u=this.lines.material.uniforms;
+    u.previewMode.value=preview?1:0;u.fadeAfter.value=settings.preview_fade_after_legs;
+    u.previewCount.value=count;u.farOpacity.value=settings.preview_far_opacity;
     u.active.value=preview?0:window.location.index;
     u.trail.value=preview?0:this.course.distanceFade(window.location.index-2,g.player.origin);
-    u.opacity.value=preview?(.28+.72*smooth(g.stateTime/7))*(1-smooth((g.stateTime/7-.8)/.2)):1;
+    u.opacity.value=preview?settings.preview_opacity*(.28+.72*smooth(g.stateTime/7))*(1-smooth((g.stateTime/7-.8)/.2)):.3;
     u.detailFirst.value=window.first;u.detailLast.value=window.last;
     this.marker.visible=true;this.marker.material.opacity=preview?smooth(g.stateTime/2):.8;
   }

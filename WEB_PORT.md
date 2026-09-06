@@ -158,13 +158,27 @@ for these commands; this also fixes the old ending preview's accidental re-pause
 
 ## Update notification and mobile placeholder
 
-The existing `web/version.json` is the authoritative version file. Keep its web
-version increasing and deploy it with the matching game changes. No separate
-`VERSION` file or GitHub API is required. The browser captures its current version
-when starting, then checks the same deployed file at startup, every two minutes
-while visible, and on return to the tab (at least ten seconds between checks).
-Requests use `cache: no-store`, a changing query parameter, and an eight-second
-timeout. Offline, missing-file and malformed-response failures stay silent.
+`web/version.json` is the authoritative version file. After editing it or adding
+modules, run `node tools/prepare_web_release.mjs` and commit the generated
+`web/index.html`. This embeds the release metadata and an import map covering
+**every module, including transitive Three.js imports**, and versions the CSS URL.
+JSON, audio and Help diagrams also use the running release in their asset URLs.
+Static checks reject stale metadata or missing module mappings.
+
+Before loading the game, the page fetches its deployed `version.json` with
+`cache: no-store`, a unique query parameter and a four-second timeout. If a newer
+version is available, it replaces the stale page URL with a release-specific,
+cache-busting URL. If that page is still stale during deployment propagation, it
+shows a retry message instead of looping. Offline/invalid/older metadata does
+not block loading the page's own build. This is a browser startup check against
+GitHub Pages; no GitHub API, server-side code or service worker is required.
+The running version label comes from the embedded release, never a separately
+fetched newer label. Refresh once when first upgrading from v0.22.1.
+
+After startup, the browser checks every two minutes while visible and on return
+to the tab (at least ten seconds between checks). Those checks use no-store,
+a changing query parameter and an eight-second timeout. Offline, missing-file
+and malformed-response failures stay silent.
 
 A strictly newer numeric major.minor.patch version displays:
 
@@ -179,12 +193,12 @@ This version: <running version>
 
 The notice waits for other dialogs to close and freezes gameplay. Space dismisses
 it, preserving whether the game was already paused. Refresh reloads the page and
-ends the current run; it never reloads automatically. A dismissed version does
+ends the current run. Automatic replacement is restricted to startup, before play. A dismissed version does
 not prompt again in that page session, but a still newer release can. Checks use
 relative URLs, so both the `/cube-libre/` Pages site and a local HTTP server work.
 The new version becomes discoverable after a successful Pages deployment, not
 merely after editing a repository file or creating a Git tag. Older builds without
-this checker must first load 0.18.0 or later.
+the startup loader must first refresh into 0.23.0 or later.
 
 Mobile browsers show the requested desktop-play notice once per tab session, with
 **TAP HERE TO CONTINUE** and Space as an alternative. This is a placeholder, not a
@@ -243,7 +257,7 @@ simulation test traverses level 50 with rush, active lasers, actual turns and th
 ten-second timer. This demonstrates a viable route, not a guarantee of human
 playability or a complete balance assessment.
 
-## Electric shutters, camera and sky (web 0.22.0)
+## Electric shutters, camera and sky (updated in web 0.23.0)
 
 **CHANGE ...** introduces **THE LASERS NOW OPEN AND CLOSE** at **level 7**, with
 **PASS THROUGH WHILE THEY ARE OPEN** underneath. `CHANGES.change_1` in
@@ -251,14 +265,19 @@ playability or a complete balance assessment.
 its validated numeric defaults. The complete schedule and tuning table are in
 [docs/LEVEL_PROGRESSION.md](docs/LEVEL_PROGRESSION.md).
 
-A four-second cycle ends with a 0.4-second amber warning, then a 0.8-second full
-closure. Each corridor leg has one stable random phase; its grids share timing.
-With `change_1_random_per_leg` disabled, all legs use the same phase. The entire
-laser square seals, including its moving aperture. A translucent electric sheet,
-dense grid and brief arcs show the closure. The closing buzz and reopening whoosh
-play near the player, once per leg transition. Remote and unrevealed hazards
-remain inactive. Closing panels use a single reusable mesh buffer; no dynamic
-lights, postprocessing or growing per-frame geometry is added.
+From level 7, a pool of one gate per leg can shutter; it grows to two at level 22,
+three at 36, and four at 50. At most two gates close at once across the active
+scene, always within one leg. `change_1_no_repeat_leg` defaults true: the next zap
+must be in another nearby revealed leg, or wait until one becomes available.
+Random selection is on by default; turning it off uses deterministic gate/leg
+selection while respecting the other constraints.
+
+The default four-second interval includes a 0.4-second amber warning and
+0.8-second closure. `change_1_gate_cooldown` guarantees at least 1.2 seconds of
+open rest before the next warning; its effective interval grows if needed.
+The whole selected laser square seals, including the moving aperture. Local
+buzz/whoosh sounds occur once per closure group. Hidden grids never activate.
+Closing panels reuse one mesh buffer; no dynamic lights or postprocessing.
 
 Contact while closed removes half the surviving cells, rounded down and preserving
 the last cell. The closest cells to the plane detach into ordinary recoverable
@@ -272,7 +291,7 @@ ordinary per-beam damage. Bonus rounds use their existing rules.
 with the configured introduction level and its card. This is a normal gameplay
 debug command, so normal scoring applies. Pause and Help freeze timing. Changing
 shutter settings or resetting an attempt clears the clock, immunity and contacts.
-`change_1` and `change_1_random_per_leg` are saved booleans, also available in Help.
+`change_1`, `change_1_random_per_leg` and `change_1_no_repeat_leg` are saved booleans, also available in Help.
 Numeric settings accept `set name number`, a bare `name number` shortcut, and
 read-only `status`, `view`, `get` or bare `set` queries. They last for this session;
 edit `CHANGE_NUMBERS` for shipped defaults. A zero minimum removes the level gate.
@@ -451,6 +470,14 @@ deliberately replaces that cap with the intended growing route.
 The seven-second introduction starts close to the forming cube, pulls back to fit
 the entire route, holds that overview, then returns toward the first leg. The
 whole maze is a faint cached outline and the exit is marked in the distance.
+The outline contains only four longitudinal exterior edges per corridor, with
+no end caps, joint boxes or wall lattice. `preview_max_legs` defaults to 50;
+`preview_fade_after_legs` defaults to 2. After the first two legs, opacity fades
+gradually toward `preview_far_opacity` (default 0.12 of the near opacity).
+`preview_opacity` defaults to 0.24. All four numeric values are session console
+settings in `PREVIEW_NUMBERS`. The saved `preview_outline` boolean can hide the
+outline; setting its leg limit to zero also hides it. The distant portal and
+full-route camera framing remain. These settings never reveal upcoming gates.
 There are **no red laser grids during the overview**. As the camera returns, the
 ghost outline fades and the nearby blue corridor forms. Hazard detail appears
 once play begins, and later sections reveal and arm as you advance.
@@ -465,7 +492,7 @@ into a sealed section. Transient debris remains capped at 300 particles.
 
 The performance limits are structural:
 
-- The 50-leg overview has 2,376 line vertices in one static buffer, plus an exit
+- The 50-leg overview has 400 line vertices (200 segments) in one static buffer, plus an exit
   marker. It is rebuilt only when the course changes.
 - Normal detailed rendering selects at most three nearby legs and their laser
   sets. Collision queries use a spatial index and at most four nearby laser sets.
@@ -492,9 +519,9 @@ collapse continue to apply. The opening overview always hides cutting grids.
 The level-50 traversal test uses ordinary damage, microgravity, spin, shutters,
 rush and one legal re-coupling request every 2.1 seconds. Its controller waits
 for an open window before crossing each leg. A deterministic run cleared all
-fifty legs in about 237 simulated seconds with twelve cubes remaining and more
-than three seconds left on the tightest leg. This verifies a viable route; it
-is not a browser FPS benchmark or a substitute for human difficulty testing.
+fifty legs with surviving cubes and more than two seconds left on every leg.
+This verifies a viable route; it is not a browser FPS benchmark or a substitute
+for human difficulty testing.
 
 ## Player rotation (web 0.20.0)
 
@@ -572,7 +599,7 @@ setting unchanged. `toggle` takes only the name; use `set` for an explicit value
 Available booleans: `damage`, `lasers`, `bounds`, `noclip`, `portal`, `suction`,
 `route3d`, `shake`, `spin`, `rotation_shocks`, `portal_white_light`, `culling`,
 `microgravity`, `overheat_blocks_recoupling`, `change_1`,
-`change_1_random_per_leg`, `locate` and browser audio `mute`.
+`change_1_random_per_leg`, `change_1_no_repeat_leg`, `preview_outline`, `controller`, `locate` and browser audio `mute`.
 The movement, heat restriction, shutter booleans, visual preferences and mute settings are saved;
 debug flags and locate remain session controls. Numeric `level`, `score` and
 `cubes` also support status queries. `set level X` still starts the chosen level.
@@ -654,46 +681,89 @@ highest level reached, rather than cleared. Console level jumps also update this
 record under the existing debug behavior. The title and HUD record tooltips
 explain that the value persists across runs.
 
+The storage key is `cube-libre-scores-v1`, field `highest_level`. It is specific
+to a browser profile and origin. `toplevel` / `top_level` queries it;
+`toplevel reset`, `top_level reset`, `reset top level`, `reset top_level`,
+`reset toplevel` and `reset highest_level` reset only this record to 1 and save it.
+Best score, best escape, other preferences and the current run stay intact.
+Malformed commands do not modify records. `status top_level`, `view top_level`,
+`get top_level` and bare `set top_level` are also read-only.
+
+The top-right timer now uses the actual route length: `LEG 1/50` through
+`LEG 50/50`. Bonus rounds retain their separate BONUS timer label.
+
+## Xbox-style controllers (web 0.23.0)
+
+The browser's standard Gamepad mapping is polled once per animation frame.
+Left stick and D-pad move X/Y; LT / RT move +Z / −Z. Stick and trigger magnitudes
+are analog. **LB re-couples on each press; X is an alias. RB holds rush.**
+In bonus rounds, left stick/D-pad roll on X/Z and the triggers are unused.
+A starts/confirms/continues, B returns/opens the menu, Y locates, View opens Help,
+and Menu pauses. D-pad/left stick navigate menus; right stick scrolls dialogs.
+Help includes an exact controller diagram plus tables alongside keyboard Help.
+
+Connect by USB or Bluetooth, focus the page, then press and release a controller
+button. Firefox exposes gamepads after interaction; code polls fresh objects
+rather than relying on its timestamp. Only a standard browser mapping is
+accepted. One active controller is retained until disconnect; disconnect pauses
+an active run. Focus changes, dialog transitions and new connections require
+neutral inputs before resuming to prevent accidental confirmations and drift.
+Movement combines with keyboard/touch controls but clamps each axis to its limit.
+Holding LB/X does not repeatedly spend the re-coupling quota.
+
+`controller` defaults true and is saved under `cube-libre-controller-v1`.
+`controller_deadzone` defaults 0.18 (range 0–0.8) and is saved under
+`cube-libre-controller-deadzone-v1`. Both use set/view/status; the boolean supports
+toggle. A controller start proceeds without waiting for browser audio permission;
+a click or keyboard gesture can enable sound afterward. No npm dependency,
+custom button-remapping UI, rumble or dedicated mobile edition is added.
+
+Reference: [MDN Gamepad API](https://developer.mozilla.org/en-US/docs/Web/API/Gamepad_API/Using_the_Gamepad_API),
+[standard mapping](https://w3c.github.io/gamepad/#remapping).
+
+
 ## Versioning
 
 `web/version.json` is the machine-readable source for the **web version** and
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.22.1**, based on published **0.22.0**, commit `022c348`. The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.23.0**, based on published **0.22.1**, commit `51e047b`. The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.22.2`, `0.22.3`, etc. for fixes, and `0.23.0` for the
-next feature release. Update `web/version.json` and the release notes, refresh
+For future releases, use `0.23.1`, `0.23.2`, etc. for fixes, and `0.24.0` for the
+next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.22.1.zip` and `v0.22.1`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.23.0.zip` and `v0.23.0`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior
 
 - Audio starts after user interaction. The Start button waits for the sounds to
   load/decode; a failed audio load falls back to silent play. Muting before starting
-  bypasses that wait.
+  bypasses that wait. Controller start also bypasses the wait for audio permission.
 - Ogg Vorbis is preferred when supported; MP3 is included as a decoding fallback.
   The browser downloads one format, not both, unless fallback is necessary.
 - Pause, help, modal dialogs, an unfocused window, and hidden tabs freeze gameplay.
   Help also freezes loose-fragment expiry, so reading instructions cannot cost cubes.
-- Touch controls appear on devices with a coarse pointer. A keyboard offers the
-  closest control experience to the original.
+- Touch controls appear on devices with a coarse pointer. A keyboard or a
+  standard analog controller is recommended for desktop play.
 - Use the Fullscreen button or Alt+F if the browser reserves F11. Browser/system
   shortcuts may intercept some Ctrl combinations; Q/E avoids the Ctrl movement alias.
 - Esc opens the game menu; quitting offers to end the session. Websites cannot
   reliably close tabs they did not open.
 - Scores are local to this browser and origin. They do not import the Python
   `cube_libre_scores.json`, sync between devices, or form an online leaderboard.
-- WebGL 2 and JavaScript are required. The author confirmed web
-  0.21.0 was released and pushed. The new shutters, camera default and sky have
-  not been browser-playtested in the implementation session.
+- WebGL 2, JavaScript and import maps are required. Web 0.22.1 is the published
+  baseline. The 0.23.0 controller mapping and visual/balance changes still require
+  browser and hardware playtesting; automated checks do not claim a hardware benchmark.
 
 ## Verify or regenerate
 
-Use Node.js 22 or newer:
+No npm installation is required. The project declares its ES module configuration explicitly; earlier releases
+were checked by the author on Node.js 18.19.1.
+This release was checked with Node.js 24:
 
 ```bash
 node tools/check_web.mjs
@@ -733,11 +803,14 @@ resets, heat gates including a zero minimum, quota preservation, cooling and
 shared milestone sequencing checks. Web 0.22.0 adds shutter timing, collision and
 immunity, warning/closed rendering, local audio events, movable introductions,
 camera centering, legacy and irregular skies, saved pattern switching and full
-configuration listings. The fifty-leg controller now accounts for closed shutters.
+configuration listings. Web 0.23.0 adds controller axes/buttons and browser-dispatch
+checks, record resets, globally capped alternating shutters, preview limits/fade
+uniforms, startup cache replacement and live leg totals. All 124 test groups pass.
+The fifty-leg simulated pilot accounts for closed shutters.
 
 The original synthesized WAV cache is approximately 10.5 MiB; the web audio is
 approximately 2.6 MiB with both codecs included (roughly 0.75 MiB for the preferred
-Ogg set). The complete published folder is roughly 3.5 MiB.
+Ogg set). The complete published folder is roughly 3.6 MiB.
 
 To regenerate sounds, install FFmpeg with libvorbis and libmp3lame, then run:
 
@@ -770,6 +843,10 @@ entries. Temporary source WAV files are not included in the published game.
 | `web/js/space-view.mjs` | Cached ghost route, overview framing, detail window and selectable infinite starfields |
 | `web/js/render.mjs` | Batched cube/line rendering, title, field and transition effects |
 | `web/js/audio.mjs` | Local audio loading, codecs, channels, loops and state mix |
+| `web/js/gamepad.mjs` | Standard controller polling, analog inputs, action edges and menu navigation |
+| `web/assets/controller-controls.svg` | Controller diagram with exact action callouts |
+| `tools/prepare_web_release.mjs` | Regenerate committed release metadata, import map and stylesheet version |
+| `web/js/updates.mjs` | Version comparison, in-session update checks and release asset URLs |
 | `web/js/app.mjs` | Browser input, overlays, storage, fullscreen and fixed timestep |
 | `web/index.html`, `web/style.css` | Accessible UI and responsive game surface |
 | `web/assets/` | Original title geometry, font and compressed generated audio |

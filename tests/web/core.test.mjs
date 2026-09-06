@@ -187,8 +187,8 @@ test('all 50 legs can be traversed with timed shutter windows, rush, lasers and 
     const stage=targets[target],delta=stage.p.sub(g.player.origin),input={rush:true};
     for(const axis of ['x','y','z'])input[axis]=Math.max(-1,Math.min(1,delta[axis]/(15.6/120)));
     if(delta.length()<.03) {
-      const phase=g.shutters.phase(stage.leg,g.changeSettings,g.flags.change_1_random_per_leg);
-      if((!stage.wait||!phase.closed&&phase.untilChange>2.65)&&target<targets.length-1)target++;
+      const pulse=g.shutters.pulse,openWindow=!pulse||pulse.leg!==stage.leg||pulse.closesAt-g.shutters.time>2.65;
+      if((!stage.wait||openWindow)&&target<targets.length-1)target++;
     }
     if(frame%252===0)g.requestRecouple(); // One legal C request every 2.1 seconds.
     g.tick(1/120,input);minLeft=Math.min(minLeft,g.legTime);

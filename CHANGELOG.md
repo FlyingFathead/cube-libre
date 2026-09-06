@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.23.0 — Room to move
+
+Based on published web v0.22.1 (`51e047b`).
+
+- Add Xbox-style analog controller support in normal levels, bonus rounds and
+  menus. LB re-couples, X is an alias, and RB rushes. Include a labeled Help map,
+  saved controller/deadzone settings, neutral-input gates, and pause on disconnect.
+  Controller-only start proceeds even when Web Audio needs a later click/key.
+- Add `toplevel` / `top_level` queries and reset aliases, including
+  `toplevel reset` and `reset top level`. Reset only the browser's highest-level
+  record to 1, preserving score/escape records, preferences and current play.
+- Ease CHANGE 1 shutters: one eligible gate per leg at level 7, two at 22, three
+  at 36 and four at 50. At most two gates close simultaneously across the active
+  scene. Select gates randomly and require the next event to use a different
+  nearby revealed leg; wait if none is available. Add configurable counts,
+  ramp endpoint, global simultaneous limit, open cooldown and no-repeat flag.
+  Existing damage, immunity, warning/closure timing and minimum-level settings
+  remain editable through the same console interface.
+- Reduce the opening ghost map to four exterior edges per corridor: 200 segments
+  for fifty legs. Add `preview_max_legs` (50), `preview_fade_after_legs` (2),
+  near/far opacity controls and the saved `preview_outline` toggle. Keep the
+  distant portal and full-route framing, with no upcoming gates in the overview.
+- Show actual route progress as `LEG x/TOTAL` in the top-right timer.
+- Check fresh deployed metadata before loading the game; replace a stale page
+  once using a cache-busting release URL, without a reload loop. Version all
+  module imports, stylesheet and fetched assets. Keep displayed version tied
+  to the loaded build. Active games retain the dismissible update notice.
+- Update README, controller controls, progression/configuration tables and
+  release preparation instructions. No npm install or backend is required.
+
+Validation: 124 automated test groups and static checks pass. Coverage includes
+controller input/menu dispatch, saved record reset, shutter ramp/alternation and
+simultaneous limits, cooldown/immunity, a complete 50-leg traversal with default
+hazards and time limits, preview geometry/framing, startup cache behavior and
+leg totals. The SVG controller map was inspected. Actual controller hardware,
+Firefox playability, visual balance and GPU performance still need playtesting.
+
+
 ## 0.22.1 — A clearer personal best
 
 Based on published web v0.22.0 (`022c348`).

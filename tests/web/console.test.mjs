@@ -5,6 +5,49 @@ import vm from 'node:vm';
 import {Game,V} from '../../web/js/core.mjs';
 import {CHANGE_NUMBERS} from '../../web/js/changes.mjs';
 
+test('top-level reset persists through the browser adapter and preserves all other records, preferences and active play',()=>{
+  const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
+  const start=source.indexOf('  const read=(key,fallback)'),end=source.indexOf('  game.flags.shake=',start);
+  const storage=new Map([['cube-libre-scores-v1',JSON.stringify({highest_level:50,best_escape:117,best_score:23000})],['cube-libre-star-pattern-v1','1']]);
+  const writes=[];
+  const load=()=>{
+    const context=vm.createContext({Game,clamp:(n,min,max)=>Math.min(max,Math.max(min,n)),localStorage:{
+      getItem:key=>storage.get(key)??null,setItem:(key,value)=>{writes.push(key);storage.set(key,value);}
+    }});
+    vm.runInContext(source.slice(start,end),context);return vm.runInContext('game',context);
+  };
+  const g=load();g.ready(20);g.setState('playing');g.paused=true;g.score=700;g.flags.spin=false;g.shutters.tick(1.1);
+  const course=g.course,player=g.player,flags={...g.flags},clock=g.legTime;
+  for(const command of ['reset top level','  RESET   TOP_LEVEL  ','reset highest_level','reset toplevel','toplevel reset','  TOP_LEVEL   RESET  ']) {
+    g.stats.highest_level=50;const count=writes.length;
+    for(const query of ['toplevel',' TOP_LEVEL '])assert.equal(g.command(query),'TOP LEVEL: 50/50');
+    for(const alias of ['get','view','status','set','flag'])for(const name of ['toplevel','top_level'])
+      assert.equal(g.command(`${alias} ${name}`),'Status for top_level is: 50');
+    assert.ok(g.command('viewconfig').includes('top_level | 50 | Saved top level |'));
+    assert.equal(writes.length,count);assert.equal(g.stats.highest_level,50);
+    assert.equal(g.command(command),'Top level reset to 1/50. Best score and best escape kept.');
+    assert.equal(writes.length,count+1);assert.equal(writes.at(-1),'cube-libre-scores-v1');
+    assert.deepEqual(JSON.parse(storage.get('cube-libre-scores-v1')),{highest_level:1,best_escape:117,best_score:23000});
+    const reloaded=load();assert.equal(reloaded.stats.highest_level,1);assert.equal(reloaded.stats.best_score,23000);assert.equal(reloaded.stats.best_escape,117);
+    assert.equal(reloaded.command('toplevel'),'TOP LEVEL: 1/50');
+    assert.equal(g.course,course);assert.equal(g.player,player);assert.equal(g.state,'playing');assert.equal(g.paused,true);
+    assert.equal(g.level,20);assert.equal(g.score,700);assert.equal(g.legTime,clock);assert.equal(g.shutters.time,1.1);assert.deepEqual(g.flags,flags);
+    assert.equal(storage.get('cube-libre-star-pattern-v1'),'1');
+  }
+  const before=JSON.stringify([...storage]),count=writes.length;
+  for(const command of ['reset','reset all','reset score','reset top level extra','reset top_level extra'])assert.throws(()=>g.command(command),/Usage: reset top level/);
+  for(const name of ['toplevel','top_level']) {
+    for(const suffix of ['all','50','reset extra'])assert.throws(()=>g.command(`${name} ${suffix}`),/Usage:/);
+    assert.throws(()=>g.command(`toggle ${name}`),/cannot be toggled/);
+    assert.throws(()=>g.command(`set ${name} true`),/cannot be toggled/);
+  }
+  assert.throws(()=>g.command('toggle reset'),/cannot be toggled/);
+  assert.equal(JSON.stringify([...storage]),before);assert.equal(writes.length,count);
+  assert.ok(g.command('help').includes('reset top level'));
+  const fresh=load();fresh.newRun();assert.equal(fresh.stats.highest_level,1);
+  fresh.ready(7);assert.equal(JSON.parse(storage.get('cube-libre-scores-v1')).highest_level,7);
+});
+
 test('all config listing aliases report live values from every registered setting without side effects',()=>{
   const g=new Game();g.ready(7);g.player.setSpinAngles(5,10,15);g.shutters.tick(.75);
   let muted=false;g.consoleSettings.mute={get:()=>muted,set:v=>{muted=v;}};
@@ -17,7 +60,7 @@ test('all config listing aliases report live values from every registered settin
   assert.equal(snapshot(),before);assert.equal(g.course,course);
   const rows=output.split('\n').filter(line=>/^[a-z_0-9]+ \|/.test(line));
   const names=rows.map(line=>line.split(' | ')[0]);
-  const expected=[...Object.keys(g.flags),'locate',...Object.keys(g.consoleSettings),'level','score','cubes',...Object.keys(CHANGE_NUMBERS),'star_pattern','auto_locate_min_level'];
+  const expected=[...Object.keys(g.flags),'locate',...Object.keys(g.consoleSettings),'level','score','cubes','top_level',...Object.keys(CHANGE_NUMBERS),...Object.keys(g.previewSettings),'star_pattern','auto_locate_min_level'];
   assert.deepEqual(new Set(names),new Set(expected));assert.equal(names.length,expected.length);
   for(const row of rows)assert.equal(row.split(' | ').length,4);
   assert.match(output,/star_pattern \| 2 \| Background star pattern \| 0: no background stars; 1: original/);
@@ -115,7 +158,7 @@ test('browser console aliases save visual and movement preferences and status qu
   const game=new Game(),elements={'console-form':{},'console-input':{},'console-log':{}},saved=[],messages=[];
   vm.runInNewContext(source.slice(start,end),{$:id=>elements[id],game,history:[],historyIndex:0,log:[],consoleLog:line=>messages.push(line),syncAudio(){},write:(...entry)=>saved.push(entry)});
   const submit=value=>{elements['console-input'].value=value;elements['console-form'].onsubmit({preventDefault(){}});};
-  for(const [key,storage] of [['shake','shake'],['spin','spin'],['rotation_shocks','rotation-shocks'],['portal_white_light','portal-white-light'],['culling','culling'],['microgravity','microgravity'],['overheat_blocks_recoupling','overheat-blocks-recoupling'],['change_1','change-1'],['change_1_random_per_leg','change-1-random-per-leg']]) {
+  for(const [key,storage] of [['shake','shake'],['spin','spin'],['rotation_shocks','rotation-shocks'],['portal_white_light','portal-white-light'],['culling','culling'],['preview_outline','preview-outline'],['microgravity','microgravity'],['overheat_blocks_recoupling','overheat-blocks-recoupling'],['change_1','change-1'],['change_1_random_per_leg','change-1-random-per-leg'],['change_1_no_repeat_leg','change-1-no-repeat-leg']]) {
     submit(`toggle ${key}`);assert.deepEqual(saved.at(-1),[`cube-libre-${storage}-v1`,false]);
     assert.equal(messages.at(-1),`${key} set to false`);
     const writes=saved.length;for(const alias of ['set','view','status'])submit(`${alias} ${key}`);
