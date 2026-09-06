@@ -395,7 +395,7 @@ async function main() {
     $('audio-status').textContent=loadingStart?audioProgress:audioWarning;
     if(title) {
       dots(loadingStart?'LOADING AUDIO - PLEASE WAIT':'SPACE / ENTER = NEW RUN',game.t);
-      $('title-stats').textContent=`Score ${game.score} · Best escape ${game.stats.best_escape}/125 · Highest level ${game.stats.highest_level}`;
+      $('title-stats').textContent=`Score ${game.score} · Best escape ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${BALANCE.levelCap}`;
     }
     const phase=s.endsWith('_intro')&&!opening&&!bonusIntro,ready=s==='level_ready',result=s==='result_overlay',rebuild=s==='reassembly',ended=s==='ended';
     $('card').hidden=!(phase||ready||result||rebuild||ended||bonusIntro||bonusResult);
@@ -430,7 +430,7 @@ async function main() {
       $('card').style.color='';
       if(result) {
         $('card-title').textContent='TRANSCENDENCE';$('card-subtitle').textContent=`LEVEL ${game.completedLevel} COMPLETE\nCUBES INTACT: ${game.lastEscape}/125 (${Math.round(game.lastEscape/125*100)}%)`;
-        $('card-detail').textContent=`SCORE +${game.lastEscape*100} · TOTAL ${game.score}\nBEST ESCAPE ${game.stats.best_escape}/125 · HIGHEST LEVEL ${game.stats.highest_level}`;
+        $('card-detail').textContent=`SCORE +${game.lastEscape*100} · TOTAL ${game.score}\nBEST ESCAPE ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${BALANCE.levelCap}`;
         $('card').style.opacity=String(1-smooth((game.stateTime/4.25-.56)/.40));
       } else if(rebuild) {
         $('card-title').textContent=game.stateTime>3.25?'REASSEMBLED':'REASSEMBLY IN PROGRESS';$('card-subtitle').textContent='';$('card-detail').textContent='';
@@ -442,7 +442,7 @@ async function main() {
     const n=game.player.alive.size;
     $('cube-count').textContent=`LVL ${String(game.level).padStart(2,'0')} · CUBES ${String(n).padStart(3,'0')}/125`;
     $('score').textContent=`INTEGRITY ${(n/125*100).toFixed(1)}% · SCORE ${game.score}`;
-    $('records').textContent=`BEST ESCAPE ${game.stats.best_escape}/125 · HIGHEST LEVEL ${game.stats.highest_level}`;
+    $('records').textContent=`BEST ESCAPE ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${BALANCE.levelCap}`;
     $('integrity-warning').textContent=n<=18?'CRITICAL: STRUCTURE FAILING':n<=42?'WARNING: STRUCTURE FAILING':'';
     if(bonusPlaying) {
       const b=game.bonus;

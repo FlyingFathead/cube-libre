@@ -1,6 +1,7 @@
 # Cube Libre web progression
 
-Default schedule for web **0.22.0**, based on published v0.21.0 (`34faa15`).
+Default schedule for web **0.22.1**, based on published v0.22.0 (`022c348`).
+The level schedule is unchanged in this label-only patch.
 [`featuresForSettings()`](../web/js/difficulty.mjs) combines `BALANCE` milestones
 with [`CHANGES` and `CHANGE_NUMBERS`](../web/js/changes.mjs), sorts by level, and
 supplies phase selection, banner titles and the Help table. `LEVEL_FEATURES` is a

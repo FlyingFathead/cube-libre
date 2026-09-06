@@ -645,20 +645,29 @@ ending screens and other scenes without an active portal approach.
 `set level X` is also an alias for `level X`, with the same validation, level-cap
 clamping and attempt reset. For example, `set level 20` starts level 20.
 
+## Saved top-level display (web 0.22.1)
+
+Title, level result and HUD records use `TOP LEVEL: <highest reached>/<level cap>`.
+The numerator comes from `game.stats.highest_level`, saved in this browser across
+runs; the denominator comes from `BALANCE.levelCap` (currently 50). It reports the
+highest level reached, rather than cleared. Console level jumps also update this
+record under the existing debug behavior. The title and HUD record tooltips
+explain that the value persists across runs.
+
 ## Versioning
 
 `web/version.json` is the machine-readable source for the **web version** and
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.22.0**, based on published **0.21.0**, commit `34faa15`. The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.22.1**, based on published **0.22.0**, commit `022c348`. The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.22.1`, `0.22.2`, etc. for fixes, and `0.23.0` for the
+For future releases, use `0.22.2`, `0.22.3`, etc. for fixes, and `0.23.0` for the
 next feature release. Update `web/version.json` and the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.22.0.zip` and `v0.22.0`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.22.1.zip` and `v0.22.1`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior

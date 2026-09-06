@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.22.0
+# Cube Libre — Web v0.22.1
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -22,7 +22,15 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.22.0
+## Web release 0.22.1
+
+The title screen, level result and records display now show **TOP LEVEL: 7/50**
+(for example): your highest level reached, followed by the configured campaign
+cap. This is your personal best saved in this browser across runs. Debug level
+jumps also update that record. Hovering over the title or HUD records explains
+that the value is saved across runs.
+
+### Retained from 0.22.0
 
 **CHANGE ... arrives at level 7: THE LASERS NOW OPEN AND CLOSE.** Electric
 shutters seal the entire laser square on a **4-second cycle**, with an amber
@@ -291,8 +299,9 @@ node --test tests/web/*.test.mjs
 
 See [WEB_PORT.md](WEB_PORT.md) for gameplay details, browser differences,
 source layout, and optional regeneration using a separate PyGame checkout.
-Web 0.21.0 is the published baseline. This release has automated checks;
-its new shutter effects, camera behavior and sky still need browser playtesting. The WebGL effects
+Web 0.22.0 is the published baseline. This label-only patch passes static checks
+and display spot checks. The previous release passed all 108 test groups.
+Browser playtesting of the new label remains outstanding. The WebGL effects
 are recreated and are not pixel-identical to the desktop version.
 
 © 2024–2026 FlyingFathead. Original authorship and rights remain with the author. The bundled

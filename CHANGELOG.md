@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.22.1 — A clearer personal best
+
+Based on published web v0.22.0 (`022c348`).
+
+- Replace HIGHEST LEVEL with **TOP LEVEL: <highest reached>/<level cap>** on
+  the title screen, level result card and HUD records. Use the saved personal
+  best and `BALANCE.levelCap`, currently 50.
+- Explain in title/HUD record tooltips that the personal best is saved in this
+  browser across runs. Preserve existing record behavior, including debug jumps.
+
+Validation: static checks and display spot checks pass for saved records of 1,
+7 and 50, including an alternate cap. Gameplay code is unchanged. No new tests
+were added for this text change; the v0.22.0 baseline passed all 108 test groups.
+The new label still needs browser playtesting.
+
 ## 0.22.0 — Change in the grid
 
 Based on published web v0.21.0 (`34faa15`).
