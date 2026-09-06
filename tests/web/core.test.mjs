@@ -219,7 +219,7 @@ test('clearing the level cap awards score once, holds white, then needs separate
   g.tick(1.99);assert.equal(g.state,'ascension_white');
   g.tick(.02);assert.equal(g.state,'ascension_title');near(g.stateTime,0);
   g.continue();assert.equal(g.state,'ascension_title');
-  g.tick(2.4);g.continue();assert.equal(g.state,'run_summary');
+  g.tick(ASCENSION_TIMING.continueAfter+.1);g.continue();assert.equal(g.state,'run_summary');
   g.continue();assert.equal(g.state,'run_summary','One input must not dismiss both screens');
   g.tick(1);g.continue();assert.equal(g.state,'title');assert.equal(g.level,50);
   near(g.runStats.playSeconds,playTime);assert.equal(g.stats.best_score,expected);

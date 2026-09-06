@@ -1,5 +1,6 @@
 import {UpdateChecker,UPDATE_INTERVAL_MS} from './updates.mjs';
 import {BONUS_SCHEDULE,PIECES_RULES} from './bonus.mjs';
+import {observeTitleLayout} from './title-layout.mjs';
 const $=id=>document.getElementById(id);
 function fail(error) {
   $('boot').hidden=false; $('boot-text').textContent=`Cube Libre could not start: ${error.message}. See the browser console for details.`;
@@ -243,8 +244,9 @@ async function main() {
     clearInput();game.continue();focusGame();syncAudio();
   });
   $('scene').addEventListener('webglcontextlost',e=>{e.preventDefault();game.paused=true;syncAudio();cancelAnimationFrame(raf);fail(Error('The graphics context was lost. Reload to restart'));});
-  window.addEventListener('resize',()=>renderer.resize());
-  document.addEventListener('fullscreenchange',()=>{clearInput();renderer.resize();});
+  const titleLayout=observeTitleLayout(renderer,{canvas:$('scene'),start:$('start'),info:document.querySelector('.title-info'),title:$('title')});
+  window.addEventListener('resize',()=>{renderer.resize();titleLayout.invalidate();});
+  document.addEventListener('fullscreenchange',()=>{clearInput();renderer.resize();titleLayout.invalidate();});
 
   function input() {
     const held=new Set([...keyboard,...pointers.values()]),has=(...keys)=>keys.some(k=>held.has(k));
@@ -437,7 +439,12 @@ async function main() {
       const dt=Math.min((now-previous)/1000,.1);previous=now;
       if(game.paused||document.hidden)accumulator=0;
       else {accumulator+=dt;while(accumulator>=1/120){game.tick(1/120,input());accumulator-=1/120;}}
-      audio.update(game);renderer.render(game);ui();raf=requestAnimationFrame(frame);
+      audio.update(game);ui();titleLayout.update();renderer.render(game);
+      if(renderer.reassemblyLabel) {
+        $('card').style.setProperty('--reassembly-label-x',`${renderer.reassemblyLabel.x}px`);
+        $('card').style.setProperty('--reassembly-label-y',`${renderer.reassemblyLabel.y}px`);
+      }
+      raf=requestAnimationFrame(frame);
     } catch(error) {game.paused=true;audio.pause(true);fail(error);}
   }
   raf=requestAnimationFrame(frame);

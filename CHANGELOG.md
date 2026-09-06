@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.20.1 — Let the ending breathe
+
+- Let YOU'VE ASCENDED finish its 1.4-second fade, hold it alone for two seconds,
+  then fade in ... FOR NOW. over 1.2 seconds. Show the continue prompt afterward
+  and prevent early input from skipping the pause or subtitle.
+- Place REASSEMBLY IN PROGRESS and REASSEMBLED beneath the projected rebuilding
+  cube, with a subtle one-pixel white outline around the dark lettering.
+- Put a large, centered PLAY THE WEB VERSION HERE link immediately below the
+  README title. Add the original cube-letter title artwork as a clickable logo
+  and remove the old deployment placeholder now that the game is live.
+- Fit the animated cube-letter title between the start prompt and the actual
+  instruction panel. Recenter and scale it on resize, browser zoom and text
+  wrapping, including narrow desktop windows, without clipping its moving cubes.
+
+Validation: 83 test groups and static checks pass, including the actual ending
+UI fade sequence, two-second hold, pause behavior and separate continue inputs.
+Title checks project every animated cube corner inside the available area across
+full-width, half-width and zoomed viewport sizes, and verify resize tracking and
+camera reset. Reassembly label checks cover multiple viewport shapes and rotating
+views. The text outline and resized title still need browser playtesting.
+
 ## 0.20.0 — Into the stars
 
 - Restore one added leg per level through fifty legs at level 50, retaining X/Z/Y

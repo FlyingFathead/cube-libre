@@ -7,6 +7,25 @@ dialog{color:#d2ebf0;background:#030a0f;border:1px solid #39c4cf;border-radius:9
 @media(max-width:700px){#hud{min-width:0;font-size:.8125rem;padding:.5rem .65rem;max-width:72%}#hud strong{font-size:.875rem}#timer{font-size:1.1rem;right:10px}#records{display:none}#toolbar button{padding:.35rem .5rem;min-height:36px}#notice{top:22%;font-size:.875rem}#recovery{min-width:0;width:max-content;font-size:.8125rem}#danger{font-size:.875rem;width:max-content}.title-info{bottom:100px;padding:.55rem;font-size:.8125rem}.title-info span{padding:0 .1rem}.title-info .credits{font-size:.75rem}#start{top:5%;height:45px}#audio-status{}#card{padding:5vw}dialog{padding:1rem}}
 @media(max-height:560px){.title-info{bottom:55px;padding:.3rem .75rem}.title-info p{margin:.2rem}.title-info .credits{display:none}#start{top:2%;height:34px}#hud{padding:.35rem .55rem}#hud p{margin:.2rem}#notice{top:23%}#recovery{}#audio-status{}.touch-pad button{min-height:36px}#touch-controls{}#card.rebuilding{padding-bottom:12%}}
 
+/* White tracing keeps both reassembly labels legible over the moving pieces. */
+#card.rebuilding { padding: 0; }
+#card.rebuilding #card-title {
+  position: absolute;
+  left: var(--reassembly-label-x, 50%);
+  top: var(--reassembly-label-y, 65%);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 2rem);
+  margin: 0;
+  color: #111;
+  text-shadow:
+    -1px 0 0 #fff, 1px 0 0 #fff,
+    0 -1px 0 #fff, 0 1px 0 #fff,
+    -1px -1px 0 #fff, 1px -1px 0 #fff,
+    -1px 1px 0 #fff, 1px 1px 0 #fff;
+}
+#card.rebuilding p:empty { display: none; }
+
 /* Reserve actual space for every bottom overlay, including wrapped toolbars. */
 #bottom-ui {
   position: absolute;

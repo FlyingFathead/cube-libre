@@ -1,9 +1,31 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
 import * as T from '../../web/vendor/three.module.min.js';
-import {Game,ASCENSION_TIMING} from '../../web/js/core.mjs';
+import {Game,ASCENSION_TIMING,smooth} from '../../web/js/core.mjs';
 import {AscensionScene,ascensionPose,ASCENSION_STAGE} from '../../web/js/ending.mjs';
 import {Renderer} from '../../web/js/render.mjs';
+
+test('the fully visible ascension title holds alone for two seconds before the subtitle and continue prompt',()=>{
+  const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
+  const start=source.indexOf("    $('ending').hidden="),end=source.indexOf("    if(s==='run_summary'&&",start);
+  assert.ok(start>=0&&end>start);
+  const game=new Game(),elements=Object.fromEntries(['ending','ascension-copy','run-summary','ending-next','ascension-title','ascension-subtitle'].map(id=>[id,{style:{}}]));
+  game.command('test ending_1');game.setState('ascension_title');
+  const ui=()=>vm.runInNewContext(source.slice(start,end),{s:game.state,game,ASCENSION_TIMING,smooth,$:id=>elements[id]});
+  const title=()=>Number(elements['ascension-title'].style.opacity),subtitle=()=>Number(elements['ascension-subtitle'].style.opacity);
+  const noSkip=()=>{assert.equal(elements['ending-next'].hidden,true);game.continue();assert.equal(game.state,'ascension_title');};
+  ui();assert.equal(title(),0);assert.equal(subtitle(),0);noSkip();
+  game.tick(ASCENSION_TIMING.titleFadeSeconds);ui();assert.equal(title(),1);assert.equal(subtitle(),0);noSkip();
+  game.tick(1.99);ui();assert.equal(title(),1);assert.equal(subtitle(),0);noSkip();
+  game.paused=true;game.tick(10);ui();assert.equal(subtitle(),0);game.paused=false;
+  game.tick(.02);ui();assert.ok(subtitle()>0&&subtitle()<.01);noSkip();
+  game.tick(ASCENSION_TIMING.subtitleFadeSeconds-.01);ui();assert.equal(title(),1);assert.ok(subtitle()>.999);noSkip();
+  game.tick(.21);ui();assert.equal(subtitle(),1);assert.equal(elements['ending-next'].hidden,false);
+  game.continue();assert.equal(game.state,'run_summary');
+  game.continue();assert.equal(game.state,'run_summary','The stats still require their own separate input');
+});
 
 test('the ending uses a broad blue floor grid and one reusable starfield buffer above it',()=>{
   const world=new T.Group(),scene=new AscensionScene(world);

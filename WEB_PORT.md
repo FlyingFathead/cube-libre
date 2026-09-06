@@ -460,8 +460,11 @@ The broad grid fades toward the distant horizon. After a brief 0.6-second hold,
 the cube levitates upward and away while the camera smoothly tilts into the sky.
 It shrinks and blends into a white star from 5.2 to 6.4 seconds, then remains a
 small point among the stars. The white fade starts at 7.6 seconds and completes
-at 10 seconds. The existing two-second white hold, YOU'VE ASCENDED / ... FOR NOW.,
-statistics screen and separate continuation inputs follow.
+at 10 seconds. A two-second white hold follows. From web 0.20.1, YOU'VE ASCENDED
+then fades in for 1.4 seconds and holds fully visible on its own for two seconds.
+Only then does ... FOR NOW. fade in beneath it over 1.2 seconds. The stats prompt
+appears 0.2 seconds later; earlier input cannot skip this sequence. The statistics
+screen and its separate continuation input follow.
 
 The sky uses 900 points in one reusable geometry buffer. A separate single point
 keeps the final star visible even as the cube's mesh shrinks away. The scene is
@@ -472,6 +475,25 @@ do not change this animation.
 Use `test ending_1` or the original `view_end_anim_v1` to preview it. The preview
 does not award scores or records. Scene geometry and motion are in
 `web/js/ending.mjs`; timing is in `ASCENSION_TIMING` in `web/js/core.mjs`.
+
+## Title framing and readability (web 0.20.1)
+
+The animated CUBE / LIBRE title fits into the measured space between the start
+prompt and the instruction panel. Resize and text-wrapping changes update this
+area, including narrow desktop windows and browser zoom. Cached geometry bounds
+include the miniature cubes' rotation and depth movement; the camera frames the
+whole title inside that area with a margin. A camera offset centers it vertically
+in the available space and is cleared when leaving the title screen.
+
+Layout measurements run on title entry or changed dimensions, rather than every
+frame. The title keeps its original colors, individual cell rotation and gentle
+whole-logo sway. REASSEMBLY IN PROGRESS and REASSEMBLED sit below the projected
+bounds of the rebuilding cube, with a small gap and a one-pixel white outline
+around their dark lettering. Their position follows the camera and viewport.
+
+The README's clickable logo is the original `cube_libre_title.png` artwork from
+the PyGame repository, included as `docs/assets/cube-libre-logo.png`. It is a
+repository document asset, so the game does not download it during play.
 
 ## Portal white light and console alias (web 0.20.0)
 
@@ -503,14 +525,14 @@ clamping and attempt reset. For example, `set level 20` starts level 20.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.20.0**. The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.20.1**. The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.20.1`, `0.20.2`, etc. for fixes, and `0.21.0` for the
+For future releases, use `0.20.2`, `0.20.3`, etc. for fixes, and `0.21.0` for the
 next feature release. Update `web/version.json` and the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.20.0.zip` and `v0.20.0`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.20.1.zip` and `v0.20.1`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior

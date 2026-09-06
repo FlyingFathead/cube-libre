@@ -2,6 +2,7 @@ import * as T from '../vendor/three.module.min.js';
 import {VISUAL_EFFECTS} from './config.mjs';
 import {PIECES_RULES,recoveredShape,rotateQ,multiplyQ,bonusHeat} from './bonus.mjs';
 import {AscensionScene,ascensionPose} from './ending.mjs';
+import {titleBounds,frameTitle} from './title-layout.mjs';
 import {updatePortalWhiteLight} from './portal-light.mjs';
 import {RouteGuide,detailWindow,overviewZoom,createInfiniteStarfield,positionInfiniteStarfield} from './space-view.mjs';
 import { C,V,cells,cellColor,clamp,smooth,mix,lerp,rotate,radians,portalMetrics } from './core.mjs';
@@ -368,6 +369,17 @@ export class Renderer {
       this.cubes.cube(pos,color,dissolve?1-q*.65:mix(.2,1,phase),part.axis,part.phase+phase*720,1);
     }
   }
+  reassemblyCaption() {
+    this.camera.updateMatrixWorld();this.world.updateWorldMatrix(true,false);
+    const center=new T.Vector3(...C.START_ORIGIN),half=2+.46*Math.sqrt(3);
+    let bottom=0;
+    for(const corner of boxCorners) {
+      const p=new T.Vector3(...corner).multiplyScalar(half).add(center).applyMatrix4(this.world.matrixWorld).project(this.camera);
+      bottom=Math.max(bottom,(1-p.y)*this.height/2);
+    }
+    center.applyMatrix4(this.world.matrixWorld).project(this.camera);
+    return {x:(center.x+1)*this.width/2,y:bottom+Math.max(10,Math.min(18,this.height*.015))};
+  }
   title(t) {
     for(let i=0;i<this.titleCells.length;i++) {
       const item=this.titleCells[i],p=V.of(item.pos); p.z+=Math.sin(t*2.6+item.phase*.017)*.12;
@@ -410,7 +422,9 @@ export class Renderer {
   }
   render(g) {
     this.lines.reset(); this.cubes.reset();
+    this.reassemblyLabel=null;
     const title=['title','quit_confirm'].includes(g.state),phase=g.state.endsWith('_intro'),preview=g.state==='course_materialize';
+    if(!title&&this.camera.view?.enabled)this.camera.clearViewOffset();
     const ascending=g.state==='ascension',endWhite=['ascension_white','ascension_title','run_summary'].includes(g.state);
     const bonusScene=['bonus_smash','bonus_playing','bonus_escape'].includes(g.state),bonusResult=g.state==='bonus_result';
     const whiteVoid=phase||g.state==='result_overlay'||bonusResult||g.state==='reassembly'||endWhite;
@@ -424,10 +438,14 @@ export class Renderer {
     this.stars.visible=!blank&&!bonusScene; this.stars.material.color.setHex(whiteVoid?0x444444:0xffffff);
     this.world.position.set(0,0,0); this.rotator.rotation.set(0,0,0); this.rotator.scale.setScalar(1);
     if(title) {
-      this.camera.position.set(0,0,Math.max(25,24/this.camera.aspect));
-      this.world.position.y=-2.1;
+      this.titleFrame??=titleBounds(this.titleCells);
+      this.world.position.copy(this.titleFrame.center).multiplyScalar(-1);
       this.rotator.rotation.set(radians(Math.sin(g.t*.8)*8),radians(Math.sin(g.t*.55)*18),radians(Math.sin(g.t*.4)*5));
-      this.rotator.scale.setScalar(.88*(1+.035*Math.sin(g.t*2.4))); this.title(g.t);
+      const area=this.titleArea||{x:this.width*.04,y:this.height*.12,width:this.width*.92,height:this.height*.58};
+      this.rotator.scale.setScalar(.88*(1+.035*Math.sin(g.t*2.4)));
+      if(area.width>0&&area.height>0) {
+        frameTitle(this.camera,this.titleFrame,this.rotator.rotation,this.width,this.height,area);this.title(g.t);
+      }
     } else if(bonusScene) {
       this.bonus(g);
     } else if(ascending) {
@@ -458,6 +476,7 @@ export class Renderer {
       if(['reassembly','death_dissolve'].includes(g.state)) this.reassemble(g);
     }
     if(!bonusScene&&!ascending)this.camera.lookAt(0,0,0);
+    if(g.state==='reassembly'&&this.width>0&&this.height>0)this.reassemblyLabel=this.reassemblyCaption();
     if(this.stars.visible)positionInfiniteStarfield(this.stars,this.camera,this.rotator.rotation);
     this.lines.finish(); this.cubes.finish(); this.gl.render(this.scene,this.camera); this.effects(g);
   }

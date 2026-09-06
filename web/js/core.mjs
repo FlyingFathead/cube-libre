@@ -15,8 +15,10 @@ export const openingLineOpacity = (time,line) =>
 export const ASCENSION_TIMING = Object.freeze({
   riseStarts: .6, riseSeconds: 5.8, starStarts: 5.2, starSeconds: 1.2,
   flySeconds: 10, fadeStarts: 7.6, fadeSeconds: 2.4,
-  whiteHoldSeconds: 2, titleFadeSeconds: 1.4,
-  subtitleStarts: .9, subtitleFadeSeconds: 1.2, continueAfter: 2.3,
+  whiteHoldSeconds: 2, titleFadeSeconds: 1.4, titleHoldSeconds: 2,
+  get subtitleStarts() { return this.titleFadeSeconds+this.titleHoldSeconds; },
+  subtitleFadeSeconds: 1.2,
+  get continueAfter() { return this.subtitleStarts+this.subtitleFadeSeconds+.2; },
   summaryInputDelay: .35,
 });
 export class V {

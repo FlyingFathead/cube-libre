@@ -1,11 +1,19 @@
-# Cube Libre — Web v0.20.0
+# Cube Libre — Web v0.20.1
+
+<h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
+
+<p align="center"><strong>Play now in your browser. No download or installation needed.</strong><br>
+Best played on a desktop computer with a keyboard.</p>
+
+<p align="center">
+  <a href="https://flyingfathead.github.io/cube-libre/">
+    <img src="docs/assets/cube-libre-logo.png" alt="CUBE LIBRE, spelled in colorful solid and wireframe cubes against a starfield. Play the web version." width="960">
+  </a>
+</p>
 
 A browser-based JavaScript / WebGL 2 port of **Cube Libre** by FlyingFathead,
 *with thanks to ChaosWhisperer*. Guide a body of 125 destructible cubes through
 rotating laser corridors, recover loose pieces, and reach the portal.
-
-**[Play Cube Libre](https://flyingfathead.github.io/cube-libre/)**
-(available after GitHub Pages deployment).
 
 - **Web repository:** https://github.com/FlyingFathead/cube-libre
 - **Original PyGame / OpenGL version:** https://github.com/FlyingFathead/cube-libre-pygame
@@ -14,7 +22,16 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.20.0
+## Web release 0.20.1
+
+The ending now lets **YOU'VE ASCENDED** finish fading in and holds it alone for
+two seconds before **... FOR NOW.** fades in underneath. The continue prompt
+appears afterward. Reassembly messages sit beneath the rebuilding cube with
+subtle white outlines for readability.
+The README now features the original game's cube-letter logo and the live play
+link above. The gameplay additions from 0.20.0 are retained below.
+The animated title also fits the space between the start prompt and instructions,
+including narrow browser windows and enlarged browser text.
 
 Each level adds **one corridor leg**: level 1 has one, level 2 has two, and level
 50 has fifty. X/Z routes gain the Y axis from level 3. The opening camera pulls
