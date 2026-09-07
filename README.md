@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.24.1
+# Cube Libre — Web v0.25.0
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,14 +23,36 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.24.1 · Collapse collision fix
+## Web release 0.25.0 · Learn the shutter rhythm
 
-Fix a sudden whole-body death reported during Android level 6 playtesting.
-Straying outside the route could make the visibility lookup fall back to leg 1;
-if that leg had collapsed, the game incorrectly destroyed every surviving cube.
-Being near a sealed corridor could also trigger the same false contact.
-Collapse now checks the actual corridor and turn-chamber volumes. Normal
-boundary damage, overheating, the leg timer and sealed backtracking still apply.
+Shutters now develop through four **CHANGE ...** introductions:
+
+| Level | New rule | Zap pitches |
+| --- | --- | --- |
+| 4 | One randomly selected gate closes. | Original |
+| 6 | Two different gates close in sequence inside one leg. | Original, −3 semitones |
+| 7 | Three different gates close in sequence. | Original, −3, +3 semitones |
+| 8 | Four gates follow a mirrored spatial pattern. | Original, −3, +3, +7 semitones |
+
+**Two seconds between zap starts. One gate closed at a time.** Each gate warns
+for 0.4 seconds and closes for 0.8 seconds, leaving room to move. A gate cannot
+repeat within its sequence. The complete next sequence uses another revealed
+leg; if no other leg is available, it waits. There are at least four seconds
+between the previous sequence's last zap and the next sequence's first.
+
+The four-step order is **inner → far end → opposite end → other inner**.
+Each leg has five grids: the exact centre is excluded from this pattern. The
+starting inner side is random, so the two possible orders mirror each other.
+The original buzz and reopening whoosh are pitched in Web Audio; no extra audio
+downloads are needed. This replaces the old level-22/36/50 shutter-count ramp.
+
+Console previews: `test change_1`, `test change_2`, `test change_3`, `test change_4`.
+Stage switches, minimum levels, timing, pitch and pattern tuning remain
+console-only. See [the complete progression and settings](docs/LEVEL_PROGRESSION.md).
+
+The v0.24.1 fix for false whole-body collapse deaths is retained. Automated
+checks cover the new rhythms and a complete level-50 traversal; hearing and
+playing the revised rhythm on real devices still needs author playtesting.
 
 ## Mobile controls beta · Introduced in 0.24.0
 
@@ -68,10 +90,16 @@ respect screen insets, gestures release on interruptions, and orientation change
 pause play. Fullscreen is optional, including on iPhone. System navigation
 remains available. Touch starts proceed while audio loads in the background.
 
-**Beta testing:** automated input, projection and regression checks pass; the
-Help diagram was visually inspected. The browser preview could not access the
-local game in this environment. Real Android/iPhone/iPad gameplay, layout,
-frame rate and control comfort still need device testing. Landscape is suggested.
+**Beta testing:** the author reports playable Android touch controls through
+roughly level 6. Automated input, projection and regression checks also pass.
+The revised shutter rhythm still needs human playtesting; iPhone/iPad gameplay,
+layout and performance remain unverified. Landscape is suggested.
+
+Future design ideas, including an optional panic/return button after prolonged
+time outside the grid, are recorded in [ROADMAP.md](ROADMAP.md). The proposed
+return goes to the collapsed leg's connection node, cages the player in beam
+bars, then opens toward the next leg. It is **not implemented**; getting lost
+outside remains part of current play.
 
 ### Retained from 0.23.0
 
@@ -83,34 +111,23 @@ alongside the keyboard map. Press and release a controller button while the page
 is focused to let Firefox detect it. Click or press a keyboard key once if the
 browser needs that gesture to enable sound.
 
-**Shutters now leave usable openings.** CHANGE still arrives at level 7, starting
-with one eligible gate per leg. The pool increases to two at level 22, three at
-36 and four at 50. At most **two gates close at once across the active scene**,
-in one leg. The next zap must use another nearby, revealed leg; if no alternative
-is available, it waits. Gates are selected randomly by default.
+**Shutter hits remain bounded.** A hit removes half your remaining cubes,
+rounded down, preserves the last cube, and grants 1.5 seconds of protection from
+all laser grids. Boundary damage and the timer remain active.
 
-The default interval is four seconds, including a 0.4-second warning and a
-0.8-second closure. There is at least 1.2 seconds of open rest before another
-warning; increasing this setting extends the interval when necessary. A closed
-shutter still removes half the remaining cubes, rounded down, preserves the
-last cube, and grants 1.5 seconds of protection from all laser grids.
-The ten-second level-50 leg allowance is unchanged.
-
-All of this can be tuned in the debug console (backtick or Ctrl+Shift+F1):
+Example tuning in the debug console (backtick or Ctrl+Shift+F1):
 
 ```text
-set change_1_max_simultaneous 2
+set change_1_step_seconds 2
+set change_1_pitch_2 -3
+set change_4_pattern true
 set change_1_no_repeat_leg true
 set change_1_gates_per_leg 0
-set change_1_gate_cooldown 1.2
 viewconfig
 ```
 
-`change_1_gates_per_leg 0` uses the level ramp; 1–5 overrides the count.
-Introduction level, start/end counts, ramp endpoint, warning/closure duration,
-interval, damage, immunity and randomness are also editable. See the complete
-[settings and progression table](docs/LEVEL_PROGRESSION.md). Boolean preferences
-are saved; numeric shutter tuning lasts for the page session.
+`change_1_gates_per_leg 0` uses the level stages; 1–5 overrides sequence length.
+Booleans are saved; numeric shutter tuning lasts for the page session.
 
 **The opening map preview is just four exterior lines per corridor**, with no
 laser gates or shutter previews. It shows up to 50 legs and fades gradually after

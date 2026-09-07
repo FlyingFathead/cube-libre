@@ -64,7 +64,7 @@ test('all config listing aliases report live values from every registered settin
   assert.deepEqual(new Set(names),new Set(expected));assert.equal(names.length,expected.length);
   for(const row of rows)assert.equal(row.split(' | ').length,4);
   assert.match(output,/star_pattern \| 2 \| Background star pattern \| 0: no background stars; 1: original/);
-  assert.match(output,/change_1_min_level \| 7 \|/);
+  assert.match(output,/change_1_min_level \| 4 \|/);
   assert.match(output,/future_setting \| true \| Future setting \| Registered without editing the listing\./);
   assert.match(output,/future_flag \| true \| Future flag \| Enable or disable future flag\./);
   g.command('star_pattern 0');g.command('set change_1_interval 6');g.command('toggle mute');

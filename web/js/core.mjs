@@ -311,7 +311,7 @@ export class Game {
   constructor({rng=Math.random,stats={},save=()=>{}}={}) {
     this.rng=rng; this.save=save; this.stats={best_escape:0,highest_level:1,best_score:0,...stats};
     this.flags={...C.DEBUG_FLAGS,shake:VISUAL_EFFECTS.shakingEnabled,spin:PLAYER_ROTATION.enabled,portal_white_light:VISUAL_EFFECTS.portalWhiteLight,culling:VISUAL_EFFECTS.courseCulling,preview_outline:VISUAL_EFFECTS.previewOutline,rotation_shocks:VISUAL_EFFECTS.rotationShocks,microgravity:PLAYER_PROPULSION.enabled,overheat_blocks_recoupling:BALANCE.overheatBlocksRecoupling}; this.player=new Player(rng); this.t=0; this.angles=[0,0,0];
-    this.flags.change_1=CHANGES.change_1.enabled;this.flags.change_1_random_per_leg=CHANGES.change_1.randomPerLeg;this.flags.change_1_no_repeat_leg=CHANGES.change_1.noRepeatLeg;
+    for(const [id,change] of Object.entries(CHANGES))this.flags[id]=change.enabled;this.flags.change_4_pattern=true;this.flags.change_1_random_per_leg=CHANGES.change_1.randomPerLeg;this.flags.change_1_no_repeat_leg=CHANGES.change_1.noRepeatLeg;
     this.changeSettings=createChangeSettings();
     this.autoLocateMinLevel=CAMERA_RULES.autoLocateMinLevel;
     this.previewSettings=Object.fromEntries(Object.entries(PREVIEW_NUMBERS).map(([k,r])=>[k,r.value]));
@@ -322,7 +322,7 @@ export class Game {
     this.bonusesPlayedAfter=new Set();this.bonus=null;this.previewReturn=null;
     this.state='title'; this.stateTime=0; this.message=''; this.messageTime=0; this.resetAttempt();
   }
-  emit(name,pos) { this.events.push({name,pos}); }
+  emit(name,pos,semitones) { this.events.push({name,pos,...(semitones===undefined?{}:{semitones})}); }
   persist() { this.save({...this.stats}); }
   messageSet(text,time=1.6) { this.message=text; this.messageTime=time; }
   setState(s) { this.state=s; this.stateTime=0; }
@@ -532,10 +532,10 @@ export class Game {
     const active=this.course.activeLasers(this.player.origin,this.t),current=this.course.location(this.player.origin).index;
     const nearby=active.filter(l=>!this.flags.culling||l.module.index>=current-1&&l.module.index<=current+1);
     const legs=new Map(nearby.map(l=>[l.module.index,this.course.moduleLasers[l.module.index].length]));
-    const events=this.shutters.schedule(legs,this.level,this.changeSettings,this.flags.change_1_random_per_leg,this.flags.change_1_no_repeat_leg);
+    const events=this.shutters.schedule(legs,this.level,this.changeSettings,this.flags.change_1_random_per_leg,this.flags.change_1_no_repeat_leg,this.flags);
     for(const event of events) {
-      const grid=nearby.find(l=>l.module.index===event.leg&&event.gates.includes(this.course.moduleLasers[event.leg].indexOf(l))&&l.center.sub(this.player.origin).length()<28);
-      if(grid)this.emit(event.name,grid.center);
+      const grid=nearby.find(l=>l.module.index===event.leg&&event.gates.includes(this.course.moduleLasers[event.leg].indexOf(l))&&(event.leg===current||l.center.sub(this.player.origin).length()<28));
+      if(grid)this.emit(event.name,grid.center,event.semitones);
     }
     for(const l of nearby) {
       const phase=this.shutterState(l);if(!phase)continue;
@@ -643,7 +643,7 @@ export class Game {
         } break;
       case 'level_ready':
         if(this.stateTime>=1.65) { this.setState('course_materialize'); this.emit('materialize'); } break;
-      case 'space_intro': case 'time_intro': case 'entropy_intro': case 'heat_intro': case 'change_1_intro':
+      case 'space_intro': case 'time_intro': case 'entropy_intro': case 'heat_intro': case 'change_1_intro': case 'change_2_intro': case 'change_3_intro': case 'change_4_intro':
         if(this.stateTime>=5) {
           if(this.pendingIntroductions.length) this.setState(this.pendingIntroductions.shift());
           else this.ready(this.level);
@@ -713,11 +713,12 @@ export class Game {
     if(cmd==='test'&&arg==='bonus_round_1'||cmd==='view_bonus_001'||cmd==='bonus') {
       this.startBonus(cmd==='bonus'?(arg||'001'):'001',{preview:true});return `Bonus round 001 test · exit to level ${this.previewReturn.nextLevel}`;
     }
-    if(cmd==='test'&&arg==='change_1') {
-      this.flags.change_1=true;this.flags.lasers=true;this.ready(Math.max(1,this.changeSettings.change_1_min_level));
-      this.setState(CHANGES.change_1.state);return `CHANGE 1 test · level ${this.level}`;
+    if(cmd==='test'&&Object.hasOwn(CHANGES,arg)) {
+      this.flags.change_1=true;this.flags[arg]=true;this.flags.lasers=true;
+      this.ready(Math.max(1,this.changeSettings.change_1_min_level,this.changeSettings[`${arg}_min_level`]));
+      this.setState(CHANGES[arg].state);return `${arg.replace('_',' ').toUpperCase()} test · level ${this.level}`;
     }
-    if(cmd==='test')throw Error('Available previews: test ending_1, test bonus_round_1, test change_1');
+    if(cmd==='test')throw Error('Available previews: test ending_1, test bonus_round_1, test change_1, test change_2, test change_3, test change_4');
     if(cmd==='reset'||topLevelCommand) {
       if(cmd==='reset'&&!['top level','top_level','toplevel','highest_level'].includes(parts.slice(1).join(' ')))
         throw Error('Usage: reset top level (aliases: reset top_level, reset toplevel, reset highest_level)');
@@ -733,7 +734,7 @@ export class Game {
         if(key==='spin'&&!v)this.player.setSpinAngles(0,0,0);
         if(key==='microgravity')this.driftVelocity=new V();
         if(key==='rotation_shocks'&&!v) {this.rotationShock.angle=new V();this.rotationShock.velocity=new V();}
-        if(key.startsWith('change_1'))this.shutters.restart();
+        if(key.startsWith('change_'))this.shutters.restart();
         if(key==='route3d') {this.course=new Course(this.level,v);this.geometryVersion++;this.shutters.restart();}
       }
     }]));
@@ -774,7 +775,7 @@ export class Game {
       return `Status for ${key} is: ${requireSetting(key).get()?'Enabled':'Disabled'}`;
     };
     const setFlag=(key,v)=>{requireSetting(key).set(v);return `${key} set to ${v}`;};
-    if(cmd==='help'||cmd==='?') return 'viewconfig / showconfig / showvars / viewvars / listvars / listconfig: list all settings\nhelp, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light culling microgravity overheat_blocks_recoupling change_1 change_1_random_per_leg change_1_no_repeat_leg locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nNumbers: '+[...numeric.keys()].join(' ')+'\nRecords: toplevel / top_level (query); toplevel reset / top_level reset / reset top level (reset); keeps other records\nPreviews: test ending_1, test bonus_round_1, test change_1, bonus <type>';
+    if(cmd==='help'||cmd==='?') return 'viewconfig / showconfig / showvars / viewvars / listvars / listconfig: list all settings\nhelp, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light culling microgravity overheat_blocks_recoupling change_1 change_2 change_3 change_4 change_4_pattern change_1_random_per_leg change_1_no_repeat_leg locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nNumbers: '+[...numeric.keys()].join(' ')+'\nRecords: toplevel / top_level (query); toplevel reset / top_level reset / reset top level (reset); keeps other records\nPreviews: test ending_1, test bonus_round_1, test change_1, test change_2, test change_3, test change_4, bonus <type>';
     if(cmd==='flags')return [...settings.keys()].map(status).join('\n');
     if(['get','view','status'].includes(cmd)||['set','flag'].includes(cmd)&&value===undefined)return status(arg==='toplevel'?'top_level':arg);
     const numericKey=['set','flag'].includes(cmd)?arg:cmd;

@@ -72,7 +72,7 @@ export class GameAudio {
     try {item.source.stop(now+fade);} catch {}
   }
   stopAll() {for(const channel of [...this.channels.keys()]) this.stop(channel);}
-  sound(name,volume=volumes[name]??.6,channel=name,loop=false) {
+  sound(name,volume=volumes[name]??.6,channel=name,loop=false,semitones=0) {
     if(!this.ready||!this.buffers.has(name)) return;
     const now=this.ctx.currentTime,existing=this.channels.get(channel);
     if(loop&&existing?.name===name) {existing.gain.gain.setTargetAtTime(volume,now,.1); return;}
@@ -80,6 +80,7 @@ export class GameAudio {
     this.last.set(name,now); this.stop(channel,.025);
     const source=this.ctx.createBufferSource(),gain=this.ctx.createGain();
     source.buffer=this.buffers.get(name); source.loop=loop;
+    source.playbackRate.value=2**(clamp(Number.isFinite(semitones)?semitones:0,-12,12)/12);
     source.loopEnd=Math.min(source.buffer.duration,this.manifest[name].duration);
     source.connect(gain); gain.connect(this.master);
     gain.gain.setValueAtTime(loop?0:volume,now);
@@ -90,13 +91,13 @@ export class GameAudio {
   }
   update(g) {
     for(const event of g.events.splice(0)) {
-      if(event.name==='stop') this.stopAll(); else this.sound(event.name);
+      if(event.name==='stop') this.stopAll(); else this.sound(event.name,undefined,event.name,false,event.semitones??0);
     }
     if(!this.ready) return;
     const desired=new Map(),s=g.state,title=s==='title',playing=s==='playing',construct=s==='course_materialize';
     const bonusPlaying=s==='bonus_playing';
     const clock=bonusPlaying?g.bonus.timeLeft:g.legTime;
-    const ambience=s.startsWith('bonus_')||['title','quit_confirm','opening_intro','level_ready','course_materialize','playing','result_overlay','space_intro','time_intro','entropy_intro','heat_intro','change_1_intro'].includes(s);
+    const ambience=s.startsWith('bonus_')||['title','quit_confirm','opening_intro','level_ready','course_materialize','playing','result_overlay','space_intro','time_intro','entropy_intro','heat_intro','change_1_intro','change_2_intro','change_3_intro','change_4_intro'].includes(s);
     const metric=playing?portalMetrics(g.course,g.player):{charge:0,overlap:0,ratio:0};
     if(ambience) {
       desired.set('ambient',[title?.34:s==='level_ready'?.28:construct?.20:s==='result_overlay'?.17:s.endsWith('_intro')?.20:.15+.05*metric.charge,'ambient']);

@@ -1,29 +1,31 @@
 # Cube Libre web progression
 
-Default schedule for web **0.24.1**, based on published v0.24.0 (`a278315`).
-The 0.24.1 patch fixes false collapse contact; no milestones or balance values change.
-[`featuresForSettings()`](../web/js/difficulty.mjs) combines `BALANCE` milestones
-with [`CHANGES` and `CHANGE_NUMBERS`](../web/js/changes.mjs), sorts by level, and
-supplies phase selection, banner titles and the Help table. `LEVEL_FEATURES` is a
-snapshot of that schedule with default values. Console changes to the shutter
-minimum update the live schedule.
+Default schedule for web **0.25.0**, based on published v0.24.1 (`3240594`).
+[`featuresForSettings()`](../web/js/difficulty.mjs) combines the `BALANCE`
+milestones and [`CHANGES`](../web/js/changes.mjs), sorts by configured level,
+and supplies phase selection, banner text and the Help table. `LEVEL_FEATURES`
+is its default snapshot. Moving a shutter threshold moves its actual rule and card.
 
 | Level | Banner | What changes |
 | --- | --- | --- |
-| 1 onward | Opening story | Microgravity starts enabled; automatic camera tracking settles onto the cube after the overview. |
-| Every level | LEVEL number / overview | One added corridor leg per level, reaching fifty legs at level 50. |
-| 3 | SPACE ... | Introduces world Y and three-dimensional routes; nearby detail takes over. Camera tracking already starts at level 1. |
-| 5 | TIME ... | Starts at 30 seconds per leg; gradually tightens to 10 seconds by level 50. Each new leg resets the allowance. |
-| 7 | CHANGE ... | THE LASERS NOW OPEN AND CLOSE. One randomly selected gate per leg can shutter. Events alternate revealed legs, with a 4-second interval, 0.4-second warning and 0.8-second closure. Contact removes half the remaining cells, rounded down. |
-| 10 | ENTROPY ... | Re-coupling yield falls from 90% to 50% per request, then gradually to 1% by level 50, rounded to whole percentages. |
-| 15 | HEAT ... | Outside grace falls from 2.4 to 1.4 seconds. Once overheating, new re-coupling requests are blocked until the heat clears, if the restriction is enabled. |
+| 1 onward | Opening story | Microgravity and automatic camera tracking after the overview. |
+| Every level | LEVEL number / overview | One added corridor leg per level, reaching fifty at level 50. |
+| 3 | SPACE ... | World Y opens; three-dimensional routes and nearby detail. |
+| 4 | CHANGE ... (change_1) | THE LASERS NOW OPEN AND CLOSE. One random gate zaps per sequence. |
+| 5 | TIME ... | 30 seconds per leg, gradually tightening to 10 at level 50. |
+| 6 | CHANGE ... (change_2) | TWO GATES. ONE AFTER ANOTHER. Two different random gates inside one leg, two seconds between starts. The second pitch is 3 semitones lower. |
+| 7 | CHANGE ... (change_3) | NOW THERE ARE THREE. A third different gate, 3 semitones above the original. |
+| 8 | CHANGE ... (change_4) | FOUR GATES. A PATTERN EMERGES. Inner, far end, opposite end, other inner; mirrored starting side. Fourth pitch is 7 semitones above the original. |
+| 10 | ENTROPY ... | Re-coupling yield drops from 90% to 50%, then gradually to 1% at level 50. |
+| 15 | HEAT ... | Outside grace drops from 2.4 to 1.4 seconds; new re-coupling requests are blocked while overheating. |
 | 20 | TIME ... | Announces 24.8 seconds per leg. |
-| 22 | No additional card | The eligible shutter pool increases from one to two gates per leg. |
 | 35 | TIME ... | Announces 15.2 seconds per leg. |
-| 36 | No additional card | The eligible shutter pool increases to three gates per leg. |
-| 50 | TIME ... | Announces 10 seconds per leg. Four gates per leg are eligible for shutters, but only two can close together across the scene. |
-| After 5, 10, 15 ... 45 | PICKING UP THE PIECES / BONUS ROUND | A 45-second floor bonus: collect scattered pieces and escape via the ramp. |
-| After clearing 50 | YOU'VE ASCENDED / ... FOR NOW. | Single-cube starfield ascension, then run statistics and the main menu. |
+| 50 | TIME ... | Announces 10 seconds per leg. Re-coupling yield is 1%; four-step sequences still close one gate at a time. |
+| After 5, 10, 15 ... 45 | PICKING UP THE PIECES / BONUS ROUND | 45-second floor bonus; gather pieces and escape up the ramp. |
+| After clearing 50 | YOU'VE ASCENDED / ... FOR NOW. | Single-cube ascension, statistics and main menu. |
+
+There are no longer shutter-count changes at levels 22 and 36. The four stages
+replace that ramp. Other difficulty curves and the v0.24.1 collapse fix remain.
 
 Phase cards last five seconds each. If multiple introductions share a level,
 they play in schedule order before the level preview; the timer stays frozen.
@@ -78,74 +80,99 @@ automatic-camera thresholds also have console overrides, listed below. Bonus sch
 independent of normal-level propulsion and the heat re-coupling restriction.
 
 
-## CHANGE 1: electric shutters
+## CHANGE 1–4: shutter sequences
 
-The stable mechanic ID is `change_1`. Its phase card says **CHANGE ...**, then
-**THE LASERS NOW OPEN AND CLOSE**, then **PASS THROUGH WHILE THEY ARE OPEN**.
-The default introduction is **level 7**, between TIME and ENTROPY. A minimum of 0
-activates shutters from level 1 and places the card after the opening story.
-Moving this minimum to an existing milestone level queues both cards.
+The numbered stages all display **CHANGE ...** with their own explanation.
+`change_1` is the master switch. The highest enabled stage whose threshold has
+been reached determines the sequence length; turning off a later stage exposes
+the next enabled lower stage. A fixed count override takes precedence. Later
+stages cannot begin before the master threshold, even if their own minimum is 0.
+Shared levels queue their cards in numeric order after any existing phase card.
+
+Two- and three-step sequences randomly choose distinct gates from all five
+laser grids in the leg. The default four-step pattern selects the two outer
+and two inner grids. In travel order, numbering the grids **1–5**, it is either
+**2 → 5 → 1 → 4** or **4 → 1 → 5 → 2**. Grid 3 remains an ordinary laser grid.
+Disable `change_4_pattern` for four randomly chosen distinct gates instead.
+Disabling randomness fixes the selection/order; it does not close gates together.
+
+Zap starts within a sequence are 2 seconds apart. Each step has a 0.4-second
+warning, 0.8-second closure, and at least 0.8 seconds fully open before the next
+warning. The initial sequence closes its first gate 3.2 seconds into active play.
+A complete next sequence starts no sooner than 4 seconds after the previous
+sequence's last zap start. If a leg disappears, remaining steps are cancelled
+and the next sequence retains the cooldown; no catch-up sound or damage burst.
+
+Only one sequence is active across the scene and only one gate closes at once.
+`change_1_no_repeat_leg` applies **between complete sequences**. A lone revealed
+leg completes all its steps, then waits for another eligible leg. It does not
+interrupt its own rhythm to alternate legs between individual zaps.
 
 | Console parameter | Default | Meaning |
 | --- | --- | --- |
-| `change_1` | `true` | Enable shutters; ordinary laser grids must also be enabled |
-| `change_1_min_level` | `7` | First level, 0–50; 0 removes the gate |
-| `change_1_random_per_leg` | `true` | Random eligible gate pools and closure selections; false uses deterministic ordering |
-| `change_1_no_repeat_leg` | `true` | After a leg zaps, wait for a different nearby revealed leg; never repeat the previous leg while enabled |
-| `change_1_gates_per_leg` | `0` | 0: level-based count; 1–5: fixed eligible gate count per leg |
-| `change_1_start_gates` | `1` | Count at the introduction level; 1–5 |
-| `change_1_max_gates` | `4` | Count at the ramp endpoint; 1–5, at least the start count |
-| `change_1_ramp_end_level` | `50` | Level that reaches the maximum count, at or after introduction |
-| `change_1_max_simultaneous` | `2` | Maximum gates closed across the active scene, in one leg; 1–5 |
-| `change_1_gate_cooldown` | `1.2` | Minimum open seconds before another warning; 0–60 |
-| `change_1_interval` | `4` | Seconds between closures; range 0.5–60 |
-| `change_1_closed_seconds` | `0.8` | Seconds fully closed; range 0.05–30 |
-| `change_1_warning_seconds` | `0.4` | Amber warning before closing; range 0–10 |
-| `change_1_damage_fraction` | `0.5` | Fraction of remaining cells lost; range 0–1 |
-| `change_1_damage_cooldown` | `1.5` | Seconds of protection from all laser grids after a shutter hit; range 0–30 |
+| `change_1` | true | Master shutter switch; ordinary lasers must also be enabled. |
+| `change_2`, `change_3`, `change_4` | true | Enable the two-, three- and four-step stages. |
+| `change_1_min_level` | 4 | First shutter level; 0 means level 1. |
+| `change_2_min_level` | 6 | Two-step stage threshold. |
+| `change_3_min_level` | 7 | Three-step stage threshold. |
+| `change_4_min_level` | 8 | Four-step stage threshold. |
+| `change_4_pattern` | true | Use mirrored inner/end/end/inner order for four gates. |
+| `change_1_random_per_leg` | true | Random sequence gates/legs, or random starting side of the four-step pattern. |
+| `change_1_no_repeat_leg` | true | Require another revealed leg for the next complete sequence. |
+| `change_1_gates_per_leg` | 0 | 0 uses stages; 1–5 overrides distinct gates per sequence. |
+| `change_1_step_seconds` | 2 | Seconds between zap starts within one sequence. |
+| `change_1_interval` | 4 | Minimum last-zap to next-sequence-first-zap spacing. |
+| `change_1_gate_cooldown` | 0.8 | Minimum open rest before the next warning. Can extend either spacing. |
+| `change_1_warning_seconds` | 0.4 | Warning duration before each zap. |
+| `change_1_closed_seconds` | 0.8 | Duration of each full closure. |
+| `change_1_damage_fraction` | 0.5 | Fraction of remaining cubes lost, rounded down; preserve the last cube. |
+| `change_1_damage_cooldown` | 1.5 | Protection from all laser grids after a shutter hit. |
+| `change_1_pitch_1` | 0 | First zap semitones relative to original audio. |
+| `change_1_pitch_2` | −3 | Second zap semitones. |
+| `change_1_pitch_3` | +3 | Third zap semitones. |
+| `change_1_pitch_4` | +7 | Fourth zap semitones. |
+| `change_1_pitch_5` | −7 | Fifth zap pitch, used only with a five-gate override. |
 
-The automatic pool grows by the floor of its linear progress from the introduction
-to the ramp endpoint: defaults are 1 at levels 7–21, 2 at 22–35, 3 at 36–49 and
-4 at 50. Each original leg contains five ordinary laser templates; only the selected
-pool participates in shutters, and only up to the simultaneous limit closes.
-A closure belongs to one leg at a time. The next event chooses another nearby,
-revealed leg when `change_1_no_repeat_leg` is true. If only the previous leg is
-eligible, the scheduler waits. It does not repeat that leg or activate unseen ones.
+Pitch is a playback-rate change: `2 ** (semitones / 12)`, reusing the same decoded
+buzz and whoosh buffers. Closing and reopening use the same pitch for a given
+step. Lower pitch slightly lengthens the effect; gate timing is independent.
+Current-leg steps are audible throughout that leg; distant-leg sounds retain
+the proximity filter. No additional sound assets or effects processors are used.
 
-The effective cycle is the larger of `change_1_interval` and the sum of warning,
-closed duration and open cooldown. Defaults leave 2.8 seconds from reopening to
-the next warning, exceeding the 1.2-second minimum. Increasing the cooldown can
-lengthen the cycle. Removing a leg through culling or collapse retains the rest
-budget so it cannot trigger an immediate replacement zap.
+The effective step spacing is the larger of `change_1_step_seconds` and the sum
+of warning, closure and open rest. The same floor applies to `change_1_interval`.
+Warning plus closure must be shorter than both requested spacings; invalid
+values leave settings unchanged. Thus even extreme valid tuning never creates
+overlapping closed gates. Numeric pitch range is −12 to +12 semitones.
 
-Closed duration plus warning must be shorter than the interval. Invalid settings
-leave the old value intact. Fractional seconds and damage fractions are retained.
-Each grid can damage once per closure; a protected contact consumes that grid's
-hit for the closure too. Damage rounds down, preserving at least one cell:
-125 becomes 63, 10 becomes 5, and 1 stays 1. Detached cells remain recoverable
-under the current entropy, expiry and HEAT rules. Invulnerability covers laser
-grids only; it does not pause the leg timer or disable boundary damage.
-
-Shutters also hurt if entered while already closed. The electric sheet covers
-the whole rotating square, including the former opening. Turn chambers retain
-their existing safety rule. Hidden/unrevealed grids remain inactive, and nearby
-legs provide one closing/opening sound per transition, rather than one per grid.
-Pause, Help, introductions and bonus rounds freeze the normal shutter clock.
-Attempts and setting changes restart the clock and clear closure contacts.
+Each grid can damage once per closure. A protected contact consumes its hit for
+that closure too. Normal beams do not also damage through a closed sheet. Damage
+removes half the survivors by default, rounded down, preserving the last cell;
+fragments remain recoverable under existing entropy, expiry and HEAT rules.
+Immunity covers laser grids, not the timer or corridor boundaries.
 
 ```text
 test change_1
-set change_1_min_level 7
-set change_1_interval 4
-set change_1_damage_cooldown 1.5
-toggle change_1_random_per_leg
-status change_1
+test change_2
+test change_3
+test change_4
+set change_1_step_seconds 2
+set change_1_pitch_2 -3
+toggle change_4_pattern
+status change_2
+viewconfig
 ```
 
-The test enables `change_1` and `lasers`, then starts the configured level with its
-phase card; it replaces the active level and uses normal scoring. Boolean shutter
-preferences are saved in the browser. Numeric tuning lasts for this session;
-edit `CHANGE_NUMBERS` in `web/js/changes.mjs` to change shipped defaults.
+Previews enable the master, requested stage and lasers, then replace the current
+level with the configured introduction level and banner. Normal scoring applies.
+Pause, Help, intros and bonus rounds freeze the shutter clock. Attempt resets
+and configuration changes discard pending sequences, immunity and contacts.
+Booleans are saved in this browser; numbers last for the page session. Edit
+`CHANGE_NUMBERS` in `web/js/changes.mjs` to change shipped defaults.
+
+The old `change_1_start_gates`, `change_1_max_gates`, `change_1_ramp_end_level`
+and `change_1_max_simultaneous` parameters are retired. Stages now determine
+count and gates always close sequentially. Those names report not found.
 
 ## Camera, sky and configuration listing
 

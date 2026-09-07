@@ -1,22 +1,29 @@
-// Numbered mechanic changes: keep each change's identity, banner and defaults here.
+// Numbered mechanic changes. Thresholds, timings and pitches share the console registry.
 export const CHANGES=Object.freeze({
-  change_1:Object.freeze({banner:'CHANGE ...',state:'change_1_intro',
-    description:'THE LASERS NOW OPEN AND CLOSE',detail:'PASS THROUGH WHILE THEY ARE OPEN',
+  change_1:Object.freeze({banner:'CHANGE ...',state:'change_1_intro',count:1,
+    description:'THE LASERS NOW OPEN AND CLOSE',detail:'WATCH THE WARNING. PASS WHILE OPEN.',
     enabled:true,randomPerLeg:true,noRepeatLeg:true}),
+  change_2:Object.freeze({banner:'CHANGE ...',state:'change_2_intro',count:2,
+    description:'TWO GATES. ONE AFTER ANOTHER.',detail:'A DIFFERENT GATE ANSWERS THE FIRST.',enabled:true}),
+  change_3:Object.freeze({banner:'CHANGE ...',state:'change_3_intro',count:3,
+    description:'NOW THERE ARE THREE.',detail:'LISTEN FOR THE THIRD ZAP.',enabled:true}),
+  change_4:Object.freeze({banner:'CHANGE ...',state:'change_4_intro',count:4,
+    description:'FOUR GATES. A PATTERN EMERGES.',detail:'INNER. FAR END. OTHER END. OTHER INNER.',enabled:true}),
 });
 export const CHANGE_NUMBERS=Object.freeze({
-  change_1_min_level:{value:7,min:0,max:50,integer:true},
-  change_1_interval:{value:4,min:.5,max:60},
+  change_1_min_level:{value:4,min:0,max:50,integer:true},
+  change_2_min_level:{value:6,min:0,max:50,integer:true},
+  change_3_min_level:{value:7,min:0,max:50,integer:true},
+  change_4_min_level:{value:8,min:0,max:50,integer:true},
+  change_1_interval:{value:4,min:.5,max:60}, // Between the last zap of one sequence and the next sequence's first.
+  change_1_step_seconds:{value:2,min:.5,max:60}, // Between zap starts inside a sequence.
   change_1_closed_seconds:{value:.8,min:.05,max:30},
   change_1_warning_seconds:{value:.4,min:0,max:10},
   change_1_damage_fraction:{value:.5,min:0,max:1},
   change_1_damage_cooldown:{value:1.5,min:0,max:30},
-  change_1_gates_per_leg:{value:0,min:0,max:5,integer:true}, // 0: use the level-based ramp.
-  change_1_start_gates:{value:1,min:1,max:5,integer:true},
-  change_1_max_gates:{value:4,min:1,max:5,integer:true},
-  change_1_ramp_end_level:{value:50,min:1,max:50,integer:true},
-  change_1_gate_cooldown:{value:1.2,min:0,max:60}, // Minimum open rest before the next warning.
-  change_1_max_simultaneous:{value:2,min:1,max:5,integer:true},
+  change_1_gates_per_leg:{value:0,min:0,max:5,integer:true}, // 0: staged progression, 1–5: override sequence length.
+  change_1_gate_cooldown:{value:.8,min:0,max:60}, // Open rest before the next gate's warning.
+  ...Object.fromEntries([0,-3,3,7,-7].map((value,i)=>[`change_1_pitch_${i+1}`,{value,min:-12,max:12}])),
 });
 export const createChangeSettings=()=>Object.fromEntries(Object.entries(CHANGE_NUMBERS).map(([k,v])=>[k,v.value]));
 export function setChangeNumber(settings,key,value) {
@@ -25,75 +32,85 @@ export function setChangeNumber(settings,key,value) {
   if(value===undefined||String(value).trim()===''||!Number.isFinite(n)||n<rule.min||n>rule.max||rule.integer&&!Number.isInteger(n))
     throw Error(`${key} expects ${rule.integer?'an integer':'a number'} from ${rule.min} to ${rule.max}`);
   const candidate={...settings,[key]:n};
-  if(candidate.change_1_closed_seconds+candidate.change_1_warning_seconds>=candidate.change_1_interval)
-    throw Error('Closed duration plus warning must be shorter than the shutter interval');
-  if(candidate.change_1_start_gates>candidate.change_1_max_gates)throw Error('Starting shutter count cannot exceed the maximum count');
-  if(candidate.change_1_ramp_end_level<Math.max(1,candidate.change_1_min_level))throw Error('Shutter ramp endpoint cannot precede its introduction level');
+  for(const interval of ['change_1_interval','change_1_step_seconds'])
+    if(candidate.change_1_closed_seconds+candidate.change_1_warning_seconds>=candidate[interval])
+      throw Error(`Closed duration plus warning must be shorter than ${interval}`);
   settings[key]=n;return n;
 }
-export const shutterEnabled=(level,flags,settings)=>Boolean(flags.change_1&&flags.lasers&&
-  (settings.change_1_min_level===0||level>=settings.change_1_min_level));
+export const changeLevel=(id,settings)=>Math.max(1,settings[`${id}_min_level`]);
+export const changeReached=(id,level,settings,flags={})=>flags.change_1!==false&&flags[id]!==false&&
+  level>=changeLevel('change_1',settings)&&level>=changeLevel(id,settings);
+export const shutterEnabled=(level,flags,settings)=>Boolean(flags.lasers&&changeReached('change_1',level,settings,flags));
 export const shutterLoss=(count,fraction)=>Math.min(Math.max(0,count-1),Math.floor(count*fraction));
-export const shutterInterval=settings=>Math.max(settings.change_1_interval,
-  settings.change_1_closed_seconds+settings.change_1_warning_seconds+settings.change_1_gate_cooldown);
-export function shutterGateCount(level,settings,total=5) {
-  if(level<Math.max(1,settings.change_1_min_level))return 0;
+const minimumSpacing=settings=>settings.change_1_closed_seconds+settings.change_1_warning_seconds+settings.change_1_gate_cooldown;
+export const shutterInterval=settings=>Math.max(settings.change_1_interval,minimumSpacing(settings));
+export const shutterStepInterval=settings=>Math.max(settings.change_1_step_seconds,minimumSpacing(settings));
+export function shutterGateCount(level,settings,total=5,flags={}) {
+  if(!changeReached('change_1',level,settings,flags))return 0;
   if(settings.change_1_gates_per_leg>0)return Math.min(total,settings.change_1_gates_per_leg);
-  const start=Math.max(1,settings.change_1_min_level),end=settings.change_1_ramp_end_level;
-  const progress=end<=start?1:Math.max(0,Math.min(1,(level-start)/(end-start)));
-  return Math.min(total,settings.change_1_start_gates+Math.floor((settings.change_1_max_gates-settings.change_1_start_gates)*progress+1e-10));
+  return Math.min(total,Math.max(...Object.entries(CHANGES).filter(([id])=>changeReached(id,level,settings,flags)).map(([,c])=>c.count)));
 }
 
 export class Shutters {
   constructor(rng=Math.random) {this.seed=rng();this.restart();}
   restart() {
-    this.time=0;this.immunity=0;this.contacts=new Map();this.plans=new Map();
-    this.pulse=null;this.lastLeg=null;this.serial=0;this.nextWarningAt=null;
+    this.time=0;this.immunity=0;this.contacts=new Map();
+    this.sequence=null;this.pulse=null;this.lastLeg=null;this.serial=0;this.sequenceSerial=0;this.nextWarningAt=null;
   }
   tick(dt) {this.time+=dt;this.immunity=Math.max(0,this.immunity-dt);}
   rank(leg,gate=0,round=0) {return ((Math.sin((leg+1)*127.1+(gate+1)*78.233+this.seed*311.7+round*39.425)*43758.5453)%1+1)%1;}
-  selectedGates(leg,total,level,settings,randomPerLeg=true) {
-    const count=shutterGateCount(level,settings,total),key=`${leg}:${total}:${count}:${randomPerLeg}`;
-    if(!this.plans.has(key)) {
-      const gates=Array.from({length:total},(_,i)=>i);
-      if(randomPerLeg)gates.sort((a,b)=>this.rank(leg,a)-this.rank(leg,b));
-      this.plans.set(key,gates.slice(0,count));
+  selectedGates(leg,total,level,settings,randomPerLeg=true,flags={}) {
+    const count=shutterGateCount(level,settings,total,flags),round=this.sequenceSerial;
+    if(count===4&&total===5&&flags.change_4_pattern!==false) {
+      return randomPerLeg&&this.rank(leg,0,round)<.5?[3,0,4,1]:[1,4,0,3];
     }
-    return this.plans.get(key);
+    const gates=Array.from({length:total},(_,i)=>i);
+    if(randomPerLeg)gates.sort((a,b)=>this.rank(leg,a,round)-this.rank(leg,b,round));
+    return gates.slice(0,count);
   }
-  schedule(legs,level,settings,randomPerLeg=true,noRepeatLeg=true) {
-    // One global pulse owns one nearby revealed leg. The simultaneous cap applies
-    // across the whole active scene, not separately to several overlapping legs.
+  nextPulse(warnsAt,settings) {
+    const seq=this.sequence,step=seq.step;
+    this.pulse={leg:seq.leg,gates:[seq.gates[step]],step,sequence:seq.id,
+      semitones:settings[`change_1_pitch_${step+1}`],warnsAt,
+      closesAt:warnsAt+settings.change_1_warning_seconds,
+      opensAt:warnsAt+settings.change_1_warning_seconds+settings.change_1_closed_seconds,
+      serial:this.serial++,started:false};
+  }
+  schedule(legs,level,settings,randomPerLeg=true,noRepeatLeg=true,flags={}) {
+    // A whole sequence owns one revealed leg. Each step closes exactly one gate;
+    // alternation applies between complete sequences, never between their steps.
     const events=[],interval=shutterInterval(settings),warning=settings.change_1_warning_seconds,closed=settings.change_1_closed_seconds;
     if(this.nextWarningAt===null)this.nextWarningAt=interval-warning-closed;
     if(this.pulse&&!legs.has(this.pulse.leg)) {
-      // Culling/collapse may remove a pending or active pulse. Preserve its rest
-      // budget so visibility changes cannot produce back-to-back closures.
-      this.nextWarningAt=Math.max(this.nextWarningAt,this.pulse.warnsAt+interval);
-      this.pulse=null;
+      // Abort a vanished leg without catching up its unplayed steps or making
+      // the newly revealed leg zap immediately. Preserve the rest budget.
+      this.nextWarningAt=Math.max(this.time,this.pulse.closesAt+interval-warning);
+      this.pulse=null;this.sequence=null;
     }
     if(this.pulse&&this.time>=this.pulse.closesAt&&!this.pulse.started) {
       this.pulse.started=true;this.lastLeg=this.pulse.leg;events.push({name:'shutter_close',...this.pulse});
     }
     if(this.pulse&&this.time>=this.pulse.opensAt) {
-      if(this.pulse.started)events.push({name:'shutter_open',...this.pulse});
-      this.nextWarningAt=this.pulse.warnsAt+interval;this.pulse=null;
+      const previous=this.pulse;
+      if(previous.started)events.push({name:'shutter_open',...previous});
+      this.sequence.step++;
+      if(this.sequence.step<this.sequence.gates.length) {
+        this.nextPulse(Math.max(this.time,previous.closesAt+shutterStepInterval(settings)-warning),settings);
+      } else {
+        this.nextWarningAt=previous.closesAt+interval-warning;
+        this.pulse=null;this.sequence=null;
+      }
     }
     if(!this.pulse) {
-      const eligible=[...legs.keys()].filter(leg=>(!noRepeatLeg||leg!==this.lastLeg)&&shutterGateCount(level,settings,legs.get(leg))>0);
+      const eligible=[...legs.keys()].filter(leg=>(!noRepeatLeg||leg!==this.lastLeg)&&shutterGateCount(level,settings,legs.get(leg),flags)>0);
       if(eligible.length) {
-        eligible.sort(randomPerLeg?(a,b)=>this.rank(a,0,this.serial)-this.rank(b,0,this.serial):(a,b)=>a-b);
-        const leg=eligible[0],pool=[...this.selectedGates(leg,legs.get(leg),level,settings,randomPerLeg)];
-        if(randomPerLeg)pool.sort((a,b)=>this.rank(leg,a,this.serial+1)-this.rank(leg,b,this.serial+1));
-        else {const rotate=this.serial%pool.length;pool.push(...pool.splice(0,rotate));}
-        const warnsAt=Math.max(this.time,this.nextWarningAt);
-        this.pulse={leg,gates:pool.slice(0,settings.change_1_max_simultaneous),warnsAt,closesAt:warnsAt+warning,
-          opensAt:warnsAt+warning+closed,serial:this.serial++,started:false};
+        eligible.sort(randomPerLeg?(a,b)=>this.rank(a,0,this.sequenceSerial)-this.rank(b,0,this.sequenceSerial):(a,b)=>a-b);
+        const leg=eligible[0],gates=this.selectedGates(leg,legs.get(leg),level,settings,randomPerLeg,flags);
+        this.sequence={id:this.sequenceSerial++,leg,gates,step:0};
+        this.nextPulse(Math.max(this.time,this.nextWarningAt),settings);
       }
-      // With no alternative visible leg, wait. Never invent a remote hazard or
-      // immediately repeat the previous leg to keep the clock moving.
+      // A lone leg completes all steps, then waits for an alternative leg.
     }
-    // A zero-warning setting may begin immediately on this same frame.
     if(this.pulse&&!this.pulse.started&&this.time>=this.pulse.closesAt) {
       this.pulse.started=true;this.lastLeg=this.pulse.leg;events.push({name:'shutter_close',...this.pulse});
     }

@@ -1,7 +1,7 @@
 import {MobileControls,detectMobile,MOBILE_NOTICE,createTouchHelp,createMobileOptions} from './mobile.mjs';
 import {createHelpTabs,createVisualOptions} from './help-tabs.mjs';
 import {GamepadInput,emptyMovement,mergeMovement,navigateControllerMenu} from './gamepad.mjs';
-import {shutterGateCount,shutterInterval} from './changes.mjs';
+import {shutterGateCount,shutterInterval,shutterStepInterval} from './changes.mjs';
 import {UpdateChecker,UPDATE_INTERVAL_MS,releaseAssetURL} from './updates.mjs';
 import {BONUS_SCHEDULE,PIECES_RULES} from './bonus.mjs';
 import {observeTitleLayout} from './title-layout.mjs';
@@ -41,6 +41,7 @@ async function main() {
   game.flags.change_1=read('cube-libre-change-1-v1',game.flags.change_1)!==false;
   game.flags.change_1_random_per_leg=read('cube-libre-change-1-random-per-leg-v1',game.flags.change_1_random_per_leg)!==false;
   game.flags.change_1_no_repeat_leg=read('cube-libre-change-1-no-repeat-leg-v1',game.flags.change_1_no_repeat_leg)!==false;
+  for(const key of ['change_2','change_3','change_4','change_4_pattern'])game.flags[key]=read(`cube-libre-${key.replaceAll('_','-')}-v1`,game.flags[key])!==false;
   game.flags.preview_outline=read('cube-libre-preview-outline-v1',game.flags.preview_outline)!==false;
   const savedStarPattern=read('cube-libre-star-pattern-v1',game.starPattern);
   if(Number.isInteger(savedStarPattern)&&savedStarPattern>=0&&savedStarPattern<=2)game.starPattern=savedStarPattern;
@@ -171,13 +172,13 @@ async function main() {
     heading.textContent='What changes as you advance';milestones.append(heading);
     const header=document.createElement('tr');
     for(const text of ['Level','Banner','Change']) {const th=document.createElement('th');th.scope='col';th.textContent=text;header.append(th);}milestones.append(header);
-    for(const feature of featuresForSettings(game.changeSettings)) {
+    for(const feature of featuresForSettings(game.changeSettings,game.flags)) {
       const row=document.createElement('tr');
       for(const text of [feature.level,feature.banner,feature.summary()]) {const cell=document.createElement('td');cell.textContent=text;row.append(cell);}milestones.append(row);
     }
     rulesDetails.append(milestones);
     const q=document.createElement('p');q.textContent='Each level adds one corridor leg, up to fifty. Repeated re-coupling requests can recover more pieces before they expire. Once HEAT is active, new requests are blocked while overheating. Returning inside cools you immediately. A request already in progress finishes; refused requests use no quota. Lost cubes cost 100 potential points each. Death rebuilds your current level; your run score stays.';rulesDetails.append(q);
-    const shutterHelp=document.createElement('p');shutterHelp.textContent=`CHANGE starts at level ${Math.max(1,game.changeSettings.change_1_min_level)}. At this level, ${shutterGateCount(game.level,game.changeSettings)} gate(s) per leg are selected for shutters. At most ${game.changeSettings.change_1_max_simultaneous} close together across the scene, with ${shutterInterval(game.changeSettings)} seconds between closure groups and at least ${game.changeSettings.change_1_gate_cooldown} seconds of open rest before the next warning. Closures last ${game.changeSettings.change_1_closed_seconds} seconds. A hit costs ${Math.round(game.changeSettings.change_1_damage_fraction*100)}% of remaining cubes, rounded down, and grants ${game.changeSettings.change_1_damage_cooldown} seconds of grid-damage protection. Consecutive zaps in the same leg: ${game.flags.change_1_no_repeat_leg?'blocked; waits for another revealed leg':'allowed'}.`;rulesDetails.append(shutterHelp);
+    const shutterHelp=document.createElement('p');shutterHelp.textContent=`CHANGE begins at level ${Math.max(1,game.changeSettings.change_1_min_level)}. This level uses ${shutterGateCount(game.level,game.changeSettings,5,game.flags)} different gates per sequence, one gate at a time in one leg. Zap starts are ${shutterStepInterval(game.changeSettings)} seconds apart; each closure lasts ${game.changeSettings.change_1_closed_seconds} seconds. Allow at least ${shutterInterval(game.changeSettings)} seconds from the last zap to the next sequence's first. A hit costs ${Math.round(game.changeSettings.change_1_damage_fraction*100)}% of remaining cubes, rounded down, with ${game.changeSettings.change_1_damage_cooldown} seconds of grid-damage protection. ${game.flags.change_1_no_repeat_leg?'Complete sequences alternate revealed legs; a lone leg finishes its sequence, then waits.':'Another sequence may use the same leg.'} ${game.flags.change_4_pattern?'Four-gate order: inner, far end, opposite end, other inner. The exact centre gate stays out of this pattern.':''}`;rulesDetails.append(shutterHelp);
     const bonusRules=document.createElement('p');bonusRules.textContent=`PICKING UP THE PIECES · Bonus round 001 follows level ${BONUS_SCHEDULE.firstLevel}, then every ${BONUS_SCHEDULE.interval} levels before the final level cap. Roll on a solid floor using WASD / arrow keys; Shift rushes. Collect the scattered pieces and take the ramp to the portal within ${PIECES_RULES.seconds} seconds. Each piece banks ${PIECES_RULES.pointsPerPiece} bonus points only if you escape. Running out of time forfeits this bonus; your existing score is kept and the next level follows. C and the corridor heat/entropy rules do not apply.`;rulesDetails.append(bonusRules);
     const rules=game.difficulty,current=document.createElement('p');
     current.textContent=`Level ${game.level}: ${rules.timed?`${rules.secondsPerLeg.toFixed(1)} seconds per leg`:'no timer'} · ${Math.round(rules.recouplingRate*100)}% re-coupling yield per request · ${rules.overheatGraceSeconds.toFixed(1)} seconds before overheating outside. Heat re-coupling restriction: ${game.flags.overheat_blocks_recoupling?(rules.heat?'active':'not yet active'):'disabled'}.`;rulesDetails.append(current);
@@ -241,6 +242,7 @@ async function main() {
     if(['clear','cls'].includes(value.toLowerCase())) {log.length=0;$('console-log').textContent='';return;}
     consoleLog(`> ${value}`);
     try {
+      const previousStages=Object.fromEntries(['change_2','change_3','change_4','change_4_pattern'].map(key=>[key,game.flags[key]]));
       const previousShake=game.flags.shake,previousSpin=game.flags.spin,previousLight=game.flags.portal_white_light,previousCulling=game.flags.culling,previousShocks=game.flags.rotation_shocks,previousGravity=game.flags.microgravity,previousHeatLock=game.flags.overheat_blocks_recoupling,previousChange=game.flags.change_1,previousRandom=game.flags.change_1_random_per_leg,previousStars=game.starPattern,previousPreview=game.flags.preview_outline,previousNoRepeat=game.flags.change_1_no_repeat_leg;
       consoleLog(game.command(value));
       if(game.flags.shake!==previousShake)write('cube-libre-shake-v1',game.flags.shake);
@@ -255,7 +257,8 @@ async function main() {
       if(game.flags.preview_outline!==previousPreview)write('cube-libre-preview-outline-v1',game.flags.preview_outline);
       if(game.starPattern!==previousStars)write('cube-libre-star-pattern-v1',game.starPattern);
       if(game.flags.change_1_no_repeat_leg!==previousNoRepeat)write('cube-libre-change-1-no-repeat-leg-v1',game.flags.change_1_no_repeat_leg);
-      if(/^(view_end_anim_v1|view_bonus_001|test\s+(ending_1|bonus_round_1|change_1)|bonus(?:\s+\S+)?)$/i.test(value)) { closeConsole();game.paused=false;game.help=false;syncAudio();focusGame();if(!audio.muted)audio.unlock().then(syncAudio,()=>{});return; }
+      for(const [key,previous] of Object.entries(previousStages))if(game.flags[key]!==previous)write(`cube-libre-${key.replaceAll('_','-')}-v1`,game.flags[key]);
+      if(/^(view_end_anim_v1|view_bonus_001|test\s+(ending_1|bonus_round_1|change_\d+)|bonus(?:\s+\S+)?)$/i.test(value)) { closeConsole();game.paused=false;game.help=false;syncAudio();focusGame();if(!audio.muted)audio.unlock().then(syncAudio,()=>{});return; }
     }catch(err){consoleLog(`ERROR: ${err.message}`);}
     // Commands that change state must still respect the open console's pause.
     game.paused=true;syncAudio();

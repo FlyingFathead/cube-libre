@@ -82,11 +82,11 @@ remain active. Regression coverage is in `tests/web/collapse-contact.test.mjs`.
 | Body | 125 individually destructible cubes, original color gradient, optional slow collective rotation in normal levels |
 | Movement | Fixed world X/Y/Z axes, arrows and Ctrl aliases, 2.6× rush |
 | View | Original continuous three-axis rotation; L locate and automatic tracking from level 1 (minimum 0) |
-| Lasers | All five original grid templates, rotating/tilting planes, moving cyan apertures, difficulty speed scaling; full-square electric shutters from level 7 |
+| Lasers | All five original grid templates, rotating/tilting planes, moving cyan apertures, difficulty speed scaling; full-square electric shutters from level 4, with sequential stages at 6, 7 and 8 |
 | Maze | Modular self-avoiding X/Z/Y route and open turn chambers; one added leg per level through fifty legs at level 50 |
 | Boundary damage | Cell shaving, delayed overheating, cooling, local impacts and drifting debris |
 | Recovery | Eight-second expiry, warning blinks, compact reconstruction, five requests per ten seconds, active-spam quota |
-| Difficulty | Space at level 3; timed legs from level 5; CHANGE 1 shutters from level 7; entropy from level 10; HEAT at level 15; gradual timer/yield ramp to level 50 |
+| Difficulty | Space at level 3; timed legs from level 5; shutter changes at levels 4, 6, 7 and 8; entropy from level 10; HEAT at level 15; gradual timer/yield ramp to level 50 |
 | Collapse | Progressive reveal/arming; the previous leg dissolves after the next turn is cleared, with debris, sound and sealed timed backtracking |
 | Portal | Per-cell slab contact, suction, charge, absorption and 98.5% body commitment |
 | Progression | Preview, level-ready cards, portal warp, result cards and automatic progression up to level 50, then ascension and run statistics |
@@ -245,7 +245,7 @@ quota remain. Repeated requests can gather more of the remaining pieces.
 registry; `LEVEL_FEATURES` is the default schedule snapshot. `spaceStartLevel` defaults to 3, `timeStartLevel` to 5,
 `entropyStartLevel` to 10, `heatMinLevel` to 15, and `levelCap` and `capLevel`
 (the curve endpoint) to 50. Phase selection, banner wording and the Help table
-use this schedule, including CHANGE at the current shutter minimum (default 7).
+use this schedule, including CHANGE at the current shutter minimum (default 4).
 See [the complete milestone list](docs/LEVEL_PROGRESSION.md).
 
 HEAT subtracts one second from the original 2.4-second outside grace period.
@@ -272,44 +272,42 @@ simulation test traverses level 50 with rush, active lasers, actual turns and th
 ten-second timer. This demonstrates a viable route, not a guarantee of human
 playability or a complete balance assessment.
 
-## Electric shutters, camera and sky (updated in web 0.23.0)
+## Electric shutter sequences, camera and sky (updated in web 0.25.0)
 
-**CHANGE ...** introduces **THE LASERS NOW OPEN AND CLOSE** at **level 7**, with
-**PASS THROUGH WHILE THEY ARE OPEN** underneath. `CHANGES.change_1` in
-`web/js/changes.mjs` identifies the feature and its card. `CHANGE_NUMBERS` supplies
-its validated numeric defaults. The complete schedule and tuning table are in
-[docs/LEVEL_PROGRESSION.md](docs/LEVEL_PROGRESSION.md).
+CHANGE appears at levels 4, 6, 7 and 8 for one-, two-, three- and four-step
+sequences. Gates close one at a time in one leg, with two seconds between zap
+starts by default. Two/three steps choose distinct random gates; four steps use
+one of two mirrored patterns across the five original grids: **2,5,1,4** or
+**4,1,5,2**. The exact centre is omitted only from that four-step pattern.
 
-From level 7, a pool of one gate per leg can shutter; it grows to two at level 22,
-three at 36, and four at 50. At most two gates close at once across the active
-scene, always within one leg. `change_1_no_repeat_leg` defaults true: the next zap
-must be in another nearby revealed leg, or wait until one becomes available.
-Random selection is on by default; turning it off uses deterministic gate/leg
-selection while respecting the other constraints.
+A step warns for 0.4 seconds, closes for 0.8 seconds, then leaves at least 0.8
+seconds open before the next warning. Complete sequences alternate nearby
+revealed legs; a lone leg finishes its own sequence before waiting. Four seconds
+separate the last zap of one sequence from the next sequence's first. Removing a
+leg cancels unfinished steps and preserves the rest budget. Hidden grids remain
+inactive. Panel geometry uses the existing reusable mesh buffer.
 
-The default four-second interval includes a 0.4-second amber warning and
-0.8-second closure. `change_1_gate_cooldown` guarantees at least 1.2 seconds of
-open rest before the next warning; its effective interval grows if needed.
-The whole selected laser square seals, including the moving aperture. Local
-buzz/whoosh sounds occur once per closure group. Hidden grids never activate.
-Closing panels reuse one mesh buffer; no dynamic lights or postprocessing.
+Pitch offsets are 0, −3, +3 and +7 semitones, applied to the existing buzz and
+reopening whoosh via Web Audio playback rate. The two decoded sound buffers are
+reused, so no additional downloads or audio processors are required. Current-leg
+steps remain audible across that leg; adjacent-leg sounds use the distance limit.
 
-Contact while closed removes half the surviving cells, rounded down and preserving
-the last cell. The closest cells to the plane detach into ordinary recoverable
-fragments. Each grid can hit once per closure. A hit gives 1.5 seconds of immunity
-from all laser grids, including other shutters; the timer and boundary hazards
-still apply. A protected contact is consumed for that closure, preventing a
-second bite just when immunity ends. The closed grid does not also apply its
-ordinary per-beam damage. Bonus rounds use their existing rules.
+Contact while closed removes half the survivors, rounded down and preserving
+the last cube. Each step has an independent contact ID; each grid can hit once
+per closure, including contacts consumed during the 1.5-second shared immunity.
+The timer and boundary damage remain active. No ordinary beam damage is applied
+through a closed sheet.
 
-`test change_1` enables the feature and lasers, then replaces the active level
-with the configured introduction level and its card. This is a normal gameplay
-debug command, so normal scoring applies. Pause and Help freeze timing. Changing
-shutter settings or resetting an attempt clears the clock, immunity and contacts.
-`change_1`, `change_1_random_per_leg` and `change_1_no_repeat_leg` are saved console-only booleans.
-Numeric settings accept `set name number`, a bare `name number` shortcut, and
-read-only `status`, `view`, `get` or bare `set` queries. They last for this session;
-edit `CHANGE_NUMBERS` for shipped defaults. A zero minimum removes the level gate.
+`test change_1` through `test change_4` start the appropriate configured level and
+banner, closing the console and unpausing play. These are normal debug level
+changes, with normal scoring. Stage flags, the four-step pattern, randomness and
+sequence alternation have saved console booleans. Levels, timing, pitches and
+sequence-length override have validated session-only numeric settings. Every
+setting appears in `viewconfig`; public Options still exposes no difficulty switches.
+
+The full schedule, semantics, default values and retired ramp parameters are in
+[docs/LEVEL_PROGRESSION.md](docs/LEVEL_PROGRESSION.md). That replaces the earlier
+level-22/36/50 count ramp and simultaneous closures.
 
 `CAMERA_RULES.autoLocateMinLevel` in `web/js/config.mjs` now defaults to **0**,
 so the normal camera tracks the cube from the beginning. Intro overviews still
@@ -634,7 +632,7 @@ setting unchanged. `toggle` takes only the name; use `set` for an explicit value
 
 Available booleans: `damage`, `lasers`, `bounds`, `noclip`, `portal`, `suction`,
 `route3d`, `shake`, `spin`, `rotation_shocks`, `portal_white_light`, `culling`,
-`microgravity`, `overheat_blocks_recoupling`, `change_1`,
+`microgravity`, `overheat_blocks_recoupling`, `change_1`, `change_2`, `change_3`, `change_4`, `change_4_pattern`,
 `change_1_random_per_leg`, `change_1_no_repeat_leg`, `preview_outline`, `controller`, `locate` and browser audio `mute`.
 The movement, heat restriction, shutter booleans, visual preferences and mute settings are saved;
 debug flags and locate remain session controls. Numeric `level`, `score` and
@@ -807,10 +805,13 @@ Sound starts from a gesture, with touch play continuing while audio downloads.
 Validation covers all six pulls, changing view orientation, tiny surviving
 bodies, free dragging, analog thrust/coasting, rush hysteresis, two-finger helper
 input, cancelled gestures, pauses, recouple states, saved modes, entry choices,
-Help tabs and bonus rolling. The touch diagram is visually checked. Real mobile
-hardware, browser layout and performance testing remain outstanding: the cloud
-browser could not access the local preview. Test landscape and portrait on
-Android and iOS/iPadOS before treating the beta as production mobile support.
+Help tabs and bonus rolling. The touch diagram is visually checked. The author
+reports playable Android touch controls through roughly level 6. Portrait and
+landscape are both supported: resizing reprojects controls, releases gestures,
+and pauses active play across orientation changes. The new shutter rhythm and
+layout comfort still need device playtesting; iPhone/iPad remain unverified.
+The cloud browser could not access the local preview. See ROADMAP.md for the
+unimplemented panic/return proposal arising from this Android feedback.
 
 ## Versioning
 
@@ -818,14 +819,14 @@ Android and iOS/iPadOS before treating the beta as production mobile support.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.24.1**, based on published **0.24.0**, commit `a278315`. The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.25.0**, based on published **0.24.1**, commit `3240594`. The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.24.2`, `0.24.3`, etc. for fixes, and `0.25.0` for the
+For future releases, use `0.25.1`, `0.25.2`, etc. for fixes, and `0.26.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.24.1.zip` and `v0.24.1`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.25.0.zip` and `v0.25.0`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior

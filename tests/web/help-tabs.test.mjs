@@ -7,7 +7,7 @@ import {createMobileOptions,createTouchHelp} from '../../web/js/mobile.mjs';
 import {navigateControllerMenu} from '../../web/js/gamepad.mjs';
 import {Game,BALANCE} from '../../web/js/core.mjs';
 import {featuresForSettings} from '../../web/js/difficulty.mjs';
-import {shutterGateCount,shutterInterval} from '../../web/js/changes.mjs';
+import {shutterGateCount,shutterInterval,shutterStepInterval} from '../../web/js/changes.mjs';
 import {BONUS_SCHEDULE,PIECES_RULES} from '../../web/js/bonus.mjs';
 import {releaseAssetURL} from '../../web/js/updates.mjs';
 
@@ -44,7 +44,7 @@ function buildHelp({bonus=false,connected=false,paused=false,touch=false}={}) {
   const nodes=Object.fromEntries(['modal','modal-title','modal-body','modal-actions','console'].map(k=>[k,document.createElement('div')]));
   nodes.modal.append(nodes['modal-title'],nodes['modal-body'],nodes['modal-actions']);
   const writes=[],ctx={document,game,controller:{enabled:true,connected},modalKind:null,previousPaused:false,$:id=>nodes[id],clearInput(){},syncAudio(){},focusGame(){},write:(...x)=>writes.push(x),
-    createHelpTabs,createVisualOptions,createMobileOptions,createTouchHelp,mobile:{enabled:touch,mode:0,helpers:false,setMode(n){this.mode=n;},setHelpers(n){this.helpers=n;}},releaseAssetURL,featuresForSettings,shutterGateCount,shutterInterval,BONUS_SCHEDULE,PIECES_RULES,BALANCE,release:{version:'0.23.1',upstream:{version:'0.15.79'}}};
+    createHelpTabs,createVisualOptions,createMobileOptions,createTouchHelp,mobile:{enabled:touch,mode:0,helpers:false,setMode(n){this.mode=n;},setHelpers(n){this.helpers=n;}},releaseAssetURL,featuresForSettings,shutterGateCount,shutterInterval,shutterStepInterval,BONUS_SCHEDULE,PIECES_RULES,BALANCE,release:{version:'0.23.1',upstream:{version:'0.15.79'}}};
   vm.createContext(ctx);
   const a=source.indexOf('  function closeModal()'),b=source.indexOf('  function pause()',a),c=source.indexOf('  function controllerHelp('),d=source.indexOf('  function menu()',c);
   vm.runInContext((source.slice(a,b)+source.slice(c,d)).replaceAll('import.meta.url',JSON.stringify('https://flyingfathead.github.io/cube-libre/js/app.mjs')),ctx);

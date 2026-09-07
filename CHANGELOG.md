@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.25.0 — Learn the shutter rhythm
+
+Based on published web v0.24.1 (`3240594`).
+
+- Move the first CHANGE to level 4. Add CHANGE 2 at level 6 (two zaps), CHANGE 3
+  at level 7 (three) and CHANGE 4 at level 8 (four), each with its own explanation.
+  Replace the old 22/36/50 shutter-count ramp with these stages.
+- Close one distinct gate per step in the same leg, two seconds between zap
+  starts. Warn for 0.4 seconds, close for 0.8, and keep open rest between steps.
+  Complete sequences alternate revealed legs, with at least four seconds from
+  the last zap to the next sequence's first. A lone leg finishes, then waits.
+- Give the four-step sequence a mirrored spatial order: inner, far end, opposite
+  end, other inner. Across the five original grids this is 2,5,1,4 or 4,1,5,2;
+  the exact centre grid is not selected for that pattern. Two/three-step
+  sequences select distinct random gates from all five.
+- Pitch the existing buzz and reopening whoosh by 0, -3, +3 and +7 semitones
+  using Web Audio playback rate. Reuse decoded buffers and keep all current-leg
+  steps audible. No new audio downloads or render effects are required.
+- Add saved console-only stage/pattern switches, configurable minimum levels,
+  within-sequence spacing and semitone offsets. Extend test change_1 through
+  test change_4; update live Help, configuration descriptions and progression.
+  Retire start/max/ramp and simultaneous-count parameters in favor of stages
+  and sequential closures. Fixed one-to-five-gate overrides remain available.
+- Preserve the v0.24.1 collapse fix, damage fractions, grid immunity, other
+  milestones, mobile controls and the level cap. Cancel unfinished sequences
+  when their leg disappears, retaining cooldown instead of replaying old steps.
+
+- Add ROADMAP.md with the optional panic/return-to-corridor proposal clearly
+  marked considered, not implemented: return to the collapsed leg's connection
+  node, briefly cage the player in prison-bar beams, then open toward the next
+  leg. Record Android playtesting through roughly level 6; trigger timing,
+  confinement duration and additional penalties remain undecided.
+
+Validation: all 149 automated test groups and static checks pass. Coverage
+includes 30/60/120 FPS sequencing, mirrored patterns, distinct gates, local sound
+pitch dispatch and buffer rates, preview/persistence controls, pause/cancellation,
+extreme valid timing and a full fifty-leg simulated traversal with normal damage
+and the ten-second leg limit. Listening and playtesting the new rhythm on real
+browsers/devices remain outstanding; simulation does not establish human balance.
+
+
 ## 0.24.1 — Physical collapse contact
 
 Based on published web v0.24.0 (`a278315`).

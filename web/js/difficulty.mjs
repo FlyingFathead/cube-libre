@@ -1,5 +1,5 @@
 import { C } from './config.mjs';
-import {CHANGES,createChangeSettings,shutterGateCount,shutterInterval} from './changes.mjs';
+import {CHANGES,createChangeSettings,shutterGateCount,shutterStepInterval,changeLevel} from './changes.mjs';
 
 // Web balance: gentle introductions, then a bounded ramp toward level 50.
 // Change the phase levels and late-game limits here; config.mjs retains the PyGame baseline.
@@ -67,22 +67,27 @@ const BASE_FEATURES=Object.freeze([
     summary:()=> `${difficultyForLevel(level).secondsPerLeg.toFixed(1)} seconds per leg${level>=BALANCE.capLevel?': the final allowance.':'; the clock tightens.'}`})),
 ].sort((a,b)=>a.level-b.level).map(Object.freeze));
 
-export function featuresForSettings(settings=createChangeSettings()) {
+export function featuresForSettings(settings=createChangeSettings(),flags={}) {
   return [...BASE_FEATURES,...Object.entries(CHANGES).map(([id,change])=>({
-    id,level:Math.max(1,settings[`${id}_min_level`]),state:change.state,banner:change.banner,flag:id,
-    summary:()=>`${shutterGateCount(Math.max(1,settings[`${id}_min_level`]),settings)} shutter gate(s) per leg initially; ${shutterGateCount(settings[`${id}_ramp_end_level`],settings)} by level ${settings[`${id}_ramp_end_level`]}. At most ${settings.change_1_max_simultaneous} close together in the scene, with at least ${shutterInterval(settings)} seconds between groups; contact costs ${Math.round(settings[`${id}_damage_fraction`]*100)}% of remaining cubes, rounded down.`
+    id,level:Math.max(changeLevel('change_1',settings),changeLevel(id,settings)),state:change.state,banner:change.banner,flag:id,
+    summary:()=>`${change.count} distinct shutter gate(s) in one leg, one at a time; ${shutterStepInterval(settings)} seconds between zap starts. Contact costs ${Math.round(settings.change_1_damage_fraction*100)}% of remaining cubes, rounded down.`
   }))].sort((a,b)=>a.level-b.level);
 }
 export const LEVEL_FEATURES=Object.freeze(featuresForSettings().map(Object.freeze));
 export function introductionsForLevel(level,route3d=true,settings=createChangeSettings(),flags={}) {
-  return featuresForSettings(settings).filter(f=>f.level===level&&(f.flag!=='route3d'||route3d)&&(!f.flag||flags[f.flag]!==false)).map(f=>f.state);
+  return featuresForSettings(settings).filter(f=>f.level===level&&(f.flag!=='route3d'||route3d)&&(!f.flag||flags[f.flag]!==false)&&(!Object.hasOwn(CHANGES,f.id)||flags.change_1!==false)).map(f=>f.state);
 }
 
 export function introductionCard(state,level,flags={},settings=createChangeSettings()) {
   const feature=featuresForSettings(settings).find(f=>f.state===state&&f.level===level);
   if(!feature)return {title:'',subtitle:'',detail:''};
   const change=CHANGES[feature.id];
-  if(change)return {title:change.banner,subtitle:change.description,detail:change.detail};
+  if(change) {
+    const count=shutterGateCount(level,settings,5,flags);
+    const detail=count>1?`${shutterStepInterval(settings)} SECONDS BETWEEN ZAPS\n${count===4&&flags.change_4_pattern!==false?CHANGES.change_4.detail:'A DIFFERENT GATE EACH TIME.'}`:change.detail;
+    const subtitle=settings.change_1_gates_per_leg>0||count!==change.count?`${count} GATE${count===1?'':'S'}. ONE AT A TIME.`:change.description;
+    return {title:change.banner,subtitle,detail};
+  }
   const rules=difficultyForLevel(level);
   const subtitles={
     space_intro:'WORLD Y AXIS OPENS FROM HERE',
