@@ -11,6 +11,68 @@ database, paid hosting, CDN, or WebAssembly download to run. All runtime files,
 including Three.js r180, the original font, and compressed sounds, are bundled.
 The original Python game is maintained separately in `cube-libre-pygame`.
 
+## Backup Cubes (web 0.31.0)
+
+`web/js/backup.mjs` owns the bonus gather condition, reassembly offer timing,
+protection duration/fade and shared Help copy. `Game` awards and spends the
+run's reserve at its existing bonus, portal and reassembly transitions.
+
+| Earning route | Condition | Reward |
+| --- | --- | --- |
+| Bonus round | All 124 loose pieces collected; escape is not required | One Backup Cube, settled once at the round's end |
+| Normal level | Portal exit with all 125 pieces intact | One Backup Cube, settled once at level completion |
+
+Both routes default on. A flawless level escape is defined solely by the
+125-piece count at the portal. Prior damage, Recouple or Backup use is allowed.
+The bonus score still requires escape. Reserves stack and reset on New run.
+
+USE BACKUP CUBE is a native button at the upper centre, present only during
+the 3.75-second death reassembly window when a reserve can be spent. Click,
+tap, Space/Enter and controller A use one handler. Pause, Help, loading,
+dialogs, console and repeated activation cannot consume a charge.
+
+Spending restores all 125 cells, including LOSS holes, at the start of the
+furthest physically reached leg, using the same checkpoint as Panic. It
+restarts the leg allowance, clears live damage/recovery state and leaves
+previous corridors collapsed. The return joint is safe until forward
+departure; there are no ambulance bars or confinement. The replacement
+becomes the full entry body. A later ordinary death starts from the map
+entrance unless another charge is spent.
+
+White-glow protection lasts four active-play seconds, flickering and fading
+during its final 1.5 seconds. It covers lasers, shutters, boundaries and
+sealed contact. The leg timer still runs. Pause, Help and Panic freeze
+protection. Ignored hits do not queue damage. A saved spend resumes at the
+corner without renewing protection; the reserve and checkpoint are one write.
+
+The HUD reserve is a small third row beneath integrity/score, with a slow
+gold pulse above zero. Flawless exits show their reward in the level result.
+The final session printout includes BACKUP CUBES GAINED, BACKUP CUBES USED
+and BACKUP CUBES REMAINING. Only successful rewards and spends increment
+the saved run counters; repeated inputs, refusals and previews do not.
+A full bonus gather inserts a six-second black reward scene with an outlined
+white 125-cell cube, short explanation and synthesized choir. Continue works
+after 1.5 seconds. `test backup_cube_anim` previews this scene and audio
+without earning or spending reserves, points or saved progress. Both Ogg
+and MP3 are bundled; `tools/build_backup_audio.py` regenerates them using
+NumPy and ffmpeg. These are build tools, not runtime dependencies.
+
+| Setting | Default | Scope |
+| --- | --- | --- |
+| `backup_cubes_enabled` | true | Saved Options/console master switch; disabling retains reserves and current protection |
+| `backup_flawless_levels` | true | Session toggle for normal 125-piece portal rewards |
+| `backup_invincibility_seconds` | 4 | Session duration, 0–30; changes affect the next spend |
+| `bonus_before_final` | false | Session toggle for an extra bonus after 19, or 49 in mode 50 |
+| `backup_cubes` | 0 on New run | Read-only reserve query |
+
+The normal bonus schedule remains unchanged. A pending extra bonus in a
+checkpoint still runs after reload, even though its session toggle resets.
+Help explains Backup Cubes in all control tabs. Options' Reset to defaults
+restores the settings shown in that panel, including automatic input mode,
+touch helpers off, released orientation lock, visual effects, Panic and
+Backup master on. It keeps the current game, saves, records and reserve;
+console-only settings are unaffected.
+
 ## Install into the web repository
 
 Extract this ZIP directly into the root of **`FlyingFathead/cube-libre`**.
@@ -95,7 +157,7 @@ remain active. Regression coverage is in `tests/web/collapse-contact.test.mjs`.
 | Persistence | Level-entry campaign checkpoints, best escape, best score and highest level in localStorage, plus mute, shaking, player rotation, hit rotation shocks, portal light, culling, microgravity, heat restriction, shutter booleans and sky preferences |
 | UI | Original cube-letter title and dot-matrix prompt; help, pause, menu/reset confirmations, fullscreen |
 | Console | Flags, level/restart/newrun, heal/kill/cubes, portal teleport, position/route, score, locate, and a scrollable live parameter listing |
-| Audio | 23 sounds in two codecs: 18 originals, shutter buzz/whoosh, LOSS engine wind-down, final arrival water sweep and Panic ambulance recall |
+| Audio | 24 sounds in two codecs: 18 originals, shutter buzz/whoosh, LOSS engine wind-down, final arrival water sweep, Panic ambulance recall and Backup Cube choir |
 
 The route, collision, scoring and portal rules are ported from the source. Web
 0.17.0 deliberately extends timing, re-coupling, heat and end-of-run progression.
@@ -370,11 +432,13 @@ welcome timing. Campaign data uses `cube-libre-campaign-v1`, separately from
 `cube-libre-mode-scores-v1` and preferences. `Game` receives a `saveCheckpoint`
 callback; simulation code has no direct browser-storage dependency.
 
-A schema-2 checkpoint contains `gameMode` (20 or 50), a level, a stage (`level`, `bonus` or `ending`),
+A schema-3 checkpoint contains `gameMode` (20 or 50), a level, a stage (`level`, `bonus` or `ending`),
 exact cell IDs, score, run statistics, completed level, last escape count and
-completed bonus scheduling history. It contains no live movement, input, debris,
+completed bonus scheduling history, Backup Cube reserve and an optional spent leg checkpoint. It contains no live movement, input, debris,
 renderer buffers or clock position. Continue always restarts the saved stage;
-normal levels start at their first leg with their full level-entry allowance.
+normal levels start at their first leg with their full level-entry allowance,
+except for a saved Backup Cube spend, which restores its reached corner.
+Neither live protection nor its remaining duration is serialized.
 
 - New run enables checkpoint writes and creates the level-one checkpoint.
 - Level entry and the next-level transition save the body that belongs there.
@@ -397,7 +461,8 @@ Schema-1 checkpoints are migrated in memory to mode 50, even at level 1. Unknown
 modes/schemas and levels beyond the saved mode's cap are rejected without deleting
 the stored bytes. Resume selects the balance before restoring level, shape or
 ending state, so an old level-45 save is never clamped to 20. Subsequent normal
-checkpoint writes upgrade the stored value to schema 2 under the same save key.
+checkpoint writes upgrade the stored value to schema 3 under the same save key.
+Schema-1 and schema-2 saves receive zero Backup Cubes and no spent-leg override.
 
 The title's main button, animated Cube Libre logo and Space/Enter/controller A
 continue when a checkpoint exists. A separate New run button asks before
@@ -1180,14 +1245,14 @@ Returning from outside into an open section never invokes the sealed effect.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.30.2**, continuing from published **0.30.1** (`771a2df`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.31.0**, continuing from published **0.30.2** (`4ace282`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.30.3`, `0.30.4`, etc. for fixes, and `0.31.0` for the
+For future releases, use `0.31.1`, `0.31.2`, etc. for fixes, and `0.32.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.30.2.zip` and `v0.30.2`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.31.0.zip` and `v0.31.0`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 The project-scoped `cube-libre-web-version` cookie records the booted version,
@@ -1268,7 +1333,7 @@ immunity, warning/closed rendering, local audio events, movable introductions,
 camera centering, legacy and irregular skies, saved pattern switching and full
 configuration listings. Web 0.23.0 adds controller axes/buttons and browser-dispatch
 checks, record resets, globally capped alternating shutters, preview limits/fade
-uniforms, startup cache replacement and live leg totals. The suite now has 224 passing test groups, including title text/logo activation, Philosophy reading and Panic return geometry and safety
+uniforms, startup cache replacement and live leg totals. The suite now has 239 passing test groups, including title text/logo activation, Philosophy reading and Panic return geometry and safety
 at every leg start, exact-body preservation without debris, normal recovery limits,
 whole-second cooldown, saved preferences and actual keyboard/controller/touch dispatch.
 The action HUD checks cover setup visibility, desktop key labels and urgency only

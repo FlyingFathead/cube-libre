@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.30.2
+# Cube Libre — Web v0.31.0
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,7 +23,41 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Gameplay update 0.30.1 · Two seconds of mercy
+## Gameplay update 0.31.0 · Backup cubes
+
+Small victories can give you another chance in the later maze:
+
+- Collect **all 124 loose pieces** in a bonus round to earn **one Backup Cube**.
+  You keep this reward even if time runs out; reaching the portal is still
+  required to bank bonus points.
+- Exit a normal level through its portal with **all 125 pieces intact** to
+  earn another. The final count defines a flawless escape. Earlier damage,
+  recovery or a Backup Cube use does not disqualify it.
+
+Reserves stack. During death reassembly, **USE BACKUP CUBE** appears at the
+top only when you have one. Click/tap it, press **Space / Enter**, or use
+**Xbox A** before reassembly finishes. One charge restores the full body and
+returns you to the corner of your last reached leg with a fresh timer.
+The white glow protects you for **four seconds**, flickering away near the
+end. Previous corridors remain sealed. A later death restarts the map unless
+you spend another charge. Your reserves and uses are saved; reloading does
+not renew the protection. New runs begin with zero.
+
+The HUD has a small **BACKUP CUBES** row, slowly pulsing gold when stocked.
+A complete bonus gather earns a black-screen celebration with a glowing
+white cube and an angelic choir. Preview it with `test backup_cube_anim`.
+The final session statistics show **BACKUP CUBES GAINED**, **BACKUP CUBES
+USED** and **BACKUP CUBES REMAINING**. These totals survive Continue.
+
+**Options → BACKUP CUBES ENABLED** defaults on. **Reset to defaults** restores
+the controls in that panel while keeping your run, scores and reserves.
+Console settings: `backup_cubes_enabled true`, `backup_flawless_levels true`,
+`backup_invincibility_seconds 4`. The first is saved; the others are session
+settings. `bonus_before_final true` optionally adds a bonus before level 20
+(50 in the original campaign); it defaults off. Help explains the mechanic
+for keyboard, controller and touch.
+
+## Retained from 0.30.1 · Two seconds of mercy
 
 A quiet grace period gives you time to react to rapid disintegration. Two hits
 within half a second, leaving **20 cubes or fewer**, grant **2 seconds** of
@@ -612,7 +646,7 @@ python -m http.server 8000 --directory web
 
 Open http://localhost:8000/ (on Windows, `py` can replace `python`).
 The complete static game lives in `web/`, including its renderer, font and
-23 sounds in Ogg and MP3 (18 originals, two shutter effects, the LOSS engine wind-down, arrival water sweep and Panic ambulance recall). No backend or npm installation is required.
+24 sounds in Ogg and MP3 (18 originals, two shutter effects, the LOSS engine wind-down, arrival water sweep, Panic ambulance recall and Backup Cube choir). No backend or npm installation is required.
 
 ## GitHub Pages
 
@@ -643,8 +677,8 @@ It is also available in the in-game Help/Options menu's **PHILOSOPHY** tab.
 Edit the document under `docs/` and run `node tools/prepare_web_release.mjs`
 to refresh its published copy and release metadata.
 
-Web 0.30.1 (`771a2df`) is the published baseline. This release passes
-224 automated test groups and static checks on Node.js 18.19.1, including both
+Web 0.30.2 (`4ace282`) is the published baseline. This release passes
+239 automated test groups and static checks on Node.js 18.19.1, including both
 campaigns, legacy save migration, independent records, LOSS body carry, ending
 wave/audio timing and render data, controller/touch dispatch, simulated final routes,
 and Panic returns at every leg start in both campaigns with preserved recovery limits.

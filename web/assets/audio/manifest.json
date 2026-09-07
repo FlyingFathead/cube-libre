@@ -169,5 +169,14 @@
     "source_sha256": "40c6c193ff32a978d0a2b2363ca06ce3e047dcd239960b3d836cf5e84c981fe9",
     "generator": "tools/build_panic_audio.py",
     "edition": "web"
+  },
+  "backup_choir": {
+    "duration": 5.5,
+    "ogg": "backup_choir.ogg",
+    "mp3": "backup_choir.mp3",
+    "source_wav": "backup_choir.wav",
+    "source_sha256": "7ab62619868ceb03460936c77e4e75707fb24eafdab8b973ad6adf3c2625fedb",
+    "generator": "tools/build_backup_audio.py",
+    "edition": "web"
   }
 }

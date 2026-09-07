@@ -2,13 +2,13 @@ import {balanceForMode} from './difficulty.mjs';
 
 export const SAVE_KEY='cube-libre-campaign-v1';
 export const RESUME_TIMING=Object.freeze({lineFade:1,welcomeStarts:1.5,welcomeFade:1.5,fadeOutStarts:4.5,fadeOutSeconds:1.5,seconds:6});
-export const RUN_STAT_KEYS=Object.freeze(['playSeconds','deaths','recoupledCubes','levelsCleared','bonusRounds','bonusPieces','bonusScore']);
+export const RUN_STAT_KEYS=Object.freeze(['playSeconds','deaths','recoupledCubes','levelsCleared','bonusRounds','bonusPieces','bonusScore','backupCubesGained','backupCubesUsed']);
 const integer=(n,min,max)=>Number.isSafeInteger(n)&&n>=min&&n<=max;
 
 // Save stable level-entry checkpoints, never live input, debris or renderer state.
 // Schema changes require an explicit migration; an unknown save is left untouched.
 export function validateCheckpoint(data) {
-  if(!data||typeof data!=='object'||![1,2].includes(data.schema)||!['level','bonus','ending'].includes(data.stage))return null;
+  if(!data||typeof data!=='object'||![1,2,3].includes(data.schema)||!['level','bonus','ending'].includes(data.stage))return null;
   const gameMode=data.schema===1?50:data.gameMode;
   if(gameMode!==20&&gameMode!==50)return null;
   const balance=balanceForMode(gameMode);
@@ -18,10 +18,15 @@ export function validateCheckpoint(data) {
   if(data.stage==='ending'?data.level!==balance.levelCap||data.completedLevel!==balance.levelCap:data.completedLevel>=data.level)return null;
   if(data.stage==='bonus'&&(data.level<2||data.completedLevel!==data.level-1))return null;
   if(!Array.isArray(data.bonusesPlayedAfter)||data.bonusesPlayedAfter.length>50||!data.bonusesPlayedAfter.every(i=>integer(i,1,balance.levelCap-1)))return null;
-  if(!data.runStats||RUN_STAT_KEYS.some(k=>typeof data.runStats[k]!=='number'||!Number.isFinite(data.runStats[k])||data.runStats[k]<0||data.runStats[k]>Number.MAX_SAFE_INTEGER||k!=='playSeconds'&&!Number.isInteger(data.runStats[k])))return null;
-  return {schema:2,gameMode,stage:data.stage,level:data.level,cells:[...data.cells],score:data.score,
+  const runStats=data.schema<3?{...data.runStats,backupCubesGained:0,backupCubesUsed:0}:data.runStats;
+  if(!data.runStats||RUN_STAT_KEYS.some(k=>typeof runStats[k]!=='number'||!Number.isFinite(runStats[k])||runStats[k]<0||runStats[k]>Number.MAX_SAFE_INTEGER||k!=='playSeconds'&&!Number.isInteger(runStats[k])))return null;
+  const backupCubes=data.schema<3?0:data.backupCubes;
+  const backupResumeLeg=data.schema<3?null:data.backupResumeLeg;
+  if(!integer(backupCubes,0,100))return null;
+  if(backupResumeLeg!==null&&(!integer(backupResumeLeg,0,data.level-1)||data.stage!=='level'||data.cells.length!==125))return null;
+  return {schema:3,backupCubes,backupResumeLeg,gameMode,stage:data.stage,level:data.level,cells:[...data.cells],score:data.score,
     completedLevel:data.completedLevel,lastEscape:data.lastEscape,
-    bonusesPlayedAfter:[...new Set(data.bonusesPlayedAfter)],runStats:Object.fromEntries(RUN_STAT_KEYS.map(k=>[k,data.runStats[k]]))};
+    bonusesPlayedAfter:[...new Set(data.bonusesPlayedAfter)],runStats:Object.fromEntries(RUN_STAT_KEYS.map(k=>[k,runStats[k]]))};
 }
 
 export class CheckpointStore {
@@ -48,7 +53,7 @@ export class CheckpointStore {
     if(this.status==='unavailable')return 'Browser saving unavailable. Progress can only be continued while this page stays open.';
     if(this.status==='incompatible')return 'The saved run could not be read by this version. Start a new run to replace it.';
     if(!this.value)return 'Progress saves at level checkpoints in this browser.';
-    const c=this.value,place=c.stage==='bonus'?`Bonus round before level ${c.level}`:c.stage==='ending'?'The ending':`Level ${c.level} · ${c.cells.length}/125 cubes`;
-    return `${place} · ${c.gameMode}-level journey · Saved in this browser`;
+    const c=this.value,place=c.stage==='bonus'?`Bonus round before level ${c.level}`:c.stage==='ending'?'The ending':`Level ${c.level}${c.backupResumeLeg===null?'':` · leg ${c.backupResumeLeg+1}`} · ${c.cells.length}/125 cubes`;
+    return `${place} · ${c.gameMode}-level journey · Backup cubes: ${c.backupCubes} · Saved in this browser`;
   }
 }

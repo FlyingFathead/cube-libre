@@ -7,7 +7,7 @@
   <meta name="description" content="Cube Libre web version by FlyingFathead. A rotating 3D survival puzzle. Reach the portal with your remaining pieces.">
   <title>Cube Libre · FlyingFathead</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=0.30.2">
+  <link rel="stylesheet" href="./style.css?v=0.31.0">
 </head>
 <body>
   <main id="game" tabindex="-1" aria-label="Cube Libre game">
@@ -32,8 +32,11 @@
       </div>
     </div>
     <section id="hud" aria-label="Game status" hidden>
-      <strong id="cube-count"></strong><p id="score"></p><p id="records" title="Top level is your personal best saved in this browser, across runs."></p><p id="integrity-warning"></p>
+      <strong id="cube-count"></strong><p id="score"></p><p id="backup-count">BACKUP CUBES: 0</p><p id="records" title="Top level is your personal best saved in this browser, across runs."></p><p id="integrity-warning"></p>
     </section>
+    <button id="use-backup" type="button" hidden aria-describedby="backup-hint backup-window">
+      <strong>USE BACKUP CUBE</strong><span id="backup-hint"></span><small id="backup-window"></small>
+    </button>
     <div id="timer" hidden></div>
     <div id="notice" role="status" aria-live="polite"></div>
     <div id="danger" hidden></div>
@@ -96,38 +99,39 @@
     </dialog>
     <noscript>Cube Libre requires JavaScript and WebGL 2. Enable JavaScript to play.</noscript>
   </main>
-  <script id="release-data" type="application/json">{"name":"Cube Libre","edition":"web","version":"0.30.2","repository":"https://github.com/FlyingFathead/cube-libre","upstream":{"edition":"pygame","version":"0.15.79","repository":"https://github.com/FlyingFathead/cube-libre-pygame","commit":"ecf8f0148713e5606e64624464eecc4545c71047"}}</script>
+  <script id="release-data" type="application/json">{"name":"Cube Libre","edition":"web","version":"0.31.0","repository":"https://github.com/FlyingFathead/cube-libre","upstream":{"edition":"pygame","version":"0.15.79","repository":"https://github.com/FlyingFathead/cube-libre-pygame","commit":"ecf8f0148713e5606e64624464eecc4545c71047"}}</script>
   <script id="release-imports" type="importmap">{
   "imports": {
-    "./js/app.mjs": "./js/app.mjs?v=0.30.2",
-    "./js/audio.mjs": "./js/audio.mjs?v=0.30.2",
-    "./js/bonus.mjs": "./js/bonus.mjs?v=0.30.2",
-    "./js/changes.mjs": "./js/changes.mjs?v=0.30.2",
-    "./js/config.mjs": "./js/config.mjs?v=0.30.2",
-    "./js/console-config.mjs": "./js/console-config.mjs?v=0.30.2",
-    "./js/core.mjs": "./js/core.mjs?v=0.30.2",
-    "./js/difficulty.mjs": "./js/difficulty.mjs?v=0.30.2",
-    "./js/ending.mjs": "./js/ending.mjs?v=0.30.2",
-    "./js/gamepad.mjs": "./js/gamepad.mjs?v=0.30.2",
-    "./js/help-tabs.mjs": "./js/help-tabs.mjs?v=0.30.2",
-    "./js/loss.mjs": "./js/loss.mjs?v=0.30.2",
-    "./js/mercy.mjs": "./js/mercy.mjs?v=0.30.2",
-    "./js/mobile.mjs": "./js/mobile.mjs?v=0.30.2",
-    "./js/orientation.mjs": "./js/orientation.mjs?v=0.30.2",
-    "./js/panic.mjs": "./js/panic.mjs?v=0.30.2",
-    "./js/philosophy.mjs": "./js/philosophy.mjs?v=0.30.2",
-    "./js/portal-light.mjs": "./js/portal-light.mjs?v=0.30.2",
-    "./js/recoupling.mjs": "./js/recoupling.mjs?v=0.30.2",
-    "./js/render.mjs": "./js/render.mjs?v=0.30.2",
-    "./js/save-game.mjs": "./js/save-game.mjs?v=0.30.2",
-    "./js/space-view.mjs": "./js/space-view.mjs?v=0.30.2",
-    "./js/title-layout.mjs": "./js/title-layout.mjs?v=0.30.2",
-    "./js/updates.mjs": "./js/updates.mjs?v=0.30.2",
-    "./vendor/three.core.min.js": "./vendor/three.core.min.js?v=0.30.2",
-    "./vendor/three.module.min.js": "./vendor/three.module.min.js?v=0.30.2"
+    "./js/app.mjs": "./js/app.mjs?v=0.31.0",
+    "./js/audio.mjs": "./js/audio.mjs?v=0.31.0",
+    "./js/backup.mjs": "./js/backup.mjs?v=0.31.0",
+    "./js/bonus.mjs": "./js/bonus.mjs?v=0.31.0",
+    "./js/changes.mjs": "./js/changes.mjs?v=0.31.0",
+    "./js/config.mjs": "./js/config.mjs?v=0.31.0",
+    "./js/console-config.mjs": "./js/console-config.mjs?v=0.31.0",
+    "./js/core.mjs": "./js/core.mjs?v=0.31.0",
+    "./js/difficulty.mjs": "./js/difficulty.mjs?v=0.31.0",
+    "./js/ending.mjs": "./js/ending.mjs?v=0.31.0",
+    "./js/gamepad.mjs": "./js/gamepad.mjs?v=0.31.0",
+    "./js/help-tabs.mjs": "./js/help-tabs.mjs?v=0.31.0",
+    "./js/loss.mjs": "./js/loss.mjs?v=0.31.0",
+    "./js/mercy.mjs": "./js/mercy.mjs?v=0.31.0",
+    "./js/mobile.mjs": "./js/mobile.mjs?v=0.31.0",
+    "./js/orientation.mjs": "./js/orientation.mjs?v=0.31.0",
+    "./js/panic.mjs": "./js/panic.mjs?v=0.31.0",
+    "./js/philosophy.mjs": "./js/philosophy.mjs?v=0.31.0",
+    "./js/portal-light.mjs": "./js/portal-light.mjs?v=0.31.0",
+    "./js/recoupling.mjs": "./js/recoupling.mjs?v=0.31.0",
+    "./js/render.mjs": "./js/render.mjs?v=0.31.0",
+    "./js/save-game.mjs": "./js/save-game.mjs?v=0.31.0",
+    "./js/space-view.mjs": "./js/space-view.mjs?v=0.31.0",
+    "./js/title-layout.mjs": "./js/title-layout.mjs?v=0.31.0",
+    "./js/updates.mjs": "./js/updates.mjs?v=0.31.0",
+    "./vendor/three.core.min.js": "./vendor/three.core.min.js?v=0.31.0",
+    "./vendor/three.module.min.js": "./vendor/three.module.min.js?v=0.31.0"
   }
 }</script>
-  <script id="release-components" type="application/json">["./assets/PHILOSOPHY.md","./assets/audio/ambient.mp3","./assets/audio/ambient.ogg","./assets/audio/arrival_water.mp3","./assets/audio/arrival_water.ogg","./assets/audio/collapse.mp3","./assets/audio/collapse.ogg","./assets/audio/crash.mp3","./assets/audio/crash.ogg","./assets/audio/critical.mp3","./assets/audio/critical.ogg","./assets/audio/death.mp3","./assets/audio/death.ogg","./assets/audio/field.mp3","./assets/audio/field.ogg","./assets/audio/gamelan.mp3","./assets/audio/gamelan.ogg","./assets/audio/laser_dissipate.mp3","./assets/audio/laser_dissipate.ogg","./assets/audio/laser_reveal.mp3","./assets/audio/laser_reveal.ogg","./assets/audio/loss_weep.mp3","./assets/audio/loss_weep.ogg","./assets/audio/manifest.json","./assets/audio/materialize.mp3","./assets/audio/materialize.ogg","./assets/audio/panic.mp3","./assets/audio/panic.ogg","./assets/audio/portal.mp3","./assets/audio/portal.ogg","./assets/audio/portal_wou.mp3","./assets/audio/portal_wou.ogg","./assets/audio/reassembly.mp3","./assets/audio/reassembly.ogg","./assets/audio/recouple.mp3","./assets/audio/recouple.ogg","./assets/audio/shutter_close.mp3","./assets/audio/shutter_close.ogg","./assets/audio/shutter_open.mp3","./assets/audio/shutter_open.ogg","./assets/audio/structure_alert.mp3","./assets/audio/structure_alert.ogg","./assets/audio/time_buzzer.mp3","./assets/audio/time_buzzer.ogg","./assets/audio/time_siren.mp3","./assets/audio/time_siren.ogg","./assets/audio/time_tick.mp3","./assets/audio/time_tick.ogg","./assets/controller-controls.svg","./assets/fonts/cube_libre_5x7.json","./assets/keyboard-bonus-controls.svg","./assets/keyboard-controls.svg","./assets/title-cells.json","./assets/touch-controls.svg","./favicon.svg","./js/app.mjs","./js/audio.mjs","./js/bonus.mjs","./js/changes.mjs","./js/config.mjs","./js/console-config.mjs","./js/core.mjs","./js/difficulty.mjs","./js/ending.mjs","./js/gamepad.mjs","./js/help-tabs.mjs","./js/loss.mjs","./js/mercy.mjs","./js/mobile.mjs","./js/orientation.mjs","./js/panic.mjs","./js/philosophy.mjs","./js/portal-light.mjs","./js/recoupling.mjs","./js/render.mjs","./js/save-game.mjs","./js/space-view.mjs","./js/title-layout.mjs","./js/updates.mjs","./style.css","./vendor/three.core.min.js","./vendor/three.module.min.js"]</script>
+  <script id="release-components" type="application/json">["./assets/PHILOSOPHY.md","./assets/audio/ambient.mp3","./assets/audio/ambient.ogg","./assets/audio/arrival_water.mp3","./assets/audio/arrival_water.ogg","./assets/audio/backup_choir.mp3","./assets/audio/backup_choir.ogg","./assets/audio/collapse.mp3","./assets/audio/collapse.ogg","./assets/audio/crash.mp3","./assets/audio/crash.ogg","./assets/audio/critical.mp3","./assets/audio/critical.ogg","./assets/audio/death.mp3","./assets/audio/death.ogg","./assets/audio/field.mp3","./assets/audio/field.ogg","./assets/audio/gamelan.mp3","./assets/audio/gamelan.ogg","./assets/audio/laser_dissipate.mp3","./assets/audio/laser_dissipate.ogg","./assets/audio/laser_reveal.mp3","./assets/audio/laser_reveal.ogg","./assets/audio/loss_weep.mp3","./assets/audio/loss_weep.ogg","./assets/audio/manifest.json","./assets/audio/materialize.mp3","./assets/audio/materialize.ogg","./assets/audio/panic.mp3","./assets/audio/panic.ogg","./assets/audio/portal.mp3","./assets/audio/portal.ogg","./assets/audio/portal_wou.mp3","./assets/audio/portal_wou.ogg","./assets/audio/reassembly.mp3","./assets/audio/reassembly.ogg","./assets/audio/recouple.mp3","./assets/audio/recouple.ogg","./assets/audio/shutter_close.mp3","./assets/audio/shutter_close.ogg","./assets/audio/shutter_open.mp3","./assets/audio/shutter_open.ogg","./assets/audio/structure_alert.mp3","./assets/audio/structure_alert.ogg","./assets/audio/time_buzzer.mp3","./assets/audio/time_buzzer.ogg","./assets/audio/time_siren.mp3","./assets/audio/time_siren.ogg","./assets/audio/time_tick.mp3","./assets/audio/time_tick.ogg","./assets/controller-controls.svg","./assets/fonts/cube_libre_5x7.json","./assets/keyboard-bonus-controls.svg","./assets/keyboard-controls.svg","./assets/title-cells.json","./assets/touch-controls.svg","./favicon.svg","./js/app.mjs","./js/audio.mjs","./js/backup.mjs","./js/bonus.mjs","./js/changes.mjs","./js/config.mjs","./js/console-config.mjs","./js/core.mjs","./js/difficulty.mjs","./js/ending.mjs","./js/gamepad.mjs","./js/help-tabs.mjs","./js/loss.mjs","./js/mercy.mjs","./js/mobile.mjs","./js/orientation.mjs","./js/panic.mjs","./js/philosophy.mjs","./js/portal-light.mjs","./js/recoupling.mjs","./js/render.mjs","./js/save-game.mjs","./js/space-view.mjs","./js/title-layout.mjs","./js/updates.mjs","./style.css","./vendor/three.core.min.js","./vendor/three.module.min.js"]</script>
   <script>
     (async () => {
       const message = document.getElementById('boot-text');

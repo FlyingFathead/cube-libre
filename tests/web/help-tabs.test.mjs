@@ -2,10 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-import {createHelpTabs,createVisualOptions} from '../../web/js/help-tabs.mjs';
+import {createHelpTabs,createVisualOptions,createOptionsReset} from '../../web/js/help-tabs.mjs';
 import {createPhilosophySection,renderPhilosophy} from '../../web/js/philosophy.mjs';
 import {createMobileOptions,createTouchHelp} from '../../web/js/mobile.mjs';
 import {navigateControllerMenu} from '../../web/js/gamepad.mjs';
+import {backupHelpText} from '../../web/js/backup.mjs';
 import {Game,BALANCE} from '../../web/js/core.mjs';
 import {featuresForSettings} from '../../web/js/difficulty.mjs';
 import {shutterGateCount,shutterInterval,shutterStepInterval} from '../../web/js/changes.mjs';
@@ -48,7 +49,7 @@ function buildHelp({bonus=false,connected=false,paused=false,touch=false,gameMod
   const requests=[],cache=new Map();
   const writes=[],ctx={document,game,controller:{enabled:true,connected},modalKind:null,previousPaused:false,$:id=>nodes[id],clearInput(){},syncAudio(){},focusGame(){},write:(...x)=>writes.push(x),
     createPhilosophySection:(doc,url)=>createPhilosophySection(doc,url,{cache,fetcher:async url=>{requests.push(url);return {ok:true,text:async()=>philosophy};}}),
-    createHelpTabs,createVisualOptions,createMobileOptions,createTouchHelp,mobile:{enabled:touch,mode:0,helpers:false,setMode(n){this.mode=n;},setHelpers(n){this.helpers=n;}},releaseAssetURL,featuresForSettings,shutterGateCount,shutterInterval,shutterStepInterval,BONUS_SCHEDULE,PIECES_RULES,BALANCE,release:{version:'0.23.1',upstream:{version:'0.15.79'}}};
+    backupHelpText,createHelpTabs,createVisualOptions,createOptionsReset,createMobileOptions,createTouchHelp,mobile:{enabled:touch,mode:0,helpers:false,setMode(n){this.mode=n;},setHelpers(n){this.helpers=n;}},releaseAssetURL,featuresForSettings,shutterGateCount,shutterInterval,shutterStepInterval,BONUS_SCHEDULE,PIECES_RULES,BALANCE,release:{version:'0.23.1',upstream:{version:'0.15.79'}}};
   vm.createContext(ctx);
   const a=source.indexOf('  function closeModal()'),b=source.indexOf('  function pause()',a),c=source.indexOf('  function controllerHelp('),d=source.indexOf('  function menu()',c);
   vm.runInContext((source.slice(a,b)+source.slice(c,d)).replaceAll('import.meta.url',JSON.stringify('https://flyingfathead.github.io/cube-libre/js/app.mjs')),ctx);
@@ -65,7 +66,7 @@ test('actual Help separates keyboard, controller and visual and rescue options, 
     assert.equal(panels[0].querySelectorAll('input').length,0);assert.equal(panels[1].querySelectorAll('input').length,0);
     assert.ok(panels[0].querySelector('img').src.includes(bonus?'keyboard-bonus-controls':'keyboard-controls'));
     assert.ok(panels[1].querySelector('img').src.includes('controller-controls.svg'));
-    assert.deepEqual(panels[3].querySelectorAll('input').map(i=>i.dataset.setting),['shake','rotation_shocks','portal_white_light','panic']);
+    assert.deepEqual(panels[3].querySelectorAll('input').map(i=>i.dataset.setting),['shake','rotation_shocks','portal_white_light','panic','backup_cubes_enabled']);
     assert.ok(body.textContent.includes('© 2024–2026 FlyingFathead'));assert.ok(body.textContent.includes('Web version · Based on PyGame v0.15.79'));
     assert.ok(!body.textContent.includes('Console: set'));assert.equal(writes.length,0);
     ctx.closeModal();assert.equal(game.paused,false);assert.equal(game.help,false);
@@ -90,7 +91,7 @@ test('Options saves visual effects and Panic while preserving all other gameplay
   for(const key of keys)game.command(`set ${key} false`);
   const flags={...game.flags},course=game.course,pose=game.player.spinAngles;
   for(const input of nodes['modal-body'].querySelectorAll('input')){input.checked=false;input.events.change();}
-  assert.equal(writes.length,4);assert.equal(game.flags.panic,false);assert.deepEqual(writes.map(x=>x[0]),['cube-libre-shake-v1','cube-libre-rotation-shocks-v1','cube-libre-portal-white-light-v1','cube-libre-panic-v1']);
+  assert.equal(writes.length,5);assert.equal(game.flags.panic,false);assert.deepEqual(writes.map(x=>x[0]),['cube-libre-shake-v1','cube-libre-rotation-shocks-v1','cube-libre-portal-white-light-v1','cube-libre-panic-v1','cube-libre-backup-cubes-enabled-v1']);
   for(const key of keys)assert.equal(game.flags[key],flags[key]);assert.equal(game.course,course);assert.equal(game.player.spinAngles,pose);
   ctx.closeModal();assert.equal(game.paused,true,'Help restores an already paused run');
   for(const key of keys)assert.equal(game.command(`toggle ${key}`),`${key} set to true`);
@@ -163,7 +164,7 @@ test('touch Help opens by default in mobile mode and Options can switch the save
     const panels=nodes['modal-body'].querySelectorAll('[role="tabpanel"]');
     assert.equal(panels[2].hidden,false);assert.ok(panels[2].querySelector('img').src.includes('touch-controls.svg'));
     assert.ok(panels[2].textContent.includes(bonus?'roll on the floor':'three movement axes'));
-    const modes=panels[3].querySelectorAll('button');assert.equal(modes.length,4);modes[2].click();assert.equal(ctx.mobile.mode,2);
+    const modes=panels[3].querySelectorAll('button');assert.equal(modes.length,5);modes[2].click();assert.equal(ctx.mobile.mode,2);
     assert.equal(modes[2].attrs['aria-pressed'],'true');assert.equal(modes[0].attrs['aria-pressed'],'false');
   }
 });
@@ -180,4 +181,24 @@ test('Help uses the active campaign cap and milestones without offering the orig
     assert.equal(options.querySelectorAll('input').some(i=>i.dataset.setting==='game_mode'),false);
     assert.equal(game.gameMode,gameMode);
   }
+});
+
+
+test('Backup option is saved and Reset to defaults restores panel controls without spending reserves or resetting the run',()=>{
+  const {nodes,game,ctx,writes}=buildHelp({touch:true,paused:true});
+  game.backupCubes=2;const before={level:game.level,score:game.score,cells:[...game.player.alive],state:game.state};
+  ctx.mobile.setMode(2);ctx.mobile.setHelpers(true);
+  const panel=nodes['modal-body'].querySelectorAll('[role="tabpanel"]')[3];
+  const inputs=panel.querySelectorAll('input');for(const input of inputs){input.checked=false;input.events.change();}
+  assert.equal(game.flags.backup_cubes_enabled,false);assert.ok(writes.some(([key,value])=>key==='cube-libre-backup-cubes-enabled-v1'&&value===false));
+  panel.querySelectorAll('button').find(b=>b.textContent==='Reset to defaults').click();
+  assert.equal(ctx.mobile.mode,0);assert.equal(ctx.mobile.helpers,false);
+  for(const input of panel.querySelectorAll('input'))assert.equal(input.checked,true);
+  assert.equal(game.backupCubes,2);assert.deepEqual({level:game.level,score:game.score,cells:[...game.player.alive],state:game.state},before);
+  assert.equal(game.paused,true);assert.equal(game.help,true);
+  const panels=nodes['modal-body'].querySelectorAll('[role="tabpanel"]');
+  for(const index of [0,1,2])assert.match(panels[index].textContent,/Collect all 124.*Space.*Xbox A/);
+  let released=0;ctx.mobile.orientation={release(){released++;}};
+  createOptionsReset(ctx.document,game,ctx.mobile,ctx.write,()=>{}).querySelector('button').click();
+  assert.equal(released,1);assert.equal(game.backupCubes,2);
 });

@@ -5,6 +5,25 @@ Unimplemented proposals are marked explicitly; they are not promised releases. T
 is to sustain interest through new rules, rhythms and decisions as the journey
 gets harder, while preserving the feeling that arriving in one piece is unlikely.
 
+## Adopted for web 0.31.0: earned Backup Cubes
+
+**Status: implemented.** A complete bonus gather earns one reserve replacement
+body, even on timeout. A normal portal exit with all 125 pieces intact also
+earns one; both rewards default on. "Flawless" describes the body at the exit,
+not a restriction on earlier damage, recovery or rescue. These small wins
+give the player something useful to carry into the final twenty-leg map.
+
+During death reassembly, a charge can restore the full body at the last
+physically reached corner with four seconds of damage protection. Reserves
+and spending survive reload, but protection is not renewed. A later death
+still restarts the map unless another reserve is spent. LOSS can take pieces
+from this replacement body in the usual way.
+
+The optional extra bonus before the final level is implemented but defaults
+off. Playtest reserve accumulation, four-second protection and later-level
+balance before changing these defaults. The ordinary bonus schedule remains
+after levels 5, 10 and 15 in the default campaign.
+
 ## Adopted for web 0.30.0: quiet critical grace and readable sealed deaths
 
 **Status: implemented.** Rapid disintegration could leave too little time to

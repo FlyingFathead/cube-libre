@@ -13,7 +13,8 @@ export function bonusHeat(timeLeft) {
   const t=clamp(1-timeLeft/PIECES_RULES.warningSeconds);
   return .2+.8*t*t*(3-2*t);
 }
-export function scheduledBonus(level,cap,schedule=BONUS_SCHEDULE) {
+export function scheduledBonus(level,cap,schedule=BONUS_SCHEDULE,beforeFinal=false) {
+  if(beforeFinal&&level===cap-1&&level>=schedule.firstLevel)return schedule.types[0]??null;
   if(level<schedule.firstLevel||level>=cap||(level-schedule.firstLevel)%schedule.interval!==0) return null;
   return schedule.types[((level-schedule.firstLevel)/schedule.interval)%schedule.types.length]??null;
 }

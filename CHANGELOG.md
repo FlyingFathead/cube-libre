@@ -1,5 +1,60 @@
 # Changelog
 
+## 0.31.0 — Backup cubes
+
+Based on published web v0.30.2 (`4ace282`).
+
+- Earn one Backup Cube for collecting all 124 loose pieces in a bonus round.
+  Settle the reward once when the round ends, even if time runs out before
+  escape. Bonus points still require reaching the portal.
+- Also earn one for exiting a normal level through its portal with all 125
+  pieces intact. This final count defines a flawless escape: taking damage,
+  recoupling or using a Backup Cube earlier does not disqualify it. Both
+  reward routes default on. Reserves stack within the current run.
+- During death reassembly, show USE BACKUP CUBE only when a reserve is
+  available. Click/tap the upper-centre box, press Space/Enter, or press
+  Xbox A before reassembly finishes. Consume one charge and return fully
+  assembled to the corner of the furthest physically reached leg, with a
+  fresh leg timer. Repeated inputs cannot spend a second charge.
+- Restore all 125 cells, including LOSS holes, with four seconds of white
+  glow and damage protection. Flicker and fade during the final 1.5 seconds.
+  Lasers, shutters, boundaries and sealed contact respect protection; the
+  leg clock still runs. Pause, Help and Panic freeze protection. Previous
+  corridors stay collapsed; the return corner remains safe until departure.
+- Save the reserve, full entry body and spent leg checkpoint together.
+  Continue preserves the spent charge and corner without renewing protection.
+  A later ordinary death restarts the map unless another Backup Cube is used.
+  Migrate older saves with zero reserves; previews cannot overwrite a campaign.
+- Add a small BACKUP CUBES count below integrity/score. Positive reserves use
+  a slow gold pulse. Show flawless rewards in the level result and reserves
+  in the ending statistics. Include BACKUP CUBES GAINED, BACKUP CUBES USED
+  and BACKUP CUBES REMAINING in the final session printout. Gained/used totals
+  save with the run and exclude repeated or refused activations and previews.
+  New runs start with zero reserves and totals.
+- Celebrate a complete bonus gather with a black scene, a glowing white cube
+  with individually outlined cells, 1 BACKUP CUBE ASSEMBLED, a short usage
+  explanation and a synthesized angelic choir. Add the isolated console
+  preview `test backup_cube_anim`. Bundle Ogg and MP3; respect mute/pause and
+  do not replay the cue after late audio loading.
+- Add saved Options/console `backup_cubes_enabled` (true), session settings
+  `backup_flawless_levels` (true) and `backup_invincibility_seconds` (4, range
+  0–30), and the read-only `backup_cubes` reserve query. Add session-only
+  `bonus_before_final` (false) for an extra bonus between 19–20, or 49–50 in
+  the original campaign. A saved pending bonus survives a setting change.
+- Explain rewards and use in all three control Help tabs. Add Reset to
+  defaults for the controls shown in Options, preserving the current run,
+  saved progress, scores and reserves. Include all new modules and audio
+  assets in versioned loading, forced component refresh and checksums.
+
+Validation: 239 automated test groups and static checks pass on Node.js
+18.19.1. Coverage includes both reward conditions, real 100% bonus gathering,
+all reached corners in both campaigns, LOSS restoration, protection expiry,
+all input handlers, offer/HUD states, defaults, save migration, repeat/reload
+protection and preview isolation. Award geometry was checked at desktop,
+portrait and short landscape sizes; both audio codecs decode without clipping.
+Device playtesting of the new visual/audio presentation and balance remains
+needed. Existing Recouple batch loss, mercy and ordinary hazard rules remain.
+
 ## 0.30.2 — What remains
 
 Based on published web v0.30.1 (`771a2df`).

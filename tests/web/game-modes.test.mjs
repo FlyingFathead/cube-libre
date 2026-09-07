@@ -96,7 +96,7 @@ test('LOSS begins at the exit of sixteen; exact surviving shapes persist through
   const b=browser(),store=b.load(),g=new Game({rng:()=>.5,saveCheckpoint:d=>store.save(d)});g.newRun();g.ready(15);
   escape(g,shape);assert.equal(g.state,'bonus_intro');g.setState('bonus_playing');g.bonus.result='timeout';g.tick(.01);g.tick(3);g.stateTime=1;g.continue();
   assert.equal(g.state,'loss_intro');finishCards(g);assert.equal(g.level,16);assert.equal(g.entryCells.length,125);
-  escape(g,shape);assert.equal(g.level,17);assert.deepEqual(g.entryCells,shape);assert.equal(store.value.gameMode,20);assert.equal(store.value.schema,2);
+  escape(g,shape);assert.equal(g.level,17);assert.deepEqual(g.entryCells,shape);assert.equal(store.value.gameMode,20);assert.equal(store.value.schema,3);
   g.player.alive=new Set(shape.slice(10));g.retry();assert.deepEqual([...g.player.alive],shape);
   const r=new Game({saveCheckpoint:d=>store.save(d)});assert.equal(r.resumeCheckpoint(b.load().value),true);r.tick(RESUME_TIMING.seconds);finishCards(r);
   assert.equal(r.level,17);assert.deepEqual([...r.player.alive],shape);r.tick(1.66);assert.equal(r.state,'loss_assembly');
@@ -115,7 +115,7 @@ test('schema-one saves always resume as the original fifty-level journey, even a
     runStats:{playSeconds:81,deaths:2,recoupledCubes:15,levelsCleared:5,bonusRounds:1,bonusPieces:8,bonusScore:800}};
   for(const [level,stage] of [[6,'level'],[45,'level'],[50,'ending']]) {
     const data={...legacy,level,stage,completedLevel:stage==='ending'?50:level-1};
-    const b=browser(new Map([[SAVE_KEY,JSON.stringify(data)]])),store=b.load();assert.equal(store.value.gameMode,50);assert.equal(store.value.schema,2);assert.equal(b.writes.length,0);
+    const b=browser(new Map([[SAVE_KEY,JSON.stringify(data)]])),store=b.load();assert.equal(store.value.gameMode,50);assert.equal(store.value.schema,3);assert.equal(b.writes.length,0);
     const g=new Game({saveCheckpoint:d=>store.save(d)});assert.equal(g.gameMode,20);g.resumeCheckpoint(store.value);g.tick(RESUME_TIMING.seconds);finishCards(g);
     assert.equal(g.gameMode,50);assert.equal(g.levelCap,50);assert.equal(g.lossMinLevel,44);assert.equal(g.lossGreyMinLevel,44);assert.equal(g.level,level);assert.deepEqual([...g.player.alive],shape);assert.equal(g.score,7200);
     assert.equal(g.difficulty.secondsPerLeg,difficultyForLevel(level).secondsPerLeg);

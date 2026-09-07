@@ -140,7 +140,7 @@ test('title text and cube logo both start or resume, while repeats and blocked a
     const b=browser(),store=b.load();
     if(saved){const original=savedGame(store);original.newRun();original.ready(6);}
     const game=new Game({saveCheckpoint:data=>store.save(data)}),nodes={};
-    for(const id of ['start','title-logo','new-run','next','modal','console','start-label','save-note'])nodes[id]={open:false,setAttribute(k,v){this[k]=v;}};
+    for(const id of ['start','title-logo','new-run','next','modal','console','start-label','save-note','use-backup'])nodes[id]={open:false,setAttribute(k,v){this[k]=v;}};
     const ctx={game,campaignStore:store,$:id=>nodes[id],controllerAction:false,controllerAudioPending:false,loadingStart:false,audioProgress:'',audioWarning:'',connected:false,
       mobile:{enabled:touch},audio:{muted:true},clearInput(){},focusGame(){},syncAudio(){},dots(text){ctx.prompt=text;}};
     vm.createContext(ctx);

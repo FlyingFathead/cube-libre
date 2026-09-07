@@ -256,7 +256,7 @@ test('clearing the level cap awards score once, holds white, then needs separate
   g.tick(1);g.continue();assert.equal(g.state,'title');assert.equal(g.level,50);
   near(g.runStats.playSeconds,playTime);assert.equal(g.stats.best_score,expected);
   g.newRun();assert.equal(g.state,'opening_intro');assert.equal(g.score,0);
-  assert.deepEqual(g.runStats,{playSeconds:0,deaths:0,recoupledCubes:0,levelsCleared:0,bonusRounds:0,bonusPieces:0,bonusScore:0});
+  assert.deepEqual(g.runStats,{playSeconds:0,deaths:0,recoupledCubes:0,levelsCleared:0,bonusRounds:0,bonusPieces:0,bonusScore:0,backupCubesGained:0,backupCubesUsed:0});
   assert.equal(g.stats.best_score,expected);
   g.ready(999);assert.equal(g.level,50);
 });

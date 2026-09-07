@@ -306,3 +306,21 @@ html,body{overscroll-behavior:none}
 #game[data-mobile-mode=true] .action-key{display:none}
 #game[data-mobile-mode=true] #touch-recoup-wrap,#game[data-mobile-mode=true] #panic-wrap{min-height:116px}
 #game[data-mobile-mode=false] #bottom-ui>:not(#toolbar){max-width:calc(100% - 250px)}
+
+/* Reserve sits below integrity/score; the rescue offer stays above reassembly. */
+#hud #backup-count{font-size:.75rem;color:#819295;letter-spacing:.035em;margin:.3rem 0}
+#hud #backup-count.has-backup{color:#f5cf77;animation:backup-reserve-glow 2.8s ease-in-out infinite}
+@keyframes backup-reserve-glow{0%,100%{opacity:.7;text-shadow:0 0 2px #d99b2222}50%{opacity:1;text-shadow:0 0 9px #ffc65780}}
+#use-backup{position:absolute;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;gap:.3rem;align-items:center;width:max-content;max-width:94%;min-height:64px;padding:.7rem 1.2rem;border:1px solid #c29a43;border-radius:8px;background:#11140ff2;color:#ffe8ad;box-shadow:0 0 18px #d5ac3033;text-align:center;touch-action:manipulation}
+#use-backup strong{font-size:clamp(.9rem,2.6vw,1.1rem)}
+#backup-hint{font-size:.78rem}#backup-window{font-size:.7rem;color:#cbbd98}
+#use-backup:hover{background:#272518;border-color:#ffe8ad}
+@media(max-height:450px){#use-backup{top:max(6px,env(safe-area-inset-top));gap:.15rem;min-height:54px;padding:.4rem .8rem}}
+@media(prefers-reduced-motion:reduce){#hud #backup-count.has-backup{animation:none}}
+
+#card.backup-award{justify-content:flex-end;padding:0 1rem max(7vh,54px);color:#fff}
+#card.backup-award h1{font-size:clamp(1rem,3vw,1.65rem);margin:0 0 .5rem;color:#fff7dc}
+#card.backup-award #card-subtitle{font-family:system-ui,sans-serif;font-size:clamp(.8rem,1.9vw,1rem);line-height:1.5;max-width:40rem;margin:0 auto}
+#card.backup-award #card-detail:empty{display:none}
+#card.backup-award button{margin-top:.8rem;font-size:.75rem;min-height:40px}
+@media(max-height:450px){#card.backup-award{padding-bottom:55px}#card.backup-award #card-subtitle{max-width:32rem}#card.backup-award button{margin-top:.3rem;min-height:36px}}

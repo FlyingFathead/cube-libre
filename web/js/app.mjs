@@ -1,11 +1,12 @@
 import {CheckpointStore,RESUME_TIMING} from './save-game.mjs';
 import {MobileControls,detectMobile,MOBILE_NOTICE,createTouchHelp,createMobileOptions} from './mobile.mjs';
-import {createHelpTabs,createVisualOptions} from './help-tabs.mjs';
+import {createHelpTabs,createVisualOptions,createOptionsReset} from './help-tabs.mjs';
 import {createPhilosophySection} from './philosophy.mjs';
 import {GamepadInput,emptyMovement,mergeMovement,navigateControllerMenu} from './gamepad.mjs';
 import {shutterGateCount,shutterInterval,shutterStepInterval} from './changes.mjs';
 import {UpdateChecker,UPDATE_INTERVAL_MS,releaseAssetURL} from './updates.mjs';
 import {BONUS_SCHEDULE,PIECES_RULES} from './bonus.mjs';
+import {backupHelpText} from './backup.mjs';
 import {observeTitleLayout} from './title-layout.mjs';
 import {featuresForSettings,introductionCard} from './difficulty.mjs';
 const $=id=>document.getElementById(id);
@@ -37,6 +38,7 @@ async function main() {
   const game=new Game({modeRecords,save:(s,mode)=>{modeRecords[mode]=s;write('cube-libre-mode-scores-v1',modeRecords);},saveCheckpoint:data=>campaignStore.save(data)});
   game.flags.panic_show_inactive=read('cube-libre-panic-show-inactive-v1',game.flags.panic_show_inactive)!==false;
   game.flags.panic=read('cube-libre-panic-v1',game.flags.panic)!==false;
+  game.flags.backup_cubes_enabled=read('cube-libre-backup-cubes-enabled-v1',game.flags.backup_cubes_enabled)!==false;
   game.flags.shake=read('cube-libre-shake-v1',game.flags.shake)!==false;
   game.flags.spin=read('cube-libre-spin-v1',game.flags.spin)!==false;
   game.flags.portal_white_light=read('cube-libre-portal-white-light-v1',game.flags.portal_white_light)!==false;
@@ -194,17 +196,26 @@ async function main() {
       for(const text of [feature.level,feature.banner,feature.summary()]) {const cell=document.createElement('td');cell.textContent=text;row.append(cell);}milestones.append(row);
     }
     rulesDetails.append(milestones);
-    const q=document.createElement('p');q.textContent=`Each level adds one corridor leg, up to ${game.levelCap}. Repeated re-coupling requests can recover more pieces before they expire. Once HEAT is active, new requests are blocked while overheating. Returning inside cools you immediately. A request already in progress finishes; refused requests use no quota. Lost cubes cost 100 potential points each. Once LOSS is active, portals carry only your surviving pieces onward. Retrying restores the body you entered the level with. Bonus pieces earn points without refilling your normal body. Your run score stays.`;rulesDetails.append(q);
+    const q=document.createElement('p');q.textContent=`Each level adds one corridor leg, up to ${game.levelCap}. One re-coupling press handles the entire eligible batch at the current yield. Failed pieces become unrecoverable debris; fresh damage can create a new batch. Once HEAT is active, new requests are blocked while overheating. Returning inside cools you immediately. A request already in progress finishes; refused requests use no quota. Lost cubes cost 100 potential points each. Once LOSS is active, portals carry only your surviving pieces onward. Retrying restores the body you entered the level with. Bonus pieces earn points without refilling your normal body. Your run score stays.`;rulesDetails.append(q);
     const shutterHelp=document.createElement('p');shutterHelp.textContent=`CHANGE begins at level ${Math.max(1,game.changeSettings.change_1_min_level)}. This level uses ${shutterGateCount(game.level,game.changeSettings,5,game.flags)} different gates per sequence, one gate at a time in one leg. Zap starts are ${shutterStepInterval(game.changeSettings)} seconds apart; each closure lasts ${game.changeSettings.change_1_closed_seconds} seconds. Allow at least ${shutterInterval(game.changeSettings)} seconds from the last zap to the next sequence's first. A hit costs ${Math.round(game.changeSettings.change_1_damage_fraction*100)}% of remaining cubes, rounded down, with ${game.changeSettings.change_1_damage_cooldown} seconds of grid-damage protection. ${game.flags.change_1_no_repeat_leg?'Complete sequences alternate revealed legs; a lone leg finishes its sequence, then waits.':'Another sequence may use the same leg.'} ${game.flags.change_4_pattern?'Four-gate order: inner, far end, opposite end, other inner. The exact centre gate stays out of this pattern.':''}`;rulesDetails.append(shutterHelp);
     const bonusRules=document.createElement('p');bonusRules.textContent=`PICKING UP THE PIECES · Bonus round 001 follows level ${BONUS_SCHEDULE.firstLevel}, then every ${BONUS_SCHEDULE.interval} levels before the final level cap. Roll on a solid floor using WASD / arrow keys; Shift rushes. Collect the scattered pieces and take the ramp to the portal within ${PIECES_RULES.seconds} seconds. Each piece banks ${PIECES_RULES.pointsPerPiece} bonus points only if you escape. Running out of time forfeits this bonus; your existing score is kept and the next level follows. C and the corridor heat/entropy rules do not apply.`;rulesDetails.append(bonusRules);
     const rules=game.difficulty,current=document.createElement('p');
     current.textContent=`Level ${game.level}: ${rules.timed?`${rules.secondsPerLeg.toFixed(1)} seconds per leg`:'no timer'} · ${Math.round(rules.recouplingRate*100)}% re-coupling yield per request · ${rules.overheatGraceSeconds.toFixed(1)} seconds before overheating outside. Heat re-coupling restriction: ${game.flags.overheat_blocks_recoupling?(rules.heat?'active':'not yet active'):'disabled'}.`;rulesDetails.append(current);
     const rescueHelp=document.createElement('p');rescueHelp.textContent=`PANIC can be used throughout a normal leg. Its circle and labels pulse orange-red on overheating or in the final 10 seconds, only while usable. RECOUPLE uses the same pulse during its last-chance window, also only while usable. Desktop circles show V / Xbox B for Panic and C / LB / X for Recouple. The console setting panic_show_inactive hides Panic while safe when off: it appears after ${game.panicOutsideSeconds} seconds continuously outside, or immediately on overheating. Keyboard/controller activation still works while hidden. V / Xbox B / the shedding-cube button returns your surviving shape to the start of the furthest leg physically reached. The prison opens toward that leg after a short tractor pull and confinement; its timer restarts. The old corridor stays sealed. The beam requests normal lossy Recouple for still-recoverable fragments; no fresh body or points are granted. Cooldown: ${game.panicCooldownSeconds} seconds during play, paused in Help and menus. Score penalty: ${game.flags.panic_penalty?`${game.panicScorePenaltyPercent}% of the current run per successful use, rounded to whole points`:'off'}. All-time records stay unchanged. Console: panic_penalty enables/disables the penalty (default off); panic_score_penalty_percent sets its percentage (default 5). Unavailable in bonus rounds. Options → ALLOW PANIC BUTTON is on by default.`;rulesDetails.append(rescueHelp);
-    const options=createVisualOptions(document,game,write);options.prepend(createMobileOptions(document,mobile));
+    const backupHelp=()=>{const section=document.createElement('section'),title=document.createElement('h3'),text=document.createElement('p');title.textContent='BACKUP CUBES';text.textContent=backupHelpText(game);section.append(title,text);return section;};
+    keyboardBody.append(backupHelp());
+    const controllerBody=controllerHelp(inBonus),touchBody=createTouchHelp(document,inBonus,releaseAssetURL('../assets/touch-controls.svg',import.meta.url).href);
+    controllerBody.append(backupHelp());touchBody.append(backupHelp());
+    const options=document.createElement('div');
+    const refreshOptions=()=>{
+      options.replaceChildren(createMobileOptions(document,mobile),createVisualOptions(document,game,write));
+      options.append(createOptionsReset(document,game,mobile,write,()=>{refreshOptions();options.querySelector('button[data-action="reset-options"]')?.focus({preventScroll:true});}));
+    };
+    refreshOptions();
     body.append(createHelpTabs(document,[
       {id:'keyboard',label:'KEYBOARD',body:keyboardBody},
-      {id:'controller',label:'CONTROLLER',body:controllerHelp(inBonus)},
-      {id:'touch',label:'TOUCH',body:createTouchHelp(document,inBonus,releaseAssetURL('../assets/touch-controls.svg',import.meta.url).href)},
+      {id:'controller',label:'CONTROLLER',body:controllerBody},
+      {id:'touch',label:'TOUCH',body:touchBody},
       {id:'options',label:'OPTIONS',body:options},
       createPhilosophySection(document,releaseAssetURL('../assets/PHILOSOPHY.md',import.meta.url))
     ],section==='options'?'options':mobile.enabled?'touch':controller.enabled&&controller.connected?'controller':'keyboard'));
@@ -262,9 +273,11 @@ async function main() {
     consoleLog(`> ${value}`);
     try {
       const previousStages=Object.fromEntries(['change_2','change_3','change_4','change_4_pattern','loss','loss_grey','route_outline','end_portal'].map(key=>[key,game.flags[key]]));
+      const previousBackup=game.flags.backup_cubes_enabled;
       const previousPanic=game.flags.panic,previousPanicVisible=game.flags.panic_show_inactive;
       const previousShake=game.flags.shake,previousSpin=game.flags.spin,previousLight=game.flags.portal_white_light,previousCulling=game.flags.culling,previousShocks=game.flags.rotation_shocks,previousGravity=game.flags.microgravity,previousHeatLock=game.flags.overheat_blocks_recoupling,previousChange=game.flags.change_1,previousRandom=game.flags.change_1_random_per_leg,previousStars=game.starPattern,previousPreview=game.flags.preview_outline,previousNoRepeat=game.flags.change_1_no_repeat_leg;
       consoleLog(game.command(value));
+      if(game.flags.backup_cubes_enabled!==previousBackup)write('cube-libre-backup-cubes-enabled-v1',game.flags.backup_cubes_enabled);
       if(game.flags.panic_show_inactive!==previousPanicVisible)write('cube-libre-panic-show-inactive-v1',game.flags.panic_show_inactive);
       if(game.flags.panic!==previousPanic)write('cube-libre-panic-v1',game.flags.panic);
       if(game.flags.shake!==previousShake)write('cube-libre-shake-v1',game.flags.shake);
@@ -280,7 +293,7 @@ async function main() {
       if(game.starPattern!==previousStars)write('cube-libre-star-pattern-v1',game.starPattern);
       if(game.flags.change_1_no_repeat_leg!==previousNoRepeat)write('cube-libre-change-1-no-repeat-leg-v1',game.flags.change_1_no_repeat_leg);
       for(const [key,previous] of Object.entries(previousStages))if(game.flags[key]!==previous)write(`cube-libre-${key.replaceAll('_','-')}-v1`,game.flags[key]);
-      if(/^(thank_you_note|view_end_anim_v1|view_bonus_001|test\s+(end_portal|ending_1|bonus_round_1|change_\d+|loss|thank_you_note)|bonus(?:\s+\S+)?)$/i.test(value)) { closeConsole();game.paused=false;game.help=false;syncAudio();focusGame();if(!audio.muted)audio.unlock().then(syncAudio,()=>{});return; }
+      if(/^(thank_you_note|view_end_anim_v1|view_bonus_001|test\s+(end_portal|ending_1|backup_cube_anim|bonus_round_1|change_\d+|loss|thank_you_note)|bonus(?:\s+\S+)?)$/i.test(value)) { closeConsole();game.paused=false;game.help=false;syncAudio();focusGame();if(!audio.muted)audio.unlock().then(syncAudio,()=>{});return; }
     }catch(err){consoleLog(`ERROR: ${err.message}`);}
     // Commands that change state must still respect the open console's pause.
     game.paused=true;syncAudio();
@@ -297,6 +310,12 @@ async function main() {
     if(game.state==='title'&&!loadingStart&&!game.paused&&!game.help&&!$('modal').open&&!$('console').open)void startOrContinue();
   };
   $('new-run').onclick=requestNewRun;$('next').onclick=()=>{clearInput();if(game.state==='ended')start();else game.continue();};
+  function useBackupCube() {
+    if(loadingStart||document.hidden||$('modal').open||$('console').open)return false;
+    if(!game.requestBackupCube())return false;
+    clearInput();focusGame();syncAudio();return true;
+  }
+  $('use-backup').onclick=useBackupCube;
   $('settings').onclick=()=>help('options');
   $('pause').onclick=pause;$('help').onclick=help;$('mute').onclick=mute;$('fullscreen').onclick=fullscreen;$('menu').onclick=menu;
   $('locate').onclick=()=>{game.locate=!game.locate;game.messageSet(`LOCATE ${game.locate?'ON':'OFF'}${game.autoLocate?' · AUTO TRACKING ACTIVE':''}`);};
@@ -322,6 +341,7 @@ async function main() {
     if(keyCodes.has(code)) {e.preventDefault();keyboard.add(code);return;}
     if(e.repeat)return;
     if(['Space','Enter'].includes(code)) {
+      if(!e.ctrlKey&&game.backupStatus.enabled){e.preventDefault();useBackupCube();return;}
       if(e.target instanceof HTMLButtonElement) return;
       e.preventDefault();if(game.state==='title')startOrContinue();else if(game.state==='ended'){game.title();start();}else {clearInput();game.continue();}
     } else if(code==='KeyC') {e.preventDefault();game.requestRecouple();}
@@ -381,6 +401,7 @@ async function main() {
         navigateControllerMenu($('game'),frame,document,dt);return;
       }
       if(action.confirm) {
+        if(game.backupStatus.enabled){useBackupCube();return;}
         clearInput();
         if(game.state==='ended'){void start({controller:true});return;}
         game.continue();syncAudio();return;
@@ -425,12 +446,20 @@ async function main() {
       modal('update','THIS GAME HAS BEEN UPDATED',body,[['Dismiss (Space)',closeModal],['Refresh / reload',()=>{const fresh=new URL(location.href);fresh.searchParams.set('release',version);fresh.searchParams.set('boot',String(Date.now()));location.replace(fresh.href);}]]);
     }
     const s=game.state,title=s==='title',playing=s==='playing',preview=s==='course_materialize';
-    const bonus=s.startsWith('bonus_'),bonusPlaying=s==='bonus_playing',bonusIntro=s==='bonus_intro',bonusResult=s==='bonus_result';
+    const bonus=s.startsWith('bonus_'),bonusPlaying=s==='bonus_playing',bonusIntro=s==='bonus_intro',bonusResult=s==='bonus_result',backupAward=s==='backup_award';
+    const backup=game.backupStatus,backupButton=$('use-backup');
+    backupButton.hidden=!backup.visible||game.paused||game.help||document.hidden||$('modal').open||$('console').open;
+    backupButton.disabled=!backup.enabled;
+    $('backup-hint').textContent=mobile.enabled?'TAP HERE TO USE':'PRESS SPACE TO USE · ENTER / XBOX A';
+    $('backup-window').textContent=`${game.backupCubes} IN RESERVE · LEG ${game.panicLeg+1}/${game.course.modules.length} · ${backup.remaining.toFixed(1)}s`;
+    const backupCount=$('backup-count');backupCount.textContent=`BACKUP CUBES: ${game.backupCubes}`;
+    backupCount.classList.toggle('has-backup',game.backupCubes>0);
+    backupCount.style.animationPlayState=game.paused||game.help||document.hidden?'paused':'running';
     const clock=bonus?game.bonus.timeLeft:game.legTime;
     const opening=s==='opening_intro';
     const ending=['ascension','ascension_white','ascension_title','thank_you_note','run_summary'].includes(s);
     $('opening').hidden=!opening;
-    $('bottom-ui').hidden=opening||ending;
+    $('bottom-ui').hidden=opening||ending||backupAward;
     $('ending').hidden=!(s==='ascension_title'||s==='thank_you_note'||s==='run_summary');
     $('ascension-copy').hidden=s!=='ascension_title';
     $('thank-you-copy').hidden=s!=='thank_you_note';
@@ -451,6 +480,7 @@ async function main() {
         ['Levels cleared this run',`${r.levelsCleared} / ${game.levelCap}`],['Final level',r.finalLevel],
         ['Cubes at the final portal',`${r.finalCubes} / 125`],['Best escape',`${r.bestEscape} / 125`],
         ['Time in play',duration],['Deaths / reassemblies',r.deaths],['Pieces re-coupled',r.recoupledCubes],
+        ['BACKUP CUBES GAINED',r.backupCubesGained],['BACKUP CUBES USED',r.backupCubesUsed],['BACKUP CUBES REMAINING',r.backupCubes],
         ['Bonus rounds played',r.bonusRounds],['Bonus pieces banked',r.bonusPieces],['Bonus points',r.bonusScore.toLocaleString()]];
       if(r.endPortalPreview)rows.unshift(['Preview','END PORTAL · no points or records awarded']);
       $('summary-values').replaceChildren(...rows.flatMap(([label,value])=>{
@@ -504,14 +534,20 @@ async function main() {
       $('title-stats').textContent=`Score ${game.score} · Best escape ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${game.levelCap}`;
     }
     const phase=s.endsWith('_intro')&&!opening&&!bonusIntro,ready=s==='level_ready',result=s==='result_overlay',rebuild=['reassembly','loss_assembly'].includes(s),ended=s==='ended';
-    $('card').hidden=!(phase||ready||result||rebuild||ended||bonusIntro||bonusResult);
-    $('card').className=ready?'ready':rebuild?'rebuilding':ended?'ready':'';
+    $('card').hidden=!(phase||ready||result||rebuild||ended||bonusIntro||bonusResult||backupAward);
+    $('card').className=backupAward?'backup-award':ready?'ready':rebuild?'rebuilding':ended?'ready':'';
     $('card').style.color='';$('card').style.opacity='1';$('card-subtitle').style.opacity='1';$('card-detail').style.opacity='1';$('next').hidden=!(result||ended||bonusResult);$('next').textContent=ended?'A / Start a new run':'A / Space / Enter = next level';
-    if(bonusIntro) {
+    if(backupAward) {
+      $('card-title').textContent='1 BACKUP CUBE ASSEMBLED';
+      $('card-subtitle').textContent='Use it during reassembly to return fully intact to your last reached leg.';
+      $('card-detail').textContent='';
+      $('next').textContent=mobile.enabled?'TAP TO CONTINUE':'SPACE / ENTER / XBOX A TO CONTINUE';
+      $('next').hidden=game.stateTime<1.5;
+    } else if(bonusIntro) {
       const t=game.stateTime,fade=1-smooth((t-4.3)/.7);
       $('card-title').textContent=game.bonus.name;
       $('card-subtitle').textContent='BONUS ROUND';
-      $('card-detail').textContent=`${game.bonus.duration} SECONDS · RECOVER YOUR PIECES\nROLL UP THE RAMP. REACH THE PORTAL.`;
+      $('card-detail').textContent=`${game.bonus.duration} SECONDS · RECOVER YOUR PIECES\nROLL UP THE RAMP. REACH THE PORTAL.${game.flags.backup_cubes_enabled?'\n100% GATHERED = 1 BACKUP CUBE':''}`;
       $('card').style.opacity=String(smooth(t/1.1)*fade);
       $('card-subtitle').style.opacity=String(smooth((t-1.1)/1.1));
       $('card-detail').style.opacity=String(smooth((t-2.1)/1.1));
@@ -519,7 +555,7 @@ async function main() {
       const b=game.bonus,escaped=b.result==='escaped';
       $('card-title').textContent=escaped?'PIECES RECOVERED':'TIME RAN OUT';
       $('card-subtitle').textContent=`${b.collected} / ${b.rules.pieces} PIECES ${escaped?'BROUGHT HOME':'LEFT BEHIND'}`;
-      $('card-detail').textContent=game.bonusPreview?`TEST ROUND · ${escaped?b.potentialScore:0} POINTS (NOT AWARDED)\nNEXT: LEVEL ${game.previewReturn.nextLevel}`:`BONUS +${escaped?b.potentialScore:0} · TOTAL ${game.score}\n${escaped?'YOU KEPT WHAT YOU COULD.':'YOUR JOURNEY CONTINUES.'}`;
+      $('card-detail').textContent=game.bonusPreview?`TEST ROUND · ${escaped?b.potentialScore:0} POINTS (NOT AWARDED)\nNEXT: LEVEL ${game.previewReturn.nextLevel}`:`BONUS +${escaped?b.potentialScore:0} · TOTAL ${game.score}\n${b.backupAwarded?'100% GATHERED · BACKUP CUBE +1':escaped?'YOU KEPT WHAT YOU COULD.':'YOUR JOURNEY CONTINUES.'}`;
       $('next').textContent=game.bonusPreview?`A / Space / Enter / click for level ${game.previewReturn.nextLevel}`:'A / Space / Enter / click for the next level';
       $('next').hidden=game.stateTime<.4;
     } else if(s==='resume_intro') {
@@ -542,7 +578,7 @@ async function main() {
       $('card').style.color='';
       if(result) {
         $('card-title').textContent='TRANSCENDENCE';$('card-subtitle').textContent=`LEVEL ${game.completedLevel} COMPLETE\nCUBES INTACT: ${game.lastEscape}/125 (${Math.round(game.lastEscape/125*100)}%)`;
-        $('card-detail').textContent=`SCORE +${game.lastEscape*100} · TOTAL ${game.score}\nBEST ESCAPE ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${game.levelCap}`;
+        $('card-detail').textContent=`SCORE +${game.lastEscape*100} · TOTAL ${game.score}\nBEST ESCAPE ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${game.levelCap}${game.flawlessBackupAward?'\nFLAWLESS ESCAPE · BACKUP CUBE +1':''}`;
         $('card').style.opacity=String(1-smooth((game.stateTime/4.25-.56)/.40));
       } else if(rebuild) {
         const incomplete=game.lossActive&&game.missingEntryCells.length>0;

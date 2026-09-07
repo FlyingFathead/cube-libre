@@ -2,7 +2,7 @@ import {releaseAssetURL} from './updates.mjs';
 import {clamp,smooth,portalMetrics,ASCENSION_TIMING} from './core.mjs';
 const root=new URL('../assets/audio/',import.meta.url);
 const volumes={crash:.70,structure_alert:.48,portal:.88,laser_reveal:.64,laser_dissipate:.62,
-  materialize:.62,death:.74,reassembly:.60,recouple:.62,collapse:.82,time_buzzer:.78,shutter_close:.54,shutter_open:.48,loss_weep:.60,arrival_water:.38,panic:.58};
+  materialize:.62,death:.74,reassembly:.60,recouple:.62,collapse:.82,time_buzzer:.78,shutter_close:.54,shutter_open:.48,loss_weep:.60,arrival_water:.38,panic:.58,backup_choir:.65};
 const cooldowns={recouple:.18,recouple_denied:.6,crash:.075,structure_alert:.65,laser_reveal:.35,laser_dissipate:.28,collapse:.12,time_buzzer:.82,shutter_close:.12,shutter_open:.12};
 
 export class GameAudio {
@@ -104,6 +104,7 @@ export class GameAudio {
       g.events.length=0;return;
     }
     if(this.arrivalGame) {this.stop('arrival_water',0);this.arrivalGame=null;this.arrivalTime=null;}
+    if(g.state!=='backup_award'&&this.channels?.has('backup_choir'))this.stop('backup_choir',.12);
     for(const event of g.events.splice(0)) {
       if(event.name==='stop') this.stopAll();
       else if(event.name==='recouple_denied')this.sound('time_buzzer',.32,'recouple_denied',false,-5);
@@ -116,7 +117,7 @@ export class GameAudio {
     const clock=bonusPlaying?g.bonus.timeLeft:g.legTime;
     const ambience=s.startsWith('bonus_')||['title','quit_confirm','opening_intro','level_ready','course_materialize','playing','result_overlay','space_intro','time_intro','entropy_intro','heat_intro','loss_intro','change_1_intro','change_2_intro','change_3_intro','change_4_intro'].includes(s);
     const metric=playing?portalMetrics(g.course,g.player):{charge:0,overlap:0,ratio:0};
-    if(ambience) {
+    if(ambience&&s!=='backup_award') {
       desired.set('ambient',[title?.34:s==='level_ready'?.28:construct?.20:s==='result_overlay'?.17:s.endsWith('_intro')?.20:.15+.05*metric.charge,'ambient']);
       desired.set('gamelan',[(title?.26:s==='level_ready'?.22:construct?.205:s==='result_overlay'?.18:s.endsWith('_intro')?.16:.19)*10**(5/20),'gamelan']);
     }

@@ -8,6 +8,7 @@ import {CONFIG_COMMANDS,describeConsoleConfig} from './console-config.mjs';
 import {PANIC,panicStatus,reachedLeg} from './panic.mjs';
 import {RECOUPLING,recoverableFragments,recentRequests,cooldownRemaining,selectRecovery} from './recoupling.mjs';
 import {Mercy,MERCY_ENABLED,MERCY_NUMBERS} from './mercy.mjs';
+import {BackupProtection,BACKUP_NUMBERS,BACKUP_REASSEMBLY_SECONDS,BACKUP_AWARD_SECONDS,backupStatus,perfectBonusGather} from './backup.mjs';
 import {LOSS_ASSEMBLY} from './loss.mjs';
 import {validateCheckpoint,RESUME_TIMING} from './save-game.mjs';
 export { BALANCE } from './difficulty.mjs';
@@ -339,6 +340,8 @@ export class Game {
     this.flags.loss_grey=true;this.flags.panic=true;this.flags.panic_show_inactive=true;this.flags.panic_penalty=false;
     this.panicOutsideSeconds=PANIC.outsideSeconds;this.panicCooldownSeconds=PANIC.cooldownSeconds;
     this.panicScorePenaltyPercent=PANIC.scorePenaltyPercent;
+    this.flags.backup_cubes_enabled=true;this.flags.backup_flawless_levels=true;this.flags.bonus_before_final=false;this.backupCubes=0;
+    this.backupSettings=Object.fromEntries(Object.entries(BACKUP_NUMBERS).map(([key,rule])=>[key,rule.value]));
     this.flags.mercy_mode=MERCY_ENABLED;
     this.mercySettings=Object.fromEntries(Object.entries(MERCY_NUMBERS).map(([key,rule])=>[key,rule.value]));
     this.flags.route_outline=VISUAL_EFFECTS.routeOutline;
@@ -349,7 +352,7 @@ export class Game {
     this.starPattern=VISUAL_EFFECTS.starPattern;
     this.endPortalPreview=false;this.level=1; this.score=0; this.locate=false; this.paused=false; this.help=false; this.events=[]; this.pendingIntroductions=[];
     this.consoleSettings={};this.consoleNumbers={}; // Browser-owned controls join the same command interface.
-    this.runStats={playSeconds:0,deaths:0,recoupledCubes:0,levelsCleared:0,bonusRounds:0,bonusPieces:0,bonusScore:0}; this.runSummary=null;
+    this.runStats={playSeconds:0,deaths:0,recoupledCubes:0,levelsCleared:0,bonusRounds:0,bonusPieces:0,bonusScore:0,backupCubesGained:0,backupCubesUsed:0}; this.runSummary=null;
     this.bonusesPlayedAfter=new Set();this.bonus=null;this.previewReturn=null;
     this.state='title'; this.stateTime=0; this.message=''; this.messageTime=0; this.resetAttempt();
   }
@@ -364,20 +367,24 @@ export class Game {
     const mode=Number(value);balanceForMode(mode); // Validate before touching any active state.
     this.selectedGameMode=mode;
     if(mode===this.gameMode)return mode;
-    this.title();this.applyGameMode(mode);this.level=1;this.score=0;this.completedLevel=0;this.lastEscape=0;
+    this.title();this.applyGameMode(mode);this.level=1;this.score=0;this.backupCubes=0;this.completedLevel=0;this.lastEscape=0;
     this.entryCells=Object.freeze(cells.map((_,i)=>i));this.missingEntryCells=[];
     this.resetAttempt();this.messageSet('GAME MODE CHANGED · start a new run · existing save kept',4);
     return mode;
   }
   checkpoint({level=this.level,survivors=this.entryCells,stage='level'}={}) {
     if(!this.campaignSaving||this.endPortalPreview)return;
-    const data=validateCheckpoint({schema:2,gameMode:this.gameMode,stage,level,cells:[...survivors],score:this.score,
+    const data=validateCheckpoint({schema:3,gameMode:this.gameMode,stage,level,cells:[...survivors],score:this.score,
+      backupCubes:this.backupCubes,backupResumeLeg:stage==='level'&&level===this.level?this.backupResumeLeg:null,
       completedLevel:this.completedLevel||0,lastEscape:this.lastEscape||0,
       bonusesPlayedAfter:[...this.bonusesPlayedAfter],runStats:{...this.runStats}});
     if(data)this.saveCheckpoint(data);
   }
+  scheduledBonus(level) {
+    return scheduledBonus(level,this.balance.levelCap,BONUS_SCHEDULE,this.flags.bonus_before_final);
+  }
   checkpointNextLevel() {
-    const stage=this.level>=this.balance.levelCap?'ending':scheduledBonus(this.level,this.balance.levelCap)&&!this.bonusesPlayedAfter.has(this.level)?'bonus':'level';
+    const stage=this.level>=this.balance.levelCap?'ending':this.scheduledBonus(this.level)&&!this.bonusesPlayedAfter.has(this.level)?'bonus':'level';
     this.checkpoint({level:Math.min(this.balance.levelCap,this.level+1),stage,
       survivors:stage==='ending'?[...this.player.alive]:this.portalCarry?.cells||cells.map((_,i)=>i)});
   }
@@ -388,13 +395,16 @@ export class Game {
   }
   restoreCheckpoint() {
     const saved=this.pendingResume;if(!saved)return;this.pendingResume=null;
-    this.score=saved.score;this.runStats={...saved.runStats};this.runSummary=null;
+    this.score=saved.score;this.backupCubes=saved.backupCubes;this.runStats={...saved.runStats};this.runSummary=null;
     this.completedLevel=saved.completedLevel;this.lastEscape=saved.lastEscape;
     this.bonusesPlayedAfter=new Set(saved.bonusesPlayedAfter);
     this.ready(saved.stage==='bonus'?saved.level-1:saved.level,{survivors:saved.cells});
     this.campaignSaving=true;
+    if(saved.backupResumeLeg!==null) {
+      this.setState('playing');this.restoreBackupLeg(saved.backupResumeLeg);return;
+    }
     if(saved.stage==='bonus') {
-      const type=scheduledBonus(this.level,this.balance.levelCap);
+      const type=this.scheduledBonus(this.level)||BONUS_SCHEDULE.types[0];
       if(type) {
         this.portalCarry={fromLevel:this.level,cells:Object.freeze([...saved.cells])};
         this.bonusesPlayedAfter.add(this.level);this.startBonus(type);return;
@@ -417,16 +427,19 @@ export class Game {
   get recoverableFragments() { return recoverableFragments(this.player); }
   get recoupleWait() { return cooldownRemaining(this); }
   get mercyActive() { return this.flags.mercy_mode&&this.mercy.active; }
+  get backupStatus() {return backupStatus(this);}
+  get backupActive() { return this.state==='playing'&&this.backupProtection.active; }
   get deathDissolveSeconds() { return this.sealedZap?SEALED_ZAP_SECONDS:.48; }
   resetLegClock() {
     this.legTime=this.difficulty.secondsPerLeg;
     this.timeResetNotice=this.difficulty.timed?1.6:0;
   }
   resetAttempt() {
+    this.flawlessBackupAward=false;
     this.player.reset(); this.player.alive=new Set(this.entryCells);this.course=new Course(this.level,this.flags.route3d,{balance:this.balance}); this.geometryVersion=(this.geometryVersion||0)+1;
     this.driftVelocity=new V();
     this.panic=null;this.panicLeg=0;this.panicCooldown=0;
-    this.mercy=new Mercy();
+    this.mercy=new Mercy();this.backupProtection=new BackupProtection();this.backupResumeLeg=null;
     this.sealedZap=null;
     this.shutters=new Shutters(this.rng);
     this.damageTimer=.45; this.legTime=this.difficulty.secondsPerLeg; this.timedModule=0; this.timeResetNotice=0;
@@ -465,8 +478,8 @@ export class Game {
   newRun() {
     if(this.gameMode!==this.selectedGameMode)this.applyGameMode(this.selectedGameMode);
     this.campaignSaving=true;this.pendingResume=null;
-    this.score=0; this.completedLevel=0; this.lastEscape=0; this.help=false;
-    this.runStats={playSeconds:0,deaths:0,recoupledCubes:0,levelsCleared:0,bonusRounds:0,bonusPieces:0,bonusScore:0}; this.runSummary=null;
+    this.score=0;this.backupCubes=0; this.completedLevel=0; this.lastEscape=0; this.help=false;
+    this.runStats={playSeconds:0,deaths:0,recoupledCubes:0,levelsCleared:0,bonusRounds:0,bonusPieces:0,bonusScore:0,backupCubesGained:0,backupCubesUsed:0}; this.runSummary=null;
     this.bonusesPlayedAfter=new Set();this.bonus=null;this.previewReturn=null;
     this.ready(1); this.setState('opening_intro');
   }
@@ -474,7 +487,7 @@ export class Game {
   advance() {
     const target=Math.max(this.level+1,(this.completedLevel||0)+1,2);
     if(target>this.balance.levelCap) { this.beginAscension(); return; }
-    const type=scheduledBonus(this.completedLevel||0,this.balance.levelCap);
+    const type=this.scheduledBonus(this.completedLevel||0);
     if(type&&!this.bonusesPlayedAfter.has(this.completedLevel)) {
       this.bonusesPlayedAfter.add(this.completedLevel);this.startBonus(type);return;
     }
@@ -492,6 +505,7 @@ export class Game {
     if(this.paused||this.help) return;
     if(this.state==='title') this.newRun();
     else if(this.state==='result_overlay') this.advance();
+    else if(this.state==='backup_award'&&this.stateTime>=1.5)this.finishBackupAward();
     else if(this.state==='bonus_result'&&this.stateTime>=.4) {
       if(this.previewReturn) {
         const {nextLevel:target,cells:survivors}=this.previewReturn;this.previewReturn=null;this.bonus=null;
@@ -528,6 +542,7 @@ export class Game {
       if(b.result) {
         if(!this.bonusPreview) {
           this.runStats.bonusRounds++;
+          if(this.flags.backup_cubes_enabled&&perfectBonusGather(b)&&!b.backupAwarded) {this.backupCubes++;this.runStats.backupCubesGained++;b.backupAwarded=true;}
           if(b.result==='escaped') {
             this.score+=b.potentialScore;this.runStats.bonusScore+=b.potentialScore;this.runStats.bonusPieces+=b.collected;
             this.stats.best_score=Math.max(this.stats.best_score,this.score);this.persist();
@@ -537,7 +552,9 @@ export class Game {
         if(b.result==='timeout')this.explodeBonus();
         this.setState('bonus_escape');this.emit(b.result==='escaped'?'portal':'time_buzzer');
       }
-    } else if(this.state==='bonus_escape'&&this.stateTime>=(b.result==='timeout'?b.rules.explosionSeconds:2))this.setState('bonus_result');
+    } else if(this.state==='bonus_escape'&&this.stateTime>=(b.result==='timeout'?b.rules.explosionSeconds:2)) {
+      if(b.backupAwarded)this.beginBackupAward('bonus_result');else this.setState('bonus_result');
+    }
   }
   explodeBonus() {
     const b=this.bonus;
@@ -553,6 +570,33 @@ export class Game {
     });
     b.pickupFlashes=[];
     this.emit('crash');this.emit('collapse');this.emit('death');
+  }
+  beginBackupAward(nextState) {
+    this.backupAwardReturn=nextState;this.setState('backup_award');this.emit('stop');this.emit('backup_choir');
+  }
+  finishBackupAward() {this.setState(this.backupAwardReturn||'bonus_result');this.backupAwardReturn=null;}
+  restoreBackupLeg(leg) {
+    const module=this.course.modules[leg],center=leg?module.start:V.of(C.START_ORIGIN);
+    this.player.origin=center;this.timedModule=this.panicLeg=leg;this.backupResumeLeg=leg;
+    for(let i=0;i<=leg;i++)this.course.revealed.set(i,this.t-10);
+    for(let i=0;i<leg;i++)this.course.collapsed.set(i,this.t-10);
+    // Open just the return corner until the body leaves it, as with Panic.
+    // The preceding corridor stays sealed; this revival has no prison bars.
+    this.course.rescueJoint=leg-1;this.course.rescueChamber=leg?{module,center,backup:true}:null;
+    this.resetLegClock();
+  }
+  requestBackupCube() {
+    if(!backupStatus(this).enabled)return false;
+    const leg=this.panicLeg;
+    this.backupCubes--;this.runStats.backupCubesUsed++;
+    this.entryCells=Object.freeze(cells.map((_,i)=>i));this.missingEntryCells=[];
+    this.resetAttempt();this.reassembly=[];
+    this.setState('playing');this.restoreBackupLeg(leg);
+    this.backupProtection.start(this.backupSettings.backup_invincibility_seconds);
+    this.checkpoint(); // Spend and restored checkpoint are one save, before another input.
+    this.emit('stop');this.emit('materialize');
+    this.messageSet('BACKUP CUBE RESTORED',1.5);
+    return true;
   }
   requestPanic() {
     if(!panicStatus(this).enabled)return false;
@@ -710,7 +754,7 @@ export class Game {
       if(contact===undefined)continue;
       // Consume this closure contact even during immunity: no delayed repeat bite.
       this.shutters.contacts.set(l,phase.cycle);
-      if(!this.flags.damage||this.shutters.immunity>0||this.mercyActive)continue;
+      if(!this.flags.damage||this.shutters.immunity>0||this.mercyActive||this.backupActive)continue;
       const count=this.player.alive.size;
       const loss=this.mercy.limitLoss(count,shutterLoss(count,this.changeSettings.change_1_damage_fraction),this.flags.mercy_mode,this.mercySettings);
       if(!loss)continue;
@@ -725,7 +769,7 @@ export class Game {
     }
   }
   damage() {
-    if(!this.flags.damage||this.mercyActive) return null;
+    if(!this.flags.damage||this.mercyActive||this.backupActive) return null;
     const p=this.player,candidates=[];
     if(this.flags.lasers&&this.shutters.immunity<=0) {
       const active=this.course.activeLasers(p.origin,this.t).filter(l=>!this.shutterState(l)?.closed);
@@ -766,7 +810,9 @@ export class Game {
     });
   }
   die() {
+    this.backupProtection.start(0);
     if(!this.endPortalPreview)this.runStats.deaths++;
+    if(this.backupResumeLeg!==null){this.backupResumeLeg=null;this.checkpoint();}
     this.recoupling=[]; this.makeReassembly(); this.setState('death_dissolve'); this.damageTimer=999;
     this.emit(this.sealedZap?'sealed_zap':'death');
     this.messageSet(this.sealedZap?'SEALED CORRIDOR · LETHAL GRID':'CUBICALLY DECOMMISSIONED',this.sealedZap?1.6:1.1);
@@ -778,6 +824,8 @@ export class Game {
     }
     this.recoupling=[]; this.completedLevel=this.level; this.lastEscape=this.player.alive.size;
     this.portalCarry=this.lossActive?{fromLevel:this.level,cells:Object.freeze([...this.player.alive])}:null;
+    this.flawlessBackupAward=Boolean(this.flags.backup_cubes_enabled&&this.flags.backup_flawless_levels&&this.player.alive.size===125);
+    if(this.flawlessBackupAward){this.backupCubes++;this.runStats.backupCubesGained++;}
     this.runStats.levelsCleared++;
     this.stats.best_escape=Math.max(this.stats.best_escape,this.lastEscape);
     this.score+=this.lastEscape*100; this.stats.best_score=Math.max(this.stats.best_score,this.score); this.persist();
@@ -789,7 +837,7 @@ export class Game {
     if(preview){this.campaignSaving=false;this.pendingResume=null;}
     if(!preview&&['ascension','ascension_white','ascension_title','thank_you_note','run_summary'].includes(this.state)) return;
     this.pendingIntroductions=[];
-    this.runSummary=Object.freeze({...this.runStats,endPortalPreview:this.endPortalPreview,score:this.score,finalLevel:this.endPortalPreview?this.level:this.completedLevel||this.level,
+    this.runSummary=Object.freeze({...this.runStats,backupCubes:this.backupCubes,endPortalPreview:this.endPortalPreview,score:this.score,finalLevel:this.endPortalPreview?this.level:this.completedLevel||this.level,
       finalCubes:this.endPortalPreview?this.player.alive.size:this.lastEscape||0,bestScore:this.stats.best_score,bestEscape:this.stats.best_escape});
     this.events=[];this.emit('stop');this.setState('ascension');
   }
@@ -824,6 +872,7 @@ export class Game {
     this.hitTime=Math.max(0,(this.hitTime||0)-dt); this.cooldown=Math.max(0,this.cooldown-dt);
     this.recoupleDeniedTime=Math.max(0,this.recoupleDeniedTime-dt);
     if(this.state.startsWith('bonus_')) {this.tickBonus(dt,input);return;}
+    if(this.state==='backup_award') {if(this.stateTime>=BACKUP_AWARD_SECONDS)this.finishBackupAward();return;}
     if(['course_materialize','playing','reassembly_flash'].includes(this.state)) {this.updatePlayerSpin(dt);this.updateRotationShock(dt);}
     this.player.update(dt);
     for(const p of this.particles) { p.age+=dt; p.pos=p.pos.add(p.vel.mul(dt)); p.vel.y-=1.2*dt; }
@@ -856,7 +905,7 @@ export class Game {
         if(this.stateTime>=7) { this.resetLegClock(); this.setState('playing'); this.damageTimer=.45; } break;
       case 'playing': {
         if(!this.endPortalPreview)this.runStats.playSeconds+=dt;
-        this.mercy.tick(dt);
+        this.mercy.tick(dt);this.backupProtection.tick(dt);
         this.tickRecouple(dt);
         this.move(dt,input);
         this.trackPanicLeg();
@@ -874,7 +923,7 @@ export class Game {
           const sealed=this.course.collapsedSectionAt(this.player.origin);
           if(this.legTime<=0) {
             this.player.alive.clear(); this.emit('collapse',this.player.origin); this.emit('laser_dissipate');
-          } else if(sealed>=0&&this.player.alive.size) {
+          } else if(sealed>=0&&this.player.alive.size&&!this.backupActive) {
             this.sealedZap={center:this.player.origin,module:this.course.modules[sealed]};
             this.player.alive.clear();this.shake=.45;
           }
@@ -892,7 +941,7 @@ export class Game {
         if(this.stateTime>=this.deathDissolveSeconds) { this.player.alive.clear(); this.player.fragments=[]; this.setState('reassembly'); this.emit('reassembly'); } break;
       case 'reassembly':
         if(this.lossActive&&this.missingEntryCells.length&&this.stateTime>=LOSS_ASSEMBLY.scatterAt&&this.stateTime-dt<LOSS_ASSEMBLY.scatterAt)this.emit('loss_weep');
-        if(this.stateTime>=3.75) { this.resetAttempt(); this.checkpoint();this.setState('reassembly_flash'); this.damageTimer=.7; } break;
+        if(this.stateTime>=BACKUP_REASSEMBLY_SECONDS) { this.resetAttempt(); this.checkpoint();this.setState('reassembly_flash'); this.damageTimer=.7; } break;
       case 'reassembly_flash':
         if(this.stateTime>=1.1) { this.resetLegClock(); this.setState('playing'); this.damageTimer=.4; this.reassembly=[]; } break;
       case 'portal_warp':
@@ -939,13 +988,20 @@ export class Game {
       this.ready(threshold);
       this.setState(CHANGES[arg].state);return `${arg.replace('_',' ').toUpperCase()} test · level ${this.level}`;
     }
+    if(cmd==='test'&&arg==='backup_cube_anim') {
+      const level=this.level;
+      this.startBonus('001',{preview:true});this.previewReturn.nextLevel=level;
+      this.bonus.backupAwarded=true;this.bonus.result='escaped';
+      this.beginBackupAward('bonus_result');
+      return 'BACKUP CUBE animation preview · no reward, points or saved progress changed';
+    }
     if(cmd==='test'&&arg==='loss') {
       this.campaignSaving=false;this.pendingResume=null;
       this.flags.loss=true;this.ready(Math.max(1,this.lossMinLevel));
       this.pendingLevelCells=cells.map((_,i)=>i).filter(i=>i%3===0);this.setState('loss_intro');
       return `LOSS test · level ${this.level} · demonstration body: ${this.pendingLevelCells.length}/125 cubes`;
     }
-    if(cmd==='test')throw Error('Available previews: test end_portal, test ending_1, test bonus_round_1, test change_1, test change_2, test change_3, test change_4, test loss, thank_you_note');
+    if(cmd==='test')throw Error('Available previews: test end_portal, test ending_1, test backup_cube_anim, test bonus_round_1, test change_1, test change_2, test change_3, test change_4, test loss, thank_you_note');
     if(cmd==='reset'||topLevelCommand) {
       if(cmd==='reset'&&!['top level','top_level','toplevel','highest_level'].includes(parts.slice(1).join(' ')))
         throw Error('Usage: reset top level (aliases: reset top_level, reset toplevel, reset highest_level)');
@@ -968,7 +1024,7 @@ export class Game {
     }]));
     settings.set('locate',{get:()=>this.locate,set:v=>{this.locate=v;}});
     for(const [key,setting] of Object.entries(this.consoleSettings))settings.set(key,setting);
-    const values=new Map([['level',()=>this.level],['score',()=>this.score],['cubes',()=>this.player.alive.size],['top_level',()=>this.stats.highest_level]]);
+    const values=new Map([['level',()=>this.level],['score',()=>this.score],['cubes',()=>this.player.alive.size],['top_level',()=>this.stats.highest_level],['backup_cubes',()=>this.backupCubes]]);
     const numeric=new Map(Object.keys(CHANGE_NUMBERS).map(key=>[key,{
       get:()=>this.changeSettings[key],set:value=>{const n=setChangeNumber(this.changeSettings,key,value);this.shutters.restart();return n;}
     }]));
@@ -990,7 +1046,7 @@ export class Game {
       const n=Number(value);if(value===undefined||String(value).trim()===''||!Number.isInteger(n)||n<0||n>this.levelCap)throw Error(`loss_grey_min_level expects an integer from 0 to ${this.levelCap}`);
       this.lossGreyMinLevel=n;return n;
     }});
-    for(const [rules,values] of [[PREVIEW_NUMBERS,this.previewSettings],[ROUTE_OUTLINE_NUMBERS,this.routeOutlineSettings],[MERCY_NUMBERS,this.mercySettings]])for(const [key,rule] of Object.entries(rules))numeric.set(key,{get:()=>values[key],set:value=>{
+    for(const [rules,values] of [[PREVIEW_NUMBERS,this.previewSettings],[ROUTE_OUTLINE_NUMBERS,this.routeOutlineSettings],[MERCY_NUMBERS,this.mercySettings],[BACKUP_NUMBERS,this.backupSettings]])for(const [key,rule] of Object.entries(rules))numeric.set(key,{get:()=>values[key],set:value=>{
       const n=Number(value);if(value===undefined||String(value).trim()===''||!Number.isFinite(n)||n<rule.min||n>rule.max||rule.integer&&!Number.isInteger(n))throw Error(`${key} expects ${rule.integer?'an integer':'a number'} from ${rule.min} to ${rule.max}`);
       values[key]=n;return n;
     }});
@@ -1017,7 +1073,7 @@ export class Game {
       return `Status for ${key} is: ${requireSetting(key).get()?'Enabled':'Disabled'}`;
     };
     const setFlag=(key,v)=>{requireSetting(key).set(v);return `${key} set to ${v}`;};
-    if(cmd==='help'||cmd==='?') return 'viewconfig / showconfig / showvars / viewvars / listvars / listconfig: list all settings\nhelp, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: panic panic_show_inactive mercy_mode damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light end_portal culling microgravity overheat_blocks_recoupling change_1 change_2 change_3 change_4 change_4_pattern change_1_random_per_leg change_1_no_repeat_leg loss loss_grey route_outline preview_outline locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nNumbers: '+[...numeric.keys()].join(' ')+'\nRecords: toplevel / top_level (query); toplevel reset / top_level reset / reset top level (reset); keeps other records\nPreviews: test end_portal, test ending_1, test bonus_round_1, test change_1, test change_2, test change_3, test change_4, test loss, thank_you_note, bonus <type>';
+    if(cmd==='help'||cmd==='?') return 'viewconfig / showconfig / showvars / viewvars / listvars / listconfig: list all settings\nhelp, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: backup_cubes_enabled backup_flawless_levels bonus_before_final panic panic_show_inactive mercy_mode damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light end_portal culling microgravity overheat_blocks_recoupling change_1 change_2 change_3 change_4 change_4_pattern change_1_random_per_leg change_1_no_repeat_leg loss loss_grey route_outline preview_outline locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nNumbers: '+[...numeric.keys()].join(' ')+'\nRecords: toplevel / top_level (query); toplevel reset / top_level reset / reset top level (reset); keeps other records\nPreviews: test end_portal, test ending_1, test backup_cube_anim, test bonus_round_1, test change_1, test change_2, test change_3, test change_4, test loss, thank_you_note, bonus <type>';
     if(cmd==='flags')return [...settings.keys()].map(status).join('\n');
     if(['get','view','status'].includes(cmd)||['set','flag'].includes(cmd)&&value===undefined)return status(arg==='toplevel'?'top_level':arg);
     const numericKey=['set','flag'].includes(cmd)?arg:cmd;

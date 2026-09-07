@@ -1,4 +1,5 @@
-// Visual options stay separate from the explicitly offered gameplay rescue option.
+import {VISUAL_EFFECTS} from './config.mjs';
+// Visual options stay separate from the explicitly offered gameplay rescue options.
 export const HELP_VISUAL_OPTIONS=Object.freeze([
   {key:'shake',label:'Shaking and heat flashes',storage:'cube-libre-shake-v1'},
   {key:'rotation_shocks',label:'Hit rotation shocks',storage:'cube-libre-rotation-shocks-v1'},
@@ -43,5 +44,25 @@ export function createVisualOptions(document,game,write) {
   input.addEventListener('change',()=>{game.command(`set panic ${input.checked}`);write('cube-libre-panic-v1',game.flags.panic);});
   row.append(input,'ALLOW PANIC BUTTON');body.append(row);
   const note=document.createElement('p');note.textContent=`Return to the start of your reached leg with your surviving cubes and a fresh timer. The tractor beam also requests normal Recouple for recoverable loose pieces. Available throughout a normal leg, with a ${game.panicCooldownSeconds}-second cooldown. On by default. Score penalty: ${game.flags.panic_penalty?`${game.panicScorePenaltyPercent}% of this run per use, rounded to whole points`:'off'}. All-time records stay unchanged; the penalty is console-configurable and off by default.`;body.append(note);
+  const backupRow=document.createElement('label');backupRow.className='shake-setting';
+  const backup=document.createElement('input');backup.type='checkbox';backup.checked=game.flags.backup_cubes_enabled;backup.dataset.setting='backup_cubes_enabled';
+  backup.addEventListener('change',()=>{game.command(`set backup_cubes_enabled ${backup.checked}`);write('cube-libre-backup-cubes-enabled-v1',game.flags.backup_cubes_enabled);});
+  backupRow.append(backup,'BACKUP CUBES ENABLED');body.append(backupRow);
+  const backupNote=document.createElement('p');backupNote.textContent=`On by default. Collect every bonus piece to earn a full replacement cube.${game.flags.backup_flawless_levels?' Exiting a normal level with all 125 pieces intact also earns one.':''} Spend one during reassembly to restart at your last reached leg. Disabling this keeps your reserve but stops earning and spending it.`;body.append(backupNote);
   return body;
+}
+
+export function createOptionsReset(document,game,mobile,write,refresh) {
+  const section=document.createElement('section'),button=document.createElement('button'),note=document.createElement('p');
+  button.type='button';button.textContent='Reset to defaults';button.dataset.action='reset-options';
+  note.textContent='Restore the options in this panel. Your saved run, scores and Backup Cubes are kept.';
+  button.addEventListener('click',()=>{
+    mobile.setMode(0);mobile.setHelpers(false);mobile.orientation?.release();
+    const defaults={shake:VISUAL_EFFECTS.shakingEnabled,rotation_shocks:VISUAL_EFFECTS.rotationShocks,portal_white_light:VISUAL_EFFECTS.portalWhiteLight,panic:true,backup_cubes_enabled:true};
+    for(const [key,value] of Object.entries(defaults)) {
+      game.command(`set ${key} ${value}`);write(`cube-libre-${key.replaceAll('_','-')}-v1`,value);
+    }
+    refresh();
+  });
+  section.append(button,note);return section;
 }

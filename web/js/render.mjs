@@ -1,3 +1,4 @@
+import {createPortalWhiteLight} from './portal-light.mjs';
 import {PANIC} from './panic.mjs';
 import {RECOUPLING} from './recoupling.mjs';
 import * as T from '../vendor/three.module.min.js';
@@ -313,6 +314,7 @@ export class Renderer {
     }
   }
   panicPrison(g) {
+    if(!g.panic&&g.course.rescueChamber?.backup)return;
     const {module,center,time}=g.panic||{...g.course.rescueChamber,time:PANIC.pullSeconds+PANIC.holdSeconds+PANIC.openSeconds},opening=smooth((time-PANIC.pullSeconds-PANIC.holdSeconds)/PANIC.openSeconds);
     const map=(x,y,z)=>center.add(module.bx.mul(x)).add(module.by.mul(y)).add(module.bz.mul(z));
     const color=[.65,.86,1];
@@ -412,6 +414,7 @@ export class Renderer {
       if(g.heat>0) color=heatedColor(color,t,g.heat,g.flags.shake);
       else if(g.cool>0) color=colorMix(color,[.1,.5,1],g.cool);
       if(g.hitTime>0&&g.heat<=0&&Math.sin(t*17*Math.PI*2)>0) color=g.lastHit==='laser'?[1,.2,.1]:[.4,.85,1];
+      if(g.backupActive)color=colorMix(color,white,g.backupProtection.glow);
       if(g.state==='course_materialize') scale=smooth((g.stateTime/7-i/125*.22)/.72);
       this.cubes.cube(visualPosition(i),color,scale,null,0,1,false,null,bodyOrientation);
     }
@@ -477,6 +480,17 @@ export class Renderer {
     center.applyMatrix4(this.world.matrixWorld).project(this.camera);
     return {x:(center.x+1)*this.width/2,y:bottom+Math.max(10,Math.min(18,this.height*.015))};
   }
+  backupAward(g) {
+    // A modest halo leaves the gaps and edges of all 125 little cubes readable.
+    const orientation=new T.Quaternion().setFromEuler(new T.Euler(.35+g.stateTime*.1,.6+g.stateTime*.22,.08));
+    for(const offset of cells) {
+      const p=new T.Vector3(...offset).applyQuaternion(orientation);
+      this.cubes.cube(new V(p.x,p.y,p.z),white,.96,null,0,1,false,[.7,.8,.9],orientation.toArray());
+    }
+    const tall=this.height>=this.width,short=this.height<=450;
+    this.camera.position.set(0,0,(short?32:20)*Math.max(1,.72/this.camera.aspect));
+    this.camera.lookAt(0,short?-6.8:tall?-2.6:-1.1,0);
+  }
   title(t) {
     for(let i=0;i<this.titleCells.length;i++) {
       const item=this.titleCells[i],p=V.of(item.pos); p.z+=Math.sin(t*2.6+item.phase*.017)*.12;
@@ -529,15 +543,25 @@ export class Renderer {
     if(!title&&this.camera.view?.enabled)this.camera.clearViewOffset();
     const arrival=g.state==='ascension'&&g.stateTime<ASCENSION_TIMING.arrivalSeconds;
     const ascending=g.state==='ascension'&&!arrival,endWhite=arrival||['ascension_white','ascension_title','thank_you_note','run_summary'].includes(g.state);
+    const backupAward=g.state==='backup_award';
     const bonusScene=['bonus_smash','bonus_playing','bonus_escape'].includes(g.state),bonusResult=g.state==='bonus_result';
     const rebuilding=['reassembly','loss_assembly'].includes(g.state);
     const whiteVoid=phase||g.state==='result_overlay'||bonusResult||rebuilding||endWhite;
-    const blank=phase||g.state==='result_overlay'||bonusResult||g.state==='level_ready'||ascending||endWhite;
+    const blank=phase||g.state==='result_overlay'||bonusResult||g.state==='level_ready'||ascending||endWhite||backupAward;
     if(this.bonusArena)this.bonusArena.visible=bonusScene;
     if(g.state==='ascension'&&!this.ascensionScene)this.ascensionScene=new AscensionScene(this.world);
     if(this.ascensionScene)this.ascensionScene.group.visible=ascending;
     if(this.routeGuide)this.routeGuide.group.visible=false;
     updatePortalWhiteLight(this,g);
+    const backupGlow=backupAward?.48+.08*Math.sin(g.stateTime*2):g.backupActive?g.backupProtection.glow:0;
+    if(backupGlow&&!this.backupGlow)this.backupGlow=createPortalWhiteLight(this.world);
+    if(this.backupGlow) {
+      this.backupGlow.visible=backupGlow>0;
+      if(backupGlow) {
+        this.backupGlow.position.set(...(backupAward?[0,0,0]:g.player.origin.array()));this.backupGlow.scale.set(15,15,1);
+        this.backupGlow.material.opacity=backupGlow*.8;
+      }
+    }
     this.gl.setClearColor(whiteVoid?0xffffff:0x000000,1);
     if(this.stars.geometry)setStarPattern(this.stars,g.starPattern);
     this.stars.visible=g.starPattern!==0&&!blank&&!bonusScene; this.stars.material.color.setHex(whiteVoid?0x444444:0xffffff);
@@ -551,6 +575,8 @@ export class Renderer {
       if(area.width>0&&area.height>0) {
         frameTitle(this.camera,this.titleFrame,this.rotator.rotation,this.width,this.height,area);this.title(g.t);
       }
+    } else if(backupAward) {
+      this.backupAward(g);
     } else if(bonusScene) {
       this.bonus(g);
     } else if(arrival) {
@@ -584,7 +610,7 @@ export class Renderer {
       if(rebuilding||g.state==='death_dissolve') this.reassemble(g);
       this.sealedCorridorZap(g);
     }
-    if(!bonusScene&&!ascending)this.camera.lookAt(0,0,0);
+    if(!bonusScene&&!ascending&&!backupAward)this.camera.lookAt(0,0,0);
     if(rebuilding&&this.width>0&&this.height>0)this.reassemblyLabel=this.reassemblyCaption();
     if(this.stars.visible)positionInfiniteStarfield(this.stars,this.camera,this.rotator.rotation);
     this.lines.finish(); this.cubes.finish();this.shutterPanels?.finish(); this.gl.render(this.scene,this.camera); this.effects(g);

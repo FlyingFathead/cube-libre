@@ -1,6 +1,6 @@
 # Cube Libre web progression
 
-Default schedule for web **0.30.2**, retaining the gameplay of published v0.30.1 (`771a2df`), including two seconds of mercy.
+Default schedule for web **0.31.0**, based on published v0.30.2 (`4ace282`), with earned Backup Cubes and the existing two seconds of mercy.
 `DEFAULT_GAME_MODE = 20` and the immutable `GAME_MODES` registry live in
 [`web/js/difficulty.mjs`](../web/js/difficulty.mjs). Each `Game` owns its active
 balance; `featuresForSettings(settings, flags, lossMinLevel, game.balance)` drives
@@ -30,6 +30,27 @@ Runtime gameplay always supplies its selected mode explicitly.
 Phase cards hold for five seconds each, queued in the order shown. They and the
 preview do not consume the leg clock. TIME warnings describe the continuous
 curve. The fading has no separate title card and does not cause damage.
+
+## Backup Cubes: carry small victories forward
+
+With default-on `backup_cubes_enabled`, collecting all 124 bonus pieces earns
+one Backup Cube at the end of the round, even on timeout. Bonus points still
+require escape. Default-on `backup_flawless_levels` also grants one for a
+normal portal exit with all 125 cells. Only the count at the exit matters;
+damage and recovery earlier in that attempt do not disqualify it.
+
+Spend a reserve during death reassembly to restore all 125 cells at the start
+of the furthest physically reached leg, including during LOSS. The leg timer
+restarts; the white body has four seconds of damage protection. Previous legs
+remain collapsed. The reserve, full entry body and spent corner checkpoint
+are saved together. Reload does not refresh protection. Later ordinary death
+restarts the level entrance unless another charge is spent.
+
+The regular bonus schedule is unchanged. Optional `bonus_before_final true`
+adds one after level 19 (49 in mode 50); the setting defaults false. No bonus
+follows the final portal. The master Backup setting is saved in Options;
+the flawless reward toggle, extra bonus toggle and protection duration are
+session console settings. New runs start with zero reserves.
 
 ## Quiet grace during critical damage
 
