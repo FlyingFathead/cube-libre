@@ -1,7 +1,7 @@
 # Cube Libre: considerations and roadmap
 
-This is a record of possible future design work, not a list of implemented
-features or promised releases. The current campaign cap is 50 levels. The aim
+This records considered design work and decisions that have since been implemented.
+Unimplemented proposals are marked explicitly; they are not promised releases. The current campaign cap is 50 levels. The aim
 is to sustain interest through new rules, rhythms and decisions as the journey
 gets harder, while preserving the feeling that arriving in one piece is unlikely.
 
@@ -52,6 +52,24 @@ The intended destination and prison-bar release are recorded above. Trigger
 threshold, confinement duration, additional costs and release date remain
 undecided. Revisit those details after further mobile and desktop playtesting,
 especially on longer routes.
+
+## Adopted for web 0.26.0: LOSS and the route ahead
+
+**Status: implemented in the v0.26.0 package.** These ideas moved beyond the
+consideration stage at the author's request.
+
+- Faint exterior outlines show up to three upcoming legs during play, with
+  separate console distance, opacity and fade settings. Distant hazards remain
+  undisclosed. This improves route readability without implementing a rescue.
+- **LOSS ...** starts at level 44. Portals carry the surviving body forward;
+  retries restore the exact level-entry shape. Bonus bodies stay separate.
+- Missing assembly forms grey out, tremble and depart unrecoverably with an
+  electronic engine wind-down. The real body gradually loses colour from 44 to 50.
+- Clearing 50 retains the ascension and adds a lingering thank-you sequence
+  against white, before the statistics prompt.
+
+Late-game balance and the emotional timing need human playtesting. The jail-node
+return mechanic above remains considered, **not implemented**.
 
 ## Playtest evidence and remaining questions
 

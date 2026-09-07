@@ -96,7 +96,7 @@ test('real browser controller dispatcher separates gameplay, pause, Help, consol
   press(9);assert.equal(game.paused,true);release();press(9);assert.equal(game.paused,false);release();
   press(8);assert.equal(game.help,true);release();press(1);assert.equal(game.help,false);release();
   nodes.console.open=true;press(4);assert.equal(recouples,1);release();press(13);assert.equal(nodes['console-log'].scrollTop,200);release();press(1);assert.equal(nodes.console.open,false);release();
-  game.setState('ascension_title');game.stateTime=20;press(0);assert.equal(game.state,'run_summary');
+  game.setState('thank_you_note');game.stateTime=30;press(0);assert.equal(game.state,'run_summary');
   ctx.updateController(20,.01);assert.equal(game.state,'run_summary');release();game.stateTime=1;press(0);assert.equal(game.state,'title');release();
   game.ready(7);game.setState('playing');s.pads=[];ctx.updateController(30,.01);assert.equal(game.paused,true);assert.equal(nodes['modal-title'].textContent,'CONTROLLER DISCONNECTED');
   nodes.modal.open=false;game.paused=false;s.pads=[pad()];ctx.updateController(40,.01);s.controller.enabled=false;s.pads=[];ctx.updateController(50,.01);assert.equal(game.paused,false,'Disabled controller cannot pause keyboard play on disconnect');

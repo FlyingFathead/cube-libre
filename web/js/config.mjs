@@ -6,6 +6,7 @@ export const VISUAL_EFFECTS=Object.freeze({
   rotationShocks:true,
   starPattern:2,
   previewOutline:true,
+  routeOutline:true,
   impactAngularSpeed:420,
   impactMaxAngle:28,
   impactMaxSpeed:700,
@@ -38,6 +39,14 @@ export const PREVIEW_NUMBERS=Object.freeze({
   preview_fade_after_legs:{value:2,min:0,max:1000000,integer:true},
   preview_opacity:{value:.24,min:0,max:1},
   preview_far_opacity:{value:.12,min:0,max:1}, // Fraction of near opacity at the far end.
+});
+
+// During play, show only cached corridor edges ahead of the player.
+export const ROUTE_OUTLINE_NUMBERS=Object.freeze({
+  route_outline_ahead_legs:{value:3,min:0,max:1000000,integer:true},
+  route_outline_fade_after_legs:{value:1,min:0,max:1000000,integer:true},
+  route_outline_opacity:{value:.32,min:0,max:1},
+  route_outline_far_opacity:{value:.25,min:0,max:1}, // Fraction of near opacity.
 });
 
 // Gameplay constants from original ecf8f014 (0.15.79).

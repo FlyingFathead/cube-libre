@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.25.1
+# Cube Libre — Web v0.26.0
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,7 +23,56 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.25.1 · Mobile orientation lock
+## Web release 0.26.0 · What remains
+
+**LOSS ...** arrives at level **44**: **PORTALS NO LONGER RESTORE LOST PIECES**.
+Level 44 still starts with the usual full body. From its exit onward, each new
+level inherits the exact surviving shape, including the holes. A retry restores
+only the pieces you had when entering that level. Bonus rounds keep their own
+body and award points; they do not replenish your normal body.
+
+When an incomplete body assembles, missing pieces briefly appear as trembling
+grey forms, then scatter away with a brief electrical stutter followed by a soft electronic engine wind-down. They
+cannot be recovered. The surviving body also begins losing a barely visible
+amount of colour at 44; the loss accelerates along a curved progression until
+it is completely grey at 50. Heat and damage flashes remain readable.
+
+**See a little farther ahead.** During normal play, up to three upcoming legs
+have faint exterior outlines that fade with distance. This reuses the cached
+corridor edges on desktop and mobile. Nearby hazards retain their reveal rules;
+the outlines reveal no distant laser grids or shutters.
+
+The ending still follows **clearing level 50**. After the ascension and
+**YOU'VE ASCENDED / ... FOR NOW.**, the words fade back to white. A four-second
+white pause leads into **thank you for playing / CUBE LIBRE**: four seconds to
+fade in, five to linger, seven to fade out, then two more seconds of white.
+Separate inputs show your statistics and then return to the menu.
+
+Console previews and tuning:
+
+```text
+level 44                 # Show the LOSS introduction, then start level 44
+set level 50             # Show the final TIME introduction, then start level 50
+test loss                # LOSS card and an incomplete demonstration body
+test ending_1            # Full ending, including the thank-you segment
+thank_you_note           # Just the thank-you segment
+set loss true
+set loss_min_level 44    # 0 enables LOSS from the first level
+set loss_grey true
+set route_outline true
+set route_outline_ahead_legs 3
+set route_outline_fade_after_legs 1
+set route_outline_opacity 0.32
+set route_outline_far_opacity 0.25
+```
+
+Enter commands without the explanatory comments. `status`, `view`, bare `set`
+and `toggle` use the existing console conventions. Gameplay settings remain
+console-only. See [the progression reference](docs/LEVEL_PROGRESSION.md) for
+all defaults. These additions have automated coverage; their presentation and
+late-game balance still need human playtesting.
+
+## Mobile orientation lock · Introduced in 0.25.1
 
 On mobile, **⚙ → Options → Lock current orientation** requests a lock to your
 current portrait or landscape view. It starts off each visit, and the checkbox
@@ -33,7 +82,7 @@ rotation lock instead. Both orientations remain playable without a lock.
 
 Leaving fullscreen or hiding the page releases the game's lock; enable it again
 when ready. Unlocked orientation changes still pause play and release held touch
-gestures. This update leaves the v0.25.0 shutter progression and difficulty intact.
+gestures. The orientation setting leaves gameplay rules intact.
 Browser API and integration checks pass; actual device lock behavior still needs
 Android/iPhone/iPad testing.
 
@@ -227,8 +276,7 @@ module detection. No npm installation is needed.
 ### Retained from 0.20.1 and earlier
 
 The ending now lets **YOU'VE ASCENDED** finish fading in and holds it alone for
-two seconds before **... FOR NOW.** fades in underneath. The continue prompt
-appears afterward. Reassembly messages sit beneath the rebuilding cube with
+two seconds before **... FOR NOW.** fades in underneath. The continue prompt now follows the added thank-you sequence. Reassembly messages sit beneath the rebuilding cube with
 subtle white outlines for readability.
 The README now features the original game's cube-letter logo and the live play
 link above. The gameplay additions from 0.20.0 are retained below.
@@ -287,7 +335,7 @@ The ending now begins with **one white cube above an endless blue grid**. It
 levitates into a starfield as the camera tilts upward, shrinks into a bright point,
 and holds among the stars before everything fades to white. Preview it with
 `test ending_1`. The scene lasts ten seconds, followed by the two-second white
-hold, ending text and run statistics.
+hold, ending text, the thank-you sequence and run statistics.
 
 Portals now radiate a white glow that strengthens as you approach, in normal and
 bonus rounds. Use `portal_white_light true` / `portal_white_light false`, or
@@ -342,10 +390,11 @@ out-of-bounds overheating grace period from 2.4 to 1.4 seconds. **TIME** returns
 at levels 20, 35 and 50 to announce the current allowance. From HEAT onward,
 active overheating also blocks new re-coupling requests when its flag is enabled.
 The route also grows by one leg each level, so the final level combines fifty
-legs with the strictest timer, heat and re-coupling settings.
+legs with the strictest timer, heat and re-coupling settings. **LOSS** at level
+44 also removes the portal refill; arriving with every piece becomes less likely.
 
 The current level cap is **50**. Clear it to see a single white cube ascend into the stars,
-followed by the ending and your run statistics. Separate Space / Enter / click
+followed by the ending, the slow thank-you fade and your run statistics. Separate Space / Enter / click
 inputs advance to the stats and then return to the main menu.
 
 The game reads its version from [`web/version.json`](web/version.json).
@@ -407,7 +456,7 @@ python -m http.server 8000 --directory web
 
 Open http://localhost:8000/ (on Windows, `py` can replace `python`).
 The complete static game lives in `web/`, including its renderer, font and
-20 sounds in Ogg and MP3 (18 originals plus two shutter effects). No backend or npm installation is required.
+21 sounds in Ogg and MP3 (18 originals, two shutter effects and the LOSS engine wind-down). No backend or npm installation is required.
 
 ## GitHub Pages
 

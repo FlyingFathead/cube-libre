@@ -44,8 +44,8 @@ assert.ok(html.includes(`href="./style.css?v=${release.version}"`),'Stylesheet r
 
 const reference=JSON.parse(readFileSync(resolve(root,'tests/web/python-reference.json')));
 assert.equal(release.upstream.commit,reference.source_commit,'PyGame provenance must match the reference fixtures');
-assert.equal(Object.keys(manifest).length,20);
-for(const name of ['shutter_close','shutter_open'])assert.ok(manifest[name],`Missing shutter sound: ${name}`);
+assert.equal(Object.keys(manifest).length,21);
+for(const name of ['shutter_close','shutter_open','loss_weep'])assert.ok(manifest[name],`Missing web sound: ${name}`);
 for(const [name,item] of Object.entries(manifest))for(const ext of ['ogg','mp3']){
   assert.equal(item[ext],`${name}.${ext}`);
   const path=resolve(web,'assets/audio',item[ext]);assert.ok(existsSync(path)&&statSync(path).size>100,`Missing or empty sound: ${path}`);

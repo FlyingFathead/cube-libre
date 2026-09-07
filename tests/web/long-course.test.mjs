@@ -17,6 +17,36 @@ function captureCourse() {
   return {r,lasers,count:()=>lines,reset(){lines=0;lasers.length=0;}};
 }
 
+test('play outlines cover three upcoming legs with independent tuning and no extra hazard reveals or buffer allocation',()=>{
+  for(const level of [4,5,50]) {
+    const g=new Game();g.ready(level);g.setState('playing');const cap=captureCourse();
+    let geometry;
+    for(const index of [0,1,level-2,level-1]) {
+      g.player.origin=g.course.modules[index].world(0);g.course.update(g.player.origin,g.t,()=>{});
+      const reveals=[...g.course.revealed],active=g.course.activeLasers(g.player.origin,g.t),window=detailWindow(g);
+      cap.reset();cap.r.course(g);const guide=cap.r.routeGuide;
+      geometry??=guide.lines.geometry;assert.equal(guide.lines.geometry,geometry);
+      assert.deepEqual(geometry.drawRange,{start:(index+1)*8,count:Math.min(3,level-index-1)*8});
+      assert.ok(geometry.drawRange.count/2<=12,'At most twelve simple line segments');
+      assert.deepEqual([...g.course.revealed],reveals);assert.deepEqual(g.course.activeLasers(g.player.origin,g.t),active);
+      assert.ok(cap.lasers.every(i=>i<=window.last));
+      g.command('set route_outline off');cap.r.course(g);assert.equal(guide.lines.visible,false);
+      g.command('set route_outline on');
+    }
+    g.player.origin=g.course.modules[0].world(0);
+    for(const [key,value] of [['route_outline_ahead_legs',1],['route_outline_fade_after_legs',0],['route_outline_opacity',.7],['route_outline_far_opacity',.1]])g.command(`set ${key} ${value}`);
+    cap.r.course(g);const u=cap.r.routeGuide.lines.material.uniforms;
+    assert.equal(u.opacity.value,.7);assert.equal(u.routeCount.value,1);assert.equal(u.routeFadeAfter.value,0);assert.equal(u.routeFarOpacity.value,.1);
+    assert.equal(cap.r.routeGuide.lines.geometry,geometry);
+    g.setState('course_materialize');g.stateTime=3;cap.r.course(g,true);
+    assert.equal(u.previewMode.value,1);assert.equal(u.previewCount.value,level);assert.equal(u.farOpacity.value,.12);
+    assert.equal(g.previewSettings.preview_opacity,.24,'Gameplay tuning leaves the overview alone');
+    g.command('route_outline_ahead_legs 0');g.setState('playing');cap.r.course(g);assert.equal(cap.r.routeGuide.lines.visible,false);
+    for(const command of ['route_outline_ahead_legs 1.5','route_outline_opacity 2','route_outline_far_opacity -1','route_outline_fade_after_legs NaN'])assert.throws(()=>g.command(command));
+    cap.r.routeGuide.dispose();
+  }
+});
+
 test('every level adds one leg through 50 while X, Z and Y are introduced in order',()=>{
   for(const route3d of [true,false])for(let level=1;level<=50;level++) {
     const c=new Course(level,route3d);assert.equal(c.modules.length,level);assert.equal(c.lasers.length,level*5);
@@ -69,7 +99,7 @@ test('the overview contains only cached ghost outlines and the exit, while gamep
     g.player.origin=g.course.modules[index].world(0);g.course.update(g.player.origin,0,()=>{});
     cap.reset();cap.r.course(g);const window=detailWindow(g);
     assert.ok(window.last-window.first+1<=3);assert.ok(cap.lasers.length<=15);
-    assert.ok(cap.count()<3500);assert.equal(cap.r.routeGuide.lines.visible,false);
+    assert.ok(cap.count()<3500);assert.equal(cap.r.routeGuide.lines.visible,index<49);
     assert.equal(cap.r.routeGuide.marker.visible,true,'The exit remains a distant point without revealing the route');
     assert.ok(g.course.activeLasers(g.player.origin,g.t).length<=20);
   }

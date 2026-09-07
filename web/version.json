@@ -1,7 +1,7 @@
 {
   "name": "Cube Libre",
   "edition": "web",
-  "version": "0.25.1",
+  "version": "0.26.0",
   "repository": "https://github.com/FlyingFathead/cube-libre",
   "upstream": {
     "edition": "pygame",

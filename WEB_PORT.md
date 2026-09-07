@@ -79,22 +79,22 @@ remain active. Regression coverage is in `tests/web/collapse-contact.test.mjs`.
 
 | System | Port behavior |
 | --- | --- |
-| Body | 125 individually destructible cubes, original color gradient, optional slow collective rotation in normal levels |
+| Body | 125 individually destructible cubes, slow collective rotation, and gradual greying during LOSS |
 | Movement | Fixed world X/Y/Z axes, arrows and Ctrl aliases, 2.6× rush |
 | View | Original continuous three-axis rotation; L locate and automatic tracking from level 1 (minimum 0) |
 | Lasers | All five original grid templates, rotating/tilting planes, moving cyan apertures, difficulty speed scaling; full-square electric shutters from level 4, with sequential stages at 6, 7 and 8 |
 | Maze | Modular self-avoiding X/Z/Y route and open turn chambers; one added leg per level through fifty legs at level 50 |
 | Boundary damage | Cell shaving, delayed overheating, cooling, local impacts and drifting debris |
 | Recovery | Eight-second expiry, warning blinks, compact reconstruction, five requests per ten seconds, active-spam quota |
-| Difficulty | Space at level 3; timed legs from level 5; shutter changes at levels 4, 6, 7 and 8; entropy from level 10; HEAT at level 15; gradual timer/yield ramp to level 50 |
+| Difficulty | Space at level 3; timed legs from level 5; shutter changes at levels 4, 6, 7 and 8; entropy from level 10; HEAT at level 15; LOSS from the exit of 44; gradual timer/yield ramp to level 50 |
 | Collapse | Progressive reveal/arming; the previous leg dissolves after the next turn is cleared, with debris, sound and sealed timed backtracking |
 | Portal | Per-cell slab contact, suction, charge, absorption and 98.5% body commitment |
-| Progression | Preview, level-ready cards, portal warp, result cards and automatic progression up to level 50, then ascension and run statistics |
-| Death | Dissolve into the void, reconstruct the body, retry the current level with fresh geometry and timer |
+| Progression | Preview, level-ready cards, portal warp, result cards and automatic progression up to level 50, then ascension, thank-you fades and run statistics |
+| Death | Dissolve into the void, reconstruct the level-entry body, retry the current level with fresh geometry and timer |
 | Persistence | Best escape, best score and highest level in localStorage, plus mute, shaking, player rotation, hit rotation shocks, portal light, culling, microgravity, heat restriction, shutter booleans and sky preferences |
 | UI | Original cube-letter title and dot-matrix prompt; help, pause, menu/reset confirmations, fullscreen |
 | Console | Flags, level/restart/newrun, heal/kill/cubes, portal teleport, position/route, score, locate, and a scrollable live parameter listing |
-| Audio | 20 sounds in two codecs: all 18 originals plus generated electric closure and reopening whoosh |
+| Audio | 21 sounds in two codecs: 18 originals, shutter buzz/whoosh and a generated LOSS engine wind-down |
 
 The route, collision, scoring and portal rules are ported from the source. Web
 0.17.0 deliberately extends timing, re-coupling, heat and end-of-run progression.
@@ -139,8 +139,8 @@ before the deadline to bank **100 bonus points per recovered piece**. Escaping e
 is allowed. A timeout forfeits that round's bonus, preserves the existing run score,
 and proceeds to the next normal level after its result screen. Corridor damage,
 entropy, boundary overheating and the leg timer do not run in this arena. The bonus clock does not
-reset at the ramp; pause, help and dialogs freeze it. Normal levels still begin
-with their usual full body. Run statistics now include bonus rounds played, pieces
+reset at the ramp; pause, help and dialogs freeze it. Normal levels refill until LOSS begins. From the exit of 44 onward, the bonus
+preserves the exact campaign body carried through that portal. Run statistics now include bonus rounds played, pieces
 successfully banked and bonus points.
 
 `BONUS_SCHEDULE` in `web/js/bonus.mjs` starts after level 5 and repeats every five
@@ -351,6 +351,58 @@ its output can also receive keyboard focus. Long responses are retained in full.
 Use `status name` for one value. Numeric settings use `set name number`, except
 existing score/cell cheats which use `score N` and `cubes N`.
 
+## LOSS and route visibility (web 0.26.0)
+
+`BALANCE.lossMinLevel` defaults to 44 and supplies the runtime `loss_min_level`
+console value. `loss` is enabled by default. The threshold applies to the exit:
+43 → 44 refills normally; 44 → 45 carries exact survivor IDs and the same holes.
+The ordered milestone registry supplies **LOSS ...**, **PORTALS NO LONGER
+RESTORE LOST PIECES**, and **WHAT SURVIVES GOES WITH YOU.** Moving the threshold
+moves the rule and the card together; 0 enables both from level 1.
+
+`Game.entryCells` is an immutable per-level checkpoint. `portalCarry` holds the
+exit snapshot across result screens and scheduled bonuses; `pendingLevelCells`
+holds it through any milestone cards. A new level fixes its entry snapshot
+before spawning. Automatic death, console restart and menu retry restore that
+snapshot. New runs and deliberate `level N` debug jumps start a full body.
+Normal re-coupling rules still apply to freshly detached debris.
+
+Bonus rounds have their own body and score. They never replace the campaign
+snapshot, whether they succeed or time out. The main-level clock and physics
+wait until incomplete assembly and the normal overview finish.
+
+Incomplete arrivals and retries reconstruct entry cells only. Absent cells
+briefly attempt to form in grey, tremble (when `shake` is enabled), then fly
+outward from 2.45 seconds and disappear by 3.65. These are rendering poses,
+not player cells or debris. `loss_weep` fires once as they depart. The caption
+switches to **ONLY PARTIAL REASSEMBLY SUCCEEDED**, with the surviving count, under the cube.
+The existing batches draw at most 125 real-plus-absent forms.
+
+`loss_grey` independently controls colour fading during LOSS. It begins with
+2.5% desaturation at the threshold and follows a quadratic curve to full neutral
+grey at level 50, preserving luminance. `LOSS_COLOUR` defines onset/exponent in
+`loss.mjs`. Heat, cooling and hit cues are applied afterward. This changes no
+collision positions, spin, damage or controls. Bonus bodies and the white
+ending cube retain their own colours. `test loss` previews the card plus an
+incomplete demonstration body; `level 44` shows the actual full-body introduction.
+
+The gameplay route guide now reuses four exterior edges for each of up to three
+upcoming legs. Its draw range moves forward through the existing buffer: at most
+12 segments with defaults, one line draw, no new per-frame geometry. It omits
+ghost edges where nearby detail is already drawn. Gates, shutters, culling of
+detailed walls, physical contact and hazard revelation retain their own rules.
+
+Use `route_outline`, `route_outline_ahead_legs`,
+`route_outline_fade_after_legs`, `route_outline_opacity` and
+`route_outline_far_opacity` (defaults true, 3, 1, 0.32, 0.25).
+`ROUTE_OUTLINE_NUMBERS` defines numeric ranges/defaults. The last opacity is a
+fraction of the near opacity; fade follows the route. `preview_*` still applies
+only to the opening overview. Desktop and mobile share the gameplay outline.
+
+The three new booleans persist through console changes. Numeric overrides are
+session-only. Help does not expose LOSS or its difficulty controls as checkboxes.
+See [LEVEL_PROGRESSION.md](docs/LEVEL_PROGRESSION.md) for the complete registry.
+
 ## Microgravity and thrust (web 0.21.0)
 
 Normal levels use `PLAYER_PROPULSION` in `web/js/config.mjs`. This is controlled
@@ -394,7 +446,7 @@ fades completely white, holds white for two seconds, and fades in:
 >
 > ... FOR NOW.
 
-After the text appears, Space, Enter or a click shows the run's total score, best
+After the text and the thank-you sequence below finish, Space, Enter or a click shows the run's total score, best
 score, levels cleared, final level, final portal cube count, best escape, time
 spent playing, death/reassembly count and pieces successfully re-coupled. A second
 input returns to the main menu. Held keys and immediate double clicks cannot skip
@@ -633,10 +685,10 @@ setting unchanged. `toggle` takes only the name; use `set` for an explicit value
 Available booleans: `damage`, `lasers`, `bounds`, `noclip`, `portal`, `suction`,
 `route3d`, `shake`, `spin`, `rotation_shocks`, `portal_white_light`, `culling`,
 `microgravity`, `overheat_blocks_recoupling`, `change_1`, `change_2`, `change_3`, `change_4`, `change_4_pattern`,
-`change_1_random_per_leg`, `change_1_no_repeat_leg`, `preview_outline`, `controller`, `locate` and browser audio `mute`.
+`change_1_random_per_leg`, `change_1_no_repeat_leg`, `loss`, `loss_grey`, `route_outline`, `preview_outline`, `controller`, `locate` and browser audio `mute`.
 The movement, heat restriction, shutter booleans, visual preferences and mute settings are saved;
 debug flags and locate remain session controls. Numeric `level`, `score` and
-`cubes` also support status queries. `set level X` still starts the chosen level.
+`cubes` also support status queries. `set level X` starts a fresh body at the chosen level and plays its applicable milestone cards.
 Internal animation state and original Python reference constants are not console
 settings. Browser settings join the same registry through `game.consoleSettings`.
 
@@ -650,8 +702,7 @@ small point among the stars. The white fade starts at 7.6 seconds and completes
 at 10 seconds. A two-second white hold follows. From web 0.20.1, YOU'VE ASCENDED
 then fades in for 1.4 seconds and holds fully visible on its own for two seconds.
 Only then does ... FOR NOW. fade in beneath it over 1.2 seconds. The stats prompt
-appears 0.2 seconds later; earlier input cannot skip this sequence. The statistics
-screen and its separate continuation input follow.
+now follows the thank-you segment below; earlier input cannot skip the cinematic.
 
 The sky uses 900 points in one reusable geometry buffer. A separate single point
 keeps the final star visible even as the cube's mesh shrinks away. The scene is
@@ -662,6 +713,30 @@ do not change this animation.
 Use `test ending_1` or the original `view_end_anim_v1` to preview it. The preview
 does not award scores or records. Scene geometry and motion are in
 `web/js/ending.mjs`; timing is in `ASCENSION_TIMING` in `web/js/core.mjs`.
+
+### Thank-you segment (web 0.26.0)
+
+After the subtitle finishes, both lines hold for three seconds, then fade back
+to white together over three seconds. The `thank_you_note` state follows:
+
+| Part | Seconds |
+| --- | --- |
+| Blank white pause | 4 |
+| Fade in `thank you for playing` / `CUBE LIBRE` together | 4 |
+| Hold both lines | 5 |
+| Fade out to white | 7 |
+| Blank white hold | 2 |
+
+Only then does the prompt to view statistics appear. The separate stats-to-menu
+input remains. The background is plain white; no starfield, gameplay HUD,
+controls or scene geometry is drawn. Smoothstep fades use simulation time, so
+pause, Help and tab interruptions freeze them. Repeated input cannot skip them.
+`THANK_YOU_TIMING` and `thankYouOpacity()` are in `core.mjs`.
+
+`thank_you_note` and `test thank_you_note` preview just this segment. The full
+`test ending_1` and legacy `view_end_anim_v1` previews include it automatically.
+They do not award points or save new records. Normal progression reaches the
+ending only after clearing the campaign cap, still level 50.
 
 ## Title framing and readability (web 0.20.1)
 
@@ -846,14 +921,14 @@ unimplemented panic/return proposal arising from this Android feedback.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.25.1**, the mobile orientation addendum to **0.25.0**. The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.26.0**, continuing from the **0.25.1** package. The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.25.2`, `0.25.3`, etc. for fixes, and `0.26.0` for the
+For future releases, use `0.26.1`, `0.26.2`, etc. for fixes, and `0.27.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.25.1.zip` and `v0.25.1`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.26.0.zip` and `v0.26.0`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior
@@ -923,18 +998,19 @@ immunity, warning/closed rendering, local audio events, movable introductions,
 camera centering, legacy and irregular skies, saved pattern switching and full
 configuration listings. Web 0.23.0 adds controller axes/buttons and browser-dispatch
 checks, record resets, globally capped alternating shutters, preview limits/fade
-uniforms, startup cache replacement and live leg totals. All 128 test groups pass, including the tabbed Help and visual-only options boundary.
+uniforms, startup cache replacement and live leg totals. The suite now has 162 passing test groups, including LOSS carry/retries/bonus isolation, colour fading, forward outlines, and the complete ending UI timing.
 The fifty-leg simulated pilot accounts for closed shutters.
 
 The original synthesized WAV cache is approximately 10.5 MiB; the web audio is
 approximately 2.6 MiB with both codecs included (roughly 0.75 MiB for the preferred
-Ogg set). The complete published folder is roughly 3.6 MiB.
+Ogg set). The complete published folder remains under 4 MiB.
 
 To regenerate sounds, install FFmpeg with libvorbis and libmp3lame, then run:
 
 ```bash
 python tools/build_web_audio.py --source ../cube-libre-pygame/cube_libre_pygame.py
 python tools/build_shutter_audio.py
+python tools/build_loss_audio.py
 ```
 
 The script uses the original synthesizer functions directly and reuses an existing
@@ -943,7 +1019,10 @@ and FFmpeg are developer tools only; visitors do not need them.
 The shutter script uses Python standard-library synthesis and FFmpeg; it needs no
 PyGame checkout. It creates a 0.56-second electric buzz and a 0.72-second reopening
 whoosh, both in Ogg and MP3. Each generator preserves the other set of manifest
-entries. Temporary source WAV files are not included in the published game.
+entries. The LOSS generator makes a 0.14-second fault stutter followed by a falling engine whine
+(3.2 seconds total)
+using standard-library oscillators and a diffuse tail, then encodes both formats.
+It contains no sampled voice. Temporary source WAV files are not included in the published game.
 
 ## Source layout
 
@@ -956,6 +1035,8 @@ entries. Temporary source WAV files are not included in the published game.
 | `web/js/difficulty.mjs` | Balance thresholds, ordered feature introductions, banners and heat restriction |
 | `docs/LEVEL_PROGRESSION.md` | Feature, banner and level reference |
 | `docs/GITHUB_METADATA.md` | Repository description, homepage and topic command |
+| `web/js/loss.mjs` | Nonlinear colour fading and visual-only missing assembly forms |
+| `tools/build_loss_audio.py` | Reproducible electronic engine wind-down synthesis and encoding |
 | `web/js/ending.mjs` | Blue-grid and starfield ascension scene and motion |
 | `web/js/portal-light.mjs` | Proximity-based portal halo and reusable glow sprite |
 | `web/js/space-view.mjs` | Cached ghost route, overview framing, detail window and selectable infinite starfields |

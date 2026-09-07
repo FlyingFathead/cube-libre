@@ -14,7 +14,7 @@ function fail(error) {
 async function loadJSON(path) {const r=await fetch(releaseAssetURL(path,import.meta.url));if(!r.ok)throw Error(`${path}: HTTP ${r.status}`);return r.json();}
 
 async function main() {
-  const [{Game,C,BALANCE,ASCENSION_TIMING,clamp,smooth,portalMetrics,openingLineOpacity},{Renderer,hsv},{GameAudio},titleCells,font,release]=await Promise.all([
+  const [{Game,C,BALANCE,ASCENSION_TIMING,THANK_YOU_TIMING,thankYouOpacity,clamp,smooth,portalMetrics,openingLineOpacity},{Renderer,hsv},{GameAudio},titleCells,font,release]=await Promise.all([
     import('./core.mjs'),import('./render.mjs'),import('./audio.mjs'),loadJSON('../assets/title-cells.json'),loadJSON('../assets/fonts/cube_libre_5x7.json'),globalThis.CUBE_LIBRE_RELEASE||loadJSON('../version.json')
   ]);
   const updates=new UpdateChecker(release.version);let pendingUpdate=null,lastUpdateCheck=-Infinity;
@@ -41,7 +41,7 @@ async function main() {
   game.flags.change_1=read('cube-libre-change-1-v1',game.flags.change_1)!==false;
   game.flags.change_1_random_per_leg=read('cube-libre-change-1-random-per-leg-v1',game.flags.change_1_random_per_leg)!==false;
   game.flags.change_1_no_repeat_leg=read('cube-libre-change-1-no-repeat-leg-v1',game.flags.change_1_no_repeat_leg)!==false;
-  for(const key of ['change_2','change_3','change_4','change_4_pattern'])game.flags[key]=read(`cube-libre-${key.replaceAll('_','-')}-v1`,game.flags[key])!==false;
+  for(const key of ['change_2','change_3','change_4','change_4_pattern','loss','loss_grey','route_outline'])game.flags[key]=read(`cube-libre-${key.replaceAll('_','-')}-v1`,game.flags[key])!==false;
   game.flags.preview_outline=read('cube-libre-preview-outline-v1',game.flags.preview_outline)!==false;
   const savedStarPattern=read('cube-libre-star-pattern-v1',game.starPattern);
   if(Number.isInteger(savedStarPattern)&&savedStarPattern>=0&&savedStarPattern<=2)game.starPattern=savedStarPattern;
@@ -172,12 +172,12 @@ async function main() {
     heading.textContent='What changes as you advance';milestones.append(heading);
     const header=document.createElement('tr');
     for(const text of ['Level','Banner','Change']) {const th=document.createElement('th');th.scope='col';th.textContent=text;header.append(th);}milestones.append(header);
-    for(const feature of featuresForSettings(game.changeSettings,game.flags)) {
+    for(const feature of featuresForSettings(game.changeSettings,game.flags,game.lossMinLevel)) {
       const row=document.createElement('tr');
       for(const text of [feature.level,feature.banner,feature.summary()]) {const cell=document.createElement('td');cell.textContent=text;row.append(cell);}milestones.append(row);
     }
     rulesDetails.append(milestones);
-    const q=document.createElement('p');q.textContent='Each level adds one corridor leg, up to fifty. Repeated re-coupling requests can recover more pieces before they expire. Once HEAT is active, new requests are blocked while overheating. Returning inside cools you immediately. A request already in progress finishes; refused requests use no quota. Lost cubes cost 100 potential points each. Death rebuilds your current level; your run score stays.';rulesDetails.append(q);
+    const q=document.createElement('p');q.textContent='Each level adds one corridor leg, up to fifty. Repeated re-coupling requests can recover more pieces before they expire. Once HEAT is active, new requests are blocked while overheating. Returning inside cools you immediately. A request already in progress finishes; refused requests use no quota. Lost cubes cost 100 potential points each. Once LOSS is active, portals carry only your surviving pieces onward. Retrying restores the body you entered the level with. Bonus pieces earn points without refilling your normal body. Your run score stays.';rulesDetails.append(q);
     const shutterHelp=document.createElement('p');shutterHelp.textContent=`CHANGE begins at level ${Math.max(1,game.changeSettings.change_1_min_level)}. This level uses ${shutterGateCount(game.level,game.changeSettings,5,game.flags)} different gates per sequence, one gate at a time in one leg. Zap starts are ${shutterStepInterval(game.changeSettings)} seconds apart; each closure lasts ${game.changeSettings.change_1_closed_seconds} seconds. Allow at least ${shutterInterval(game.changeSettings)} seconds from the last zap to the next sequence's first. A hit costs ${Math.round(game.changeSettings.change_1_damage_fraction*100)}% of remaining cubes, rounded down, with ${game.changeSettings.change_1_damage_cooldown} seconds of grid-damage protection. ${game.flags.change_1_no_repeat_leg?'Complete sequences alternate revealed legs; a lone leg finishes its sequence, then waits.':'Another sequence may use the same leg.'} ${game.flags.change_4_pattern?'Four-gate order: inner, far end, opposite end, other inner. The exact centre gate stays out of this pattern.':''}`;rulesDetails.append(shutterHelp);
     const bonusRules=document.createElement('p');bonusRules.textContent=`PICKING UP THE PIECES · Bonus round 001 follows level ${BONUS_SCHEDULE.firstLevel}, then every ${BONUS_SCHEDULE.interval} levels before the final level cap. Roll on a solid floor using WASD / arrow keys; Shift rushes. Collect the scattered pieces and take the ramp to the portal within ${PIECES_RULES.seconds} seconds. Each piece banks ${PIECES_RULES.pointsPerPiece} bonus points only if you escape. Running out of time forfeits this bonus; your existing score is kept and the next level follows. C and the corridor heat/entropy rules do not apply.`;rulesDetails.append(bonusRules);
     const rules=game.difficulty,current=document.createElement('p');
@@ -207,7 +207,7 @@ async function main() {
   function reset() {
     modal('reset','RESTART / RETRY',`Current level: ${game.level} · Score: ${game.score}`,[
       ['Cancel (Esc)',closeModal],['1 · Start at level one',()=>{closeModal();game.newRun();syncAudio();}],
-      ['2 · Retry current level',()=>{closeModal();game.ready(game.level);syncAudio();}]
+      ['2 · Retry current level',()=>{closeModal();game.retry();syncAudio();}]
     ]);
   }
   async function mute(value) {
@@ -242,7 +242,7 @@ async function main() {
     if(['clear','cls'].includes(value.toLowerCase())) {log.length=0;$('console-log').textContent='';return;}
     consoleLog(`> ${value}`);
     try {
-      const previousStages=Object.fromEntries(['change_2','change_3','change_4','change_4_pattern'].map(key=>[key,game.flags[key]]));
+      const previousStages=Object.fromEntries(['change_2','change_3','change_4','change_4_pattern','loss','loss_grey','route_outline'].map(key=>[key,game.flags[key]]));
       const previousShake=game.flags.shake,previousSpin=game.flags.spin,previousLight=game.flags.portal_white_light,previousCulling=game.flags.culling,previousShocks=game.flags.rotation_shocks,previousGravity=game.flags.microgravity,previousHeatLock=game.flags.overheat_blocks_recoupling,previousChange=game.flags.change_1,previousRandom=game.flags.change_1_random_per_leg,previousStars=game.starPattern,previousPreview=game.flags.preview_outline,previousNoRepeat=game.flags.change_1_no_repeat_leg;
       consoleLog(game.command(value));
       if(game.flags.shake!==previousShake)write('cube-libre-shake-v1',game.flags.shake);
@@ -258,7 +258,7 @@ async function main() {
       if(game.starPattern!==previousStars)write('cube-libre-star-pattern-v1',game.starPattern);
       if(game.flags.change_1_no_repeat_leg!==previousNoRepeat)write('cube-libre-change-1-no-repeat-leg-v1',game.flags.change_1_no_repeat_leg);
       for(const [key,previous] of Object.entries(previousStages))if(game.flags[key]!==previous)write(`cube-libre-${key.replaceAll('_','-')}-v1`,game.flags[key]);
-      if(/^(view_end_anim_v1|view_bonus_001|test\s+(ending_1|bonus_round_1|change_\d+)|bonus(?:\s+\S+)?)$/i.test(value)) { closeConsole();game.paused=false;game.help=false;syncAudio();focusGame();if(!audio.muted)audio.unlock().then(syncAudio,()=>{});return; }
+      if(/^(thank_you_note|view_end_anim_v1|view_bonus_001|test\s+(ending_1|bonus_round_1|change_\d+|loss|thank_you_note)|bonus(?:\s+\S+)?)$/i.test(value)) { closeConsole();game.paused=false;game.help=false;syncAudio();focusGame();if(!audio.muted)audio.unlock().then(syncAudio,()=>{});return; }
     }catch(err){consoleLog(`ERROR: ${err.message}`);}
     // Commands that change state must still respect the open console's pause.
     game.paused=true;syncAudio();
@@ -402,17 +402,20 @@ async function main() {
     const bonus=s.startsWith('bonus_'),bonusPlaying=s==='bonus_playing',bonusIntro=s==='bonus_intro',bonusResult=s==='bonus_result';
     const clock=bonus?game.bonus.timeLeft:game.legTime;
     const opening=s==='opening_intro';
-    const ending=['ascension','ascension_white','ascension_title','run_summary'].includes(s);
+    const ending=['ascension','ascension_white','ascension_title','thank_you_note','run_summary'].includes(s);
     $('opening').hidden=!opening;
     $('bottom-ui').hidden=opening||ending;
-    $('ending').hidden=!(s==='ascension_title'||s==='run_summary');
+    $('ending').hidden=!(s==='ascension_title'||s==='thank_you_note'||s==='run_summary');
     $('ascension-copy').hidden=s!=='ascension_title';
+    $('thank-you-copy').hidden=s!=='thank_you_note';
+    $('thank-you-copy').style.opacity=String(s==='thank_you_note'?thankYouOpacity(game.stateTime):0);
     $('run-summary').hidden=s!=='run_summary';
-    $('ending-next').hidden=!(s==='ascension_title'&&game.stateTime>=ASCENSION_TIMING.continueAfter||s==='run_summary'&&game.stateTime>=ASCENSION_TIMING.summaryInputDelay);
+    $('ending-next').hidden=!(s==='thank_you_note'&&game.stateTime>=THANK_YOU_TIMING.continueAfter||s==='run_summary'&&game.stateTime>=ASCENSION_TIMING.summaryInputDelay);
     $('ending-next').textContent=s==='run_summary'?'A / Space / Enter / click to return to the main menu':'A / Space / Enter / click to see your stats';
     if(s==='ascension_title') {
-      $('ascension-title').style.opacity=String(smooth(game.stateTime/ASCENSION_TIMING.titleFadeSeconds));
-      $('ascension-subtitle').style.opacity=String(smooth((game.stateTime-ASCENSION_TIMING.subtitleStarts)/ASCENSION_TIMING.subtitleFadeSeconds));
+      const fade=1-smooth((game.stateTime-ASCENSION_TIMING.titleFadeOutStarts)/ASCENSION_TIMING.titleFadeOutSeconds);
+      $('ascension-title').style.opacity=String(smooth(game.stateTime/ASCENSION_TIMING.titleFadeSeconds)*fade);
+      $('ascension-subtitle').style.opacity=String(smooth((game.stateTime-ASCENSION_TIMING.subtitleStarts)/ASCENSION_TIMING.subtitleFadeSeconds)*fade);
     }
     if(s==='run_summary'&&game.runSummary!==lastSummary) {
       lastSummary=game.runSummary;
@@ -465,7 +468,7 @@ async function main() {
       dots(loadingStart?'LOADING AUDIO - PLEASE WAIT':mobile.enabled?'TAP = NEW RUN':connected?'A / SPACE / ENTER = NEW RUN':'SPACE / ENTER = NEW RUN',game.t);
       $('title-stats').textContent=`Score ${game.score} · Best escape ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${BALANCE.levelCap}`;
     }
-    const phase=s.endsWith('_intro')&&!opening&&!bonusIntro,ready=s==='level_ready',result=s==='result_overlay',rebuild=s==='reassembly',ended=s==='ended';
+    const phase=s.endsWith('_intro')&&!opening&&!bonusIntro,ready=s==='level_ready',result=s==='result_overlay',rebuild=['reassembly','loss_assembly'].includes(s),ended=s==='ended';
     $('card').hidden=!(phase||ready||result||rebuild||ended||bonusIntro||bonusResult);
     $('card').className=ready?'ready':rebuild?'rebuilding':ended?'ready':'';
     $('card').style.color='';$('card').style.opacity='1';$('card-subtitle').style.opacity='1';$('card-detail').style.opacity='1';$('next').hidden=!(result||ended||bonusResult);$('next').textContent=ended?'A / Start a new run':'A / Space / Enter = next level';
@@ -485,7 +488,7 @@ async function main() {
       $('next').textContent=game.bonusPreview?`A / Space / Enter / click for level ${game.previewReturn.nextLevel}`:'A / Space / Enter / click for the next level';
       $('next').hidden=game.stateTime<.4;
     } else if(phase) {
-      const card=introductionCard(s,game.level,game.flags,game.changeSettings);
+      const card=introductionCard(s,game.level,game.flags,game.changeSettings,game.lossMinLevel);
       $('card-title').textContent=card.title;$('card-subtitle').textContent=card.subtitle;$('card-detail').textContent=card.detail;
       $('card').style.opacity=String(smooth(game.stateTime/1.1)*(1-smooth((game.stateTime/5-.86)/.14)));
     } else if(ready) {
@@ -501,7 +504,9 @@ async function main() {
         $('card-detail').textContent=`SCORE +${game.lastEscape*100} · TOTAL ${game.score}\nBEST ESCAPE ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${BALANCE.levelCap}`;
         $('card').style.opacity=String(1-smooth((game.stateTime/4.25-.56)/.40));
       } else if(rebuild) {
-        $('card-title').textContent=game.stateTime>3.25?'REASSEMBLED':'REASSEMBLY IN PROGRESS';$('card-subtitle').textContent='';$('card-detail').textContent='';
+        const incomplete=game.lossActive&&game.missingEntryCells.length>0;
+        $('card-title').textContent=incomplete&&game.stateTime>=2.45?'ONLY PARTIAL REASSEMBLY SUCCEEDED':game.stateTime>3.25?'REASSEMBLED':'REASSEMBLY IN PROGRESS';
+        $('card-subtitle').textContent=incomplete&&game.stateTime>=2.45?`${game.entryCells.length} / 125 · WHAT REMAINS`:'';$('card-detail').textContent='';
       } else if(ended) {
         $('card-title').textContent='SESSION ENDED';$('card-subtitle').textContent='You can close this tab.';$('card-detail').textContent='Space / Enter = new run';
       }

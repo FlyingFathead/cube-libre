@@ -142,5 +142,14 @@
     "source_sha256": "c2e988cbaece0528111e3079587ec1c60a1c1ba95f11a55dff4fcc48f4ca6d4a",
     "generator": "tools/build_shutter_audio.py",
     "edition": "web"
+  },
+  "loss_weep": {
+    "duration": 3.2,
+    "ogg": "loss_weep.ogg",
+    "mp3": "loss_weep.mp3",
+    "source_wav": "loss_weep.wav",
+    "source_sha256": "d17172ea6b0cac8e7ff7a0b549140c16a784b7358d126cfdfdd140279d2b2fd1",
+    "generator": "tools/build_loss_audio.py",
+    "edition": "web"
   }
 }

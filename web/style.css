@@ -9,7 +9,7 @@ dialog{color:#d2ebf0;background:#030a0f;border:1px solid #39c4cf;border-radius:9
 
 /* White tracing keeps both reassembly labels legible over the moving pieces. */
 #card.rebuilding { padding: 0; }
-#card.rebuilding #card-title {
+#card.rebuilding #card-copy {
   position: absolute;
   left: var(--reassembly-label-x, 50%);
   top: var(--reassembly-label-y, 65%);
@@ -24,6 +24,8 @@ dialog{color:#d2ebf0;background:#030a0f;border:1px solid #39c4cf;border-radius:9
     -1px -1px 0 #fff, 1px -1px 0 #fff,
     -1px 1px 0 #fff, 1px 1px 0 #fff;
 }
+#card.rebuilding #card-title { margin: 0; }
+#card.rebuilding #card-subtitle { margin: .4rem 0 0; font-size: clamp(.8rem, 2vw, 1rem); }
 #card.rebuilding p:empty { display: none; }
 
 /* Reserve actual space for every bottom overlay, including wrapped toolbars. */
@@ -130,6 +132,9 @@ dialog{color:#d2ebf0;background:#030a0f;border:1px solid #39c4cf;border-radius:9
 #ending h1 { font-size: clamp(1.8rem, 5vw, 3.6rem); margin: 0 0 1rem; line-height: 1.25; }
 #ascension-subtitle { font-size: clamp(1.1rem, 2.8vw, 1.65rem); }
 #ascension-title, #ascension-subtitle { opacity: 0; }
+#thank-you-copy { opacity: 0; }
+#thank-you-copy p { font-size: clamp(1rem, 3vw, 1.5rem); margin: 0 0 1.25rem; }
+#thank-you-copy h1 { font-weight: 400; letter-spacing: .08em; }
 #ending-next { flex-shrink: 0; background: #fff; color: #111; border-color: #444; line-height: 1.5; }
 #ending-next:hover { background: #ececec; }
 #run-summary { width: min(640px, 100%); max-height: 70dvh; min-height: 0; overflow: auto; }

@@ -1,5 +1,6 @@
 import * as T from '../vendor/three.module.min.js';
 import {VISUAL_EFFECTS} from './config.mjs';
+import {lossGreyAmount,lossBodyColor,lossGhostPose} from './loss.mjs';
 import {PIECES_RULES,recoveredShape,rotateQ,multiplyQ,bonusHeat} from './bonus.mjs';
 import {AscensionScene,ascensionPose} from './ending.mjs';
 import {titleBounds,frameTitle} from './title-layout.mjs';
@@ -382,7 +383,7 @@ export class Renderer {
     for(const i of p.alive) {
       const pos=p.pos(i),l=g.course.portal.local(pos);
       if(['playing','portal_warp'].includes(g.state)&&l.x-20>=C.PORTAL_ABSORB_X-C.PORTAL_VISUAL_ABSORB_LEAD&&Math.max(Math.abs(l.y),Math.abs(l.z))<=C.PORTAL_CAPTURE_HALF) continue;
-      let color=cellColor(i),scale=1;
+      let color=this.lossColor(g,cellColor(i)),scale=1;
       if(g.heat>0) color=heatedColor(color,t,g.heat,g.flags.shake);
       else if(g.cool>0) color=colorMix(color,[.1,.5,1],g.cool);
       if(g.hitTime>0&&g.heat<=0&&Math.sin(t*17*Math.PI*2)>0) color=g.lastHit==='laser'?[1,.2,.1]:[.4,.85,1];
@@ -400,7 +401,7 @@ export class Renderer {
       const pos=lerp(part.start,target,q).add(new V(0,Math.sin(q*Math.PI)*2,0));
       const orientation=new T.Quaternion().setFromAxisAngle(vec(part.axis),radians(part.angle+q*720));
       orientation.slerp(bodyRotation,smooth((q-.65)/.35));
-      this.cubes.cube(pos,colorMix(part.color,cellColor(part.target),q),part.scale,part.axis,0,1,false,null,orientation.toArray());
+      this.cubes.cube(pos,colorMix(part.color,this.lossColor(g,cellColor(part.target)),q),part.scale,part.axis,0,1,false,null,orientation.toArray());
       this.lines.line(pos,target,cyan,.3*(1-q));
     }
     if(g.heat>0) for(let i=0;i<26;i++) {
@@ -408,13 +409,19 @@ export class Renderer {
       this.lines.line(pos,pos.add(new V(Math.sin(t*13+i)*.3,.6+g.heat*.9,0)),[1,.3,.015],g.heat*.7);
     }
   }
+  lossColor(g,color) {return g.flags.loss_grey&&g.lossActive?lossBodyColor(color,lossGreyAmount(g.level,g.lossMinLevel,BALANCE.levelCap)):color;}
   reassemble(g) {
     const dissolve=g.state==='death_dissolve',q=clamp(g.stateTime/(dissolve?.48:3.75));
     for(const part of g.reassembly||[]) {
       const phase=smooth((q-part.delay*.35)/.72);
       const pos=dissolve?lerp(part.origin,part.star,smooth(q)):lerp(part.star,part.target,phase);
-      const color=dissolve?colorMix(part.color,white,smooth(q)):colorMix([.8,.8,.8],part.color,smooth((q-.5)/.3));
+      const bodyColor=this.lossColor(g,part.color);
+      const color=dissolve?colorMix(bodyColor,white,smooth(q)):colorMix([.8,.8,.8],bodyColor,smooth((q-.5)/.3));
       this.cubes.cube(pos,color,dissolve?1-q*.65:mix(.2,1,phase),part.axis,part.phase+phase*720,1);
+    }
+    if(!dissolve&&g.lossActive)for(const i of g.missingEntryCells) {
+      const pose=lossGhostPose(cells[i],i,g.stateTime,g.flags.shake);
+      if(pose.alpha>.001)this.cubes.cube(V.of(C.START_ORIGIN).add(V.of(pose.position)),pose.color,pose.scale,V.of(pose.axis),pose.angle,pose.alpha);
     }
   }
   reassemblyCaption() {
@@ -474,9 +481,10 @@ export class Renderer {
     this.reassemblyLabel=null;
     const title=['title','quit_confirm'].includes(g.state),phase=g.state.endsWith('_intro'),preview=g.state==='course_materialize';
     if(!title&&this.camera.view?.enabled)this.camera.clearViewOffset();
-    const ascending=g.state==='ascension',endWhite=['ascension_white','ascension_title','run_summary'].includes(g.state);
+    const ascending=g.state==='ascension',endWhite=['ascension_white','ascension_title','thank_you_note','run_summary'].includes(g.state);
     const bonusScene=['bonus_smash','bonus_playing','bonus_escape'].includes(g.state),bonusResult=g.state==='bonus_result';
-    const whiteVoid=phase||g.state==='result_overlay'||bonusResult||g.state==='reassembly'||endWhite;
+    const rebuilding=['reassembly','loss_assembly'].includes(g.state);
+    const whiteVoid=phase||g.state==='result_overlay'||bonusResult||rebuilding||endWhite;
     const blank=phase||g.state==='result_overlay'||bonusResult||g.state==='level_ready'||ascending||endWhite;
     if(this.bonusArena)this.bonusArena.visible=bonusScene;
     if(ascending&&!this.ascensionScene)this.ascensionScene=new AscensionScene(this.world);
@@ -509,11 +517,11 @@ export class Renderer {
         center=lerp(lerp(g.player.origin,g.course.center,out),center,settle);
         zoom=mix(mix(27.5,overviewZoom(g.course),out),zoom,settle);
       }
-      if(g.state==='reassembly') {center=V.of(C.START_ORIGIN);zoom=32;}
+      if(rebuilding) {center=V.of(C.START_ORIGIN);zoom=32;}
       this.world.position.copy(vec(center).multiplyScalar(-1));
       this.rotator.rotation.set(...g.angles.map(radians));
       this.camera.position.set(g.flags.shake&&g.shake?Math.sin(g.t*145)*g.shake*.8:0,g.flags.shake&&g.shake?Math.cos(g.t*139)*g.shake*.8:0,zoom*Math.max(1,.9/this.camera.aspect));
-      if(g.state!=='reassembly') {
+      if(!rebuilding) {
         this.course(g,preview);
         if(preview||!g.flags.culling||g.course.location(g.player.origin).index>=g.course.modules.length-2)this.portal(g);
         if(g.state!=='death_dissolve') this.player(g);
@@ -523,10 +531,10 @@ export class Renderer {
           for(const axis of [new V(d,0,0),new V(0,d,0),new V(0,0,d)]) this.lines.line(p.pos.sub(axis),p.pos.add(axis),col,a);
         }
       }
-      if(['reassembly','death_dissolve'].includes(g.state)) this.reassemble(g);
+      if(rebuilding||g.state==='death_dissolve') this.reassemble(g);
     }
     if(!bonusScene&&!ascending)this.camera.lookAt(0,0,0);
-    if(g.state==='reassembly'&&this.width>0&&this.height>0)this.reassemblyLabel=this.reassemblyCaption();
+    if(rebuilding&&this.width>0&&this.height>0)this.reassemblyLabel=this.reassemblyCaption();
     if(this.stars.visible)positionInfiniteStarfield(this.stars,this.camera,this.rotator.rotation);
     this.lines.finish(); this.cubes.finish();this.shutterPanels?.finish(); this.gl.render(this.scene,this.camera); this.effects(g);
   }

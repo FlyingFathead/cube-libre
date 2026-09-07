@@ -3,17 +3,17 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import * as T from '../../web/vendor/three.module.min.js';
-import {Game,ASCENSION_TIMING,smooth} from '../../web/js/core.mjs';
+import {Game,ASCENSION_TIMING,THANK_YOU_TIMING,thankYouOpacity,smooth} from '../../web/js/core.mjs';
 import {AscensionScene,ascensionPose,ASCENSION_STAGE} from '../../web/js/ending.mjs';
 import {Renderer} from '../../web/js/render.mjs';
 
-test('the fully visible ascension title holds alone for two seconds before the subtitle and continue prompt',()=>{
+test('the fully visible ascension title holds alone for two seconds before the subtitle, then fades into the thank-you sequence',()=>{
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
   const start=source.indexOf("    $('ending').hidden="),end=source.indexOf("    if(s==='run_summary'&&",start);
   assert.ok(start>=0&&end>start);
-  const game=new Game(),elements=Object.fromEntries(['ending','ascension-copy','run-summary','ending-next','ascension-title','ascension-subtitle'].map(id=>[id,{style:{}}]));
+  const game=new Game(),elements=Object.fromEntries(['ending','ascension-copy','thank-you-copy','run-summary','ending-next','ascension-title','ascension-subtitle'].map(id=>[id,{style:{}}]));
   game.command('test ending_1');game.setState('ascension_title');
-  const ui=()=>vm.runInNewContext(source.slice(start,end),{s:game.state,game,ASCENSION_TIMING,smooth,$:id=>elements[id]});
+  const ui=()=>vm.runInNewContext(source.slice(start,end),{s:game.state,game,ASCENSION_TIMING,THANK_YOU_TIMING,thankYouOpacity,smooth,$:id=>elements[id]});
   const title=()=>Number(elements['ascension-title'].style.opacity),subtitle=()=>Number(elements['ascension-subtitle'].style.opacity);
   const noSkip=()=>{assert.equal(elements['ending-next'].hidden,true);game.continue();assert.equal(game.state,'ascension_title');};
   ui();assert.equal(title(),0);assert.equal(subtitle(),0);noSkip();
@@ -22,8 +22,17 @@ test('the fully visible ascension title holds alone for two seconds before the s
   game.paused=true;game.tick(10);ui();assert.equal(subtitle(),0);game.paused=false;
   game.tick(.02);ui();assert.ok(subtitle()>0&&subtitle()<.01);noSkip();
   game.tick(ASCENSION_TIMING.subtitleFadeSeconds-.01);ui();assert.equal(title(),1);assert.ok(subtitle()>.999);noSkip();
-  game.tick(.21);ui();assert.equal(subtitle(),1);assert.equal(elements['ending-next'].hidden,false);
-  game.continue();assert.equal(game.state,'run_summary');
+  game.tick(.21);ui();assert.equal(subtitle(),1);noSkip();
+  game.stateTime=ASCENSION_TIMING.titleFadeOutStarts;ui();assert.equal(title(),1);
+  game.tick(1.5);ui();assert.ok(title()>.49&&title()<.51);noSkip();
+  game.tick(1.51);ui();assert.equal(game.state,'thank_you_note');assert.equal(elements['ascension-copy'].hidden,true);
+  assert.equal(Number(elements['thank-you-copy'].style.opacity),0);game.continue();assert.equal(game.state,'thank_you_note');
+  for(const [time,opacity] of [[3.99,0],[4,0],[6,.5],[8,1],[12.99,1],[16.5,.5],[20,0],[21.99,0]]) {
+    game.stateTime=time;ui();assert.ok(Math.abs(Number(elements['thank-you-copy'].style.opacity)-opacity)<1e-6);
+    assert.equal(elements['ending-next'].hidden,true);game.continue();assert.equal(game.state,'thank_you_note');
+  }
+  for(const flag of ['paused','help']) {game[flag]=true;game.tick(10);assert.equal(game.stateTime,21.99);game[flag]=false;}
+  game.tick(.02);ui();assert.equal(elements['ending-next'].hidden,false);game.continue();assert.equal(game.state,'run_summary');
   game.continue();assert.equal(game.state,'run_summary','The stats still require their own separate input');
 });
 
@@ -74,7 +83,7 @@ test('ending_1 renders one white cube, then just its star, freezes on pause, and
   g.paused=true;g.tick(4);r.render(g);assert.deepEqual(drawn,before);g.paused=false;
   g.tick(3.8);r.render(g);assert.equal(drawn.length,0);assert.equal(r.ascensionScene.spark.visible,true);
   assert.equal(ascensionPose(g.stateTime).white,0);
-  for(const state of ['ascension_white','ascension_title','run_summary']) {
+  for(const state of ['ascension_white','ascension_title','thank_you_note','run_summary']) {
     g.setState(state);r.render(g);assert.equal(r.ascensionScene.group.visible,false);assert.equal(drawn.length,0);
   }
 });

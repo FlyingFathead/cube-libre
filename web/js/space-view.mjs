@@ -32,13 +32,15 @@ export class RouteGuide {
     geometry.setAttribute('leg',new T.Float32BufferAttribute(legs,1));
     geometry.setAttribute('routePosition',new T.Float32BufferAttribute(routePositions,1));
     const material=new T.ShaderMaterial({transparent:true,depthWrite:false,
-      uniforms:{active:{value:0},trail:{value:0},opacity:{value:1},detailFirst:{value:0},detailLast:{value:-1},previewMode:{value:0},fadeAfter:{value:2},previewCount:{value:50},farOpacity:{value:.12}},
+      uniforms:{active:{value:0},trail:{value:0},opacity:{value:1},detailFirst:{value:0},detailLast:{value:-1},previewMode:{value:0},fadeAfter:{value:2},previewCount:{value:50},farOpacity:{value:.12},routeFadeAfter:{value:1},routeCount:{value:3},routeFarOpacity:{value:.25}},
       vertexShader:`attribute float leg; attribute float routePosition;
         uniform float previewMode; uniform float fadeAfter; uniform float previewCount; uniform float farOpacity; uniform float active; uniform float trail;
         uniform float detailFirst; uniform float detailLast; varying float alpha;
+        uniform float routeFadeAfter; uniform float routeCount; uniform float routeFarOpacity;
         void main(){alpha=leg<active-2.0?0.0:leg<active-1.0?1.0-trail:1.0;
           if(leg>=detailFirst&&leg<=detailLast)alpha=0.0;
           if(previewMode>0.5)alpha*=mix(1.0,farOpacity,clamp((routePosition-fadeAfter)/max(1.0,previewCount-fadeAfter),0.0,1.0));
+          else alpha*=mix(1.0,routeFarOpacity,clamp((routePosition-active-1.0-routeFadeAfter)/max(1.0,routeCount-routeFadeAfter),0.0,1.0));
           gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
       fragmentShader:`uniform float opacity; varying float alpha;
         void main(){gl_FragColor=vec4(.60,.60,.62,alpha*opacity);}`,
@@ -53,14 +55,17 @@ export class RouteGuide {
   update(g,window,preview) {
     this.group.visible=true;
     const settings=g.previewSettings,count=Math.min(this.course.modules.length,settings.preview_max_legs);
-    this.lines.visible=preview?g.flags.preview_outline&&count>0:!g.flags.culling;
-    this.lines.geometry.setDrawRange(0,(preview?count:this.course.modules.length)*8);
+    const route=g.routeOutlineSettings,first=window.location.index+1;
+    const ahead=Math.max(0,Math.min(route.route_outline_ahead_legs,this.course.modules.length-first));
+    this.lines.visible=preview?g.flags.preview_outline&&count>0:g.flags.route_outline&&ahead>0;
+    this.lines.geometry.setDrawRange(preview?0:first*8,(preview?count:ahead)*8);
     const u=this.lines.material.uniforms;
     u.previewMode.value=preview?1:0;u.fadeAfter.value=settings.preview_fade_after_legs;
     u.previewCount.value=count;u.farOpacity.value=settings.preview_far_opacity;
     u.active.value=preview?0:window.location.index;
     u.trail.value=preview?0:this.course.distanceFade(window.location.index-2,g.player.origin);
-    u.opacity.value=preview?settings.preview_opacity*(.28+.72*smooth(g.stateTime/7))*(1-smooth((g.stateTime/7-.8)/.2)):.3;
+    u.opacity.value=preview?settings.preview_opacity*(.28+.72*smooth(g.stateTime/7))*(1-smooth((g.stateTime/7-.8)/.2)):route.route_outline_opacity;
+    u.routeFadeAfter.value=route.route_outline_fade_after_legs;u.routeCount.value=route.route_outline_ahead_legs;u.routeFarOpacity.value=route.route_outline_far_opacity;
     u.detailFirst.value=window.first;u.detailLast.value=window.last;
     this.marker.visible=true;this.marker.material.opacity=preview?smooth(g.stateTime/2):.8;
   }

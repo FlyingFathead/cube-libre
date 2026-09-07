@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Game,Course,Player,V,cells,recoupleTargets,beginRecouple,portalMetrics,suction,openingLineOpacity,ASCENSION_TIMING} from '../../web/js/core.mjs';
+import {Game,Course,Player,V,cells,recoupleTargets,beginRecouple,portalMetrics,suction,openingLineOpacity,ASCENSION_TIMING,THANK_YOU_TIMING} from '../../web/js/core.mjs';
 import {difficultyForLevel} from '../../web/js/difficulty.mjs';
 const ref=JSON.parse(readFileSync(new URL('./python-reference.json',import.meta.url)));
 const near=(a,b,eps=1e-9)=>assert.ok(Math.abs(a-b)<=eps,`${a} != ${b}`);
@@ -225,7 +225,9 @@ test('clearing the level cap awards score once, holds white, then needs separate
   g.tick(1.99);assert.equal(g.state,'ascension_white');
   g.tick(.02);assert.equal(g.state,'ascension_title');near(g.stateTime,0);
   g.continue();assert.equal(g.state,'ascension_title');
-  g.tick(ASCENSION_TIMING.continueAfter+.1);g.continue();assert.equal(g.state,'run_summary');
+  g.tick(ASCENSION_TIMING.thankYouStarts+.1);assert.equal(g.state,'thank_you_note');
+  g.continue();assert.equal(g.state,'thank_you_note');
+  g.tick(THANK_YOU_TIMING.continueAfter+.1);g.continue();assert.equal(g.state,'run_summary');
   g.continue();assert.equal(g.state,'run_summary','One input must not dismiss both screens');
   g.tick(1);g.continue();assert.equal(g.state,'title');assert.equal(g.level,50);
   near(g.runStats.playSeconds,playTime);assert.equal(g.stats.best_score,expected);
@@ -253,7 +255,7 @@ test('ascension renders a single cube; the white hold contains no scene geometry
     gl:{setClearColor(c){clearColor=c;},render:noop},stars:{material:{color:{setHex:noop}}},
     world:new T.Group(),rotator:{rotation:transform,scale:transform},camera:{position:transform,aspect:16/9,lookAt:noop},effects:noop});
   const g=new Game();g.command('view_end_anim_v1');r.render(g);assert.equal(cubes,1);
-  for(const state of ['ascension_white','ascension_title','run_summary']){
+  for(const state of ['ascension_white','ascension_title','thank_you_note','run_summary']){
     g.setState(state);r.render(g);assert.equal(cubes,0);assert.equal(clearColor,0xffffff);assert.equal(r.stars.visible,false);
     assert.equal(r.ascensionScene.group.visible,false);
   }

@@ -1,6 +1,6 @@
 # Cube Libre web progression
 
-Default schedule for web **0.25.0**, based on published v0.24.1 (`3240594`).
+Default schedule for web **0.26.0**, continuing from the v0.25.1 package.
 [`featuresForSettings()`](../web/js/difficulty.mjs) combines the `BALANCE`
 milestones and [`CHANGES`](../web/js/changes.mjs), sorts by configured level,
 and supplies phase selection, banner text and the Help table. `LEVEL_FEATURES`
@@ -20,9 +20,10 @@ is its default snapshot. Moving a shutter threshold moves its actual rule and ca
 | 15 | HEAT ... | Outside grace drops from 2.4 to 1.4 seconds; new re-coupling requests are blocked while overheating. |
 | 20 | TIME ... | Announces 24.8 seconds per leg. |
 | 35 | TIME ... | Announces 15.2 seconds per leg. |
-| 50 | TIME ... | Announces 10 seconds per leg. Re-coupling yield is 1%; four-step sequences still close one gate at a time. |
+| 44 | LOSS ... | PORTALS NO LONGER RESTORE LOST PIECES. Exiting 44 carries survivors into 45; retries restore the level-entry body. Colour loss begins subtly here. |
+| 50 | TIME ... | Announces 10 seconds per leg. Re-coupling yield is 1%; four-step sequences still close one gate at a time. The surviving body is fully grey. |
 | After 5, 10, 15 ... 45 | PICKING UP THE PIECES / BONUS ROUND | 45-second floor bonus; gather pieces and escape up the ramp. |
-| After clearing 50 | YOU'VE ASCENDED / ... FOR NOW. | Single-cube ascension, statistics and main menu. |
+| After clearing 50 | YOU'VE ASCENDED / ... FOR NOW. | Single-cube ascension, a long white thank-you fade, statistics and main menu. |
 
 There are no longer shutter-count changes at levels 22 and 36. The four stages
 replace that ramp. Other difficulty curves and the v0.24.1 collapse fix remain.
@@ -43,6 +44,8 @@ In `web/js/difficulty.mjs`:
 | `BALANCE.entropyStartLevel` | `10` | First entropy level and ENTROPY introduction |
 | `BALANCE.heatMinLevel` | `15` | Gate for both heat penalties and the HEAT introduction; **0 removes the level gate** |
 | `BALANCE.overheatBlocksRecoupling` | `true` | Default for the `overheat_blocks_recoupling` console flag |
+| `BALANCE.lossEnabled` | `true` | Default for the permanent-loss console flag `loss` |
+| `BALANCE.lossMinLevel` | `44` | First exit without a refill; console override `loss_min_level`, 0 means level 1 |
 | `BALANCE.timeReminderLevels` | `[20,35,50]` | Additional TIME announcements |
 | `BALANCE.capLevel` | `50` | Endpoint of timer and recovery curves |
 | `BALANCE.levelCap` | `50` | Last level before ascension |
@@ -74,11 +77,43 @@ status overheat_blocks_recoupling
 
 `view` and bare `set` also report status. Explicit values accept true/false,
 on/off, 1/0 and enabled/disabled. The BALANCE thresholds are edited in the configuration file. Shutter and
-automatic-camera thresholds also have console overrides, listed below. Bonus schedules and types live separately in
+LOSS and automatic-camera thresholds also have console overrides, listed below. Bonus schedules and types live separately in
 [`web/js/bonus.mjs`](../web/js/bonus.mjs); thrust tuning lives in
 [`PLAYER_PROPULSION`](../web/js/config.mjs). Bonus rolling and pickup rules are
 independent of normal-level propulsion and the heat re-coupling restriction.
 
+
+## LOSS and incomplete assembly
+
+The rule applies to the **source level's exit**. Level 43 → 44 still refills.
+Level 44 → 45 carries exact cell IDs and positions within the formation. Later
+portals keep doing this. A snapshot at each level's entry controls retries and
+automatic reassembly, so dying can never refill beyond that entry body. Ordinary
+re-coupling can still recover fresh debris under the current entropy/heat rules.
+Bonuses, including the one after 45, score independently and preserve the carry.
+
+Absent entry cells are temporary grey visual forms, never physical or recoverable
+fragments. They tremble and fly away with a generated `loss_weep` sound. The
+caption changes to **ONLY PARTIAL REASSEMBLY SUCCEEDED**. The level clock waits for assembly
+and the overview to finish.
+
+| Console parameter | Default | Meaning |
+| --- | --- | --- |
+| `loss` | `true` | Carry survivors through portals from the threshold; saved boolean |
+| `loss_min_level` | `44` | First affected exit and LOSS card; integer 0–50, session only |
+| `loss_grey` | `true` | Gradual body desaturation during LOSS; saved visual flag |
+
+The colour blend is **2.5% at the starting level**, then follows a quadratic
+curve to 100% at the cap. Defaults for 44–50: 2.5%, 5.2%, 13.3%, 26.9%, 45.8%,
+70.2%, 100%. These are colour-blend amounts, not damage or re-coupling rates.
+`LOSS_COLOUR` in `web/js/loss.mjs` defines the onset and exponent. Disabling
+`loss_grey` changes appearance only; heat and hit flashes remain visible.
+
+`level N` / `set level N` start a fresh body and display all applicable cards.
+`test loss` shows the LOSS card and a deliberately incomplete demonstration body.
+`test ending_1` / `view_end_anim_v1` include the thank-you segment;
+`thank_you_note` or `test thank_you_note` previews that segment alone. Previews
+are developer tools. The normal ending still requires clearing level 50.
 
 ## CHANGE 1–4: shutter sequences
 
@@ -180,6 +215,21 @@ count and gates always close sequentially. Those names report not found.
 | --- | --- | --- |
 | `auto_locate_min_level` | `0` | Always follow after the overview; set 3 to restore the old level gate. Session only. |
 | `star_pattern` | `2` | 0: off; 1: original evenly spaced sky; 2: irregular sky with varied sizes, brightness and subtle hues. Saved in the browser. |
+
+During-play outlines have separate console settings from the introductory view:
+
+| Console parameter | Default | Meaning |
+| --- | --- | --- |
+| `route_outline` | `true` | Enable upcoming exterior outlines; saved boolean |
+| `route_outline_ahead_legs` | `3` | Outline this many upcoming legs; 0 hides them |
+| `route_outline_fade_after_legs` | `1` | Fade after this many near upcoming legs |
+| `route_outline_opacity` | `0.32` | Near line opacity, 0–1 |
+| `route_outline_far_opacity` | `0.25` | Far opacity as a fraction of near opacity, 0–1 |
+
+Numeric outline values last for the session. Defaults live in
+`ROUTE_OUTLINE_NUMBERS`. Three legs use at most twelve cached line segments,
+with no extra wall lattice, caps or hazards. Existing nearby detail replaces
+its overlapping ghost edges. No collision, reveal or shutter timing is changed.
 
 Preview controls also appear in the same listing:
 

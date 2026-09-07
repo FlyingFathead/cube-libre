@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.26.0 — What remains
+
+Based on the web v0.25.1 package.
+
+- Add faint during-play outlines for three upcoming corridor legs, independently
+  configurable by distance, opacity and fade. Reuse cached exterior edges without
+  revealing distant gates or changing hazard/physics rules. Desktop and mobile
+  use the same bounded draw range; introductory preview settings remain separate.
+- Introduce LOSS at level 44: portals no longer restore lost pieces. Level 44
+  starts normally; its exit carries the exact surviving shape into 45 and onward.
+  Automatic death and manual retry restore only the level-entry checkpoint.
+  Bonus rounds award their own score and preserve the normal body's carry.
+- Show missing assembly cells as trembling grey forms that scatter away without
+  becoming recoverable debris. Add a short electrical fault stutter followed by a soft engine wind-down in
+  Ogg and MP3 and an ONLY PARTIAL REASSEMBLY SUCCEEDED caption beneath the body.
+- Add default-on loss_grey: barely visible 2.5% colour loss at the LOSS threshold,
+  accelerating quadratically to full grey at level 50. Preserve heat/hit cues.
+  Add uniform console flags and tuning, including loss_min_level and test loss.
+- Make level N / set level N display the chosen level's applicable milestone
+  cards. Multiple cards at one level still queue before gameplay starts.
+- Retain the ending after clearing 50. After YOU'VE ASCENDED / ... FOR NOW.,
+  hold and fade those lines into white, then add thank you for playing / CUBE LIBRE:
+  four seconds white, four fade-in, five hold, seven fade-out and two white.
+  Only afterward accept an input for statistics, followed by another for the menu.
+  Include this in test ending_1 / view_end_anim_v1; add thank_you_note for its
+  standalone preview. Pause and early-input guards cover the full sequence.
+- Update README, progression, technical notes and roadmap. The optional jail-node
+  rescue remains considered, not implemented. Add no public difficulty switches.
+
+Validation: all 162 automated test groups and static checks pass, including on
+Node.js 18.19.1. Coverage includes
+exact survivor identity across portals, bonuses and retries; movable LOSS cards;
+nonlinear colour fading and visible heat; unrecoverable assembly forms and one-shot
+sound; bounded outline draws; and the actual ending UI's fades, pauses and inputs.
+Android/Apple/desktop visual and audio playtesting of this release remains needed.
+The simulated level-50 route does not establish human balance under campaign LOSS.
+
 ## 0.25.1 — Mobile orientation lock
 
 Based on web v0.25.0. The shutter release remains a separate package.
