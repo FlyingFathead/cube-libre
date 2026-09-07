@@ -14,7 +14,10 @@ including difficult laser situations while still inside the field.
 - V, Xbox B or the bottom-left PANIC circle activates it. Matching Recouple
   remains bottom-right on desktop and both mobile touch layouts.
 - A disintegrating-cube icon sits inside the circle, with PANIC underneath.
-  Overheating flashes the icon immediately. COOLDOWN shows whole seconds.
+  Since v0.29.1, circle and labels pulse orange-red on overheating or in the
+  final 10 seconds, only while usable. Recouple does the same in its last-chance
+  window. COOLDOWN shows whole seconds; unavailable controls never pulse.
+  Desktop has a dedicated action HUD and visible keyboard/controller labels.
 - **PANIC RECOVERY REQUESTED** accompanies a white tractor beam pulling the
   existing cube into laser prison bars at the start of its furthest physically
   reached leg. The scene stays live. The bars open toward the next route section.
@@ -24,7 +27,12 @@ including difficult laser situations while still inside the field.
   pipes stay sealed, and the chamber closes after forward departure.
 - On arrival, use normal lossy Recouple for still-recoverable loose fragments,
   with its existing quota. Continue an accepted request once. No new full body,
-  bonus points or overwrite of the level-entry checkpoint.
+  bonus points or replacement of the level-entry body.
+- Since v0.29.1, optional `panic_penalty` defaults false. If enabled in the
+  console, each accepted use deducts `panic_score_penalty_percent` (default 5)
+  from the current run score, rounded to whole points. Both settings are session
+  only. The deduction is saved immediately with the existing entrance body;
+  all-time records remain unchanged. No charge for refused requests.
 - ALLOW PANIC BUTTON defaults on. Saved `panic_show_inactive` defaults true;
   false hides the button until 3 seconds outside or earlier overheating.
   V/B remain usable while hidden. Separate session variables tune the outside

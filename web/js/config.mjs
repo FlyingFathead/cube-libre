@@ -46,7 +46,7 @@ export const PREVIEW_NUMBERS=Object.freeze({
 
 // During play, show only cached corridor edges ahead of the player.
 export const ROUTE_OUTLINE_NUMBERS=Object.freeze({
-  route_outline_ahead_legs:{value:3,min:0,max:1000000,integer:true},
+  route_outline_ahead_legs:{value:5,min:0,max:1000000,integer:true},
   route_outline_fade_after_legs:{value:1,min:0,max:1000000,integer:true},
   route_outline_opacity:{value:.32,min:0,max:1},
   route_outline_far_opacity:{value:.25,min:0,max:1}, // Fraction of near opacity.

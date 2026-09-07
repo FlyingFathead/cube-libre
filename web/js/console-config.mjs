@@ -4,10 +4,12 @@ export const CONFIG_COMMANDS=Object.freeze(['viewconfig','showconfig','showvars'
 // Browser-owned settings may supply their own name and description alongside get/set.
 const DETAILS=Object.freeze({
   game_mode:['Campaign variant','20: default compact campaign; 50: original campaign, console only. Changing mode returns to the title and resets mode thresholds; existing save is kept. New runs use the selected mode; Continue uses its saved mode. Session only.'],
-  panic:['Allow Panic button','Enable emergency return of surviving cells to the start of the furthest physically reached leg. Usable throughout normal play; also requests normal Recouple for existing fragments, without a fresh body or points. Saved boolean, on by default.'],
+  panic:['Allow Panic button','Enable emergency return of surviving cells to the start of the furthest physically reached leg. Also requests normal Recouple for existing fragments. Optional panic_penalty is off by default. Saved boolean, on by default.'],
+  panic_penalty:['Panic score penalty enabled','Deduct panic_score_penalty_percent from the current run score once per successful rescue. All-time records stay unchanged. Off by default. Session only.'],
   panic_show_inactive:['Show Panic while safe','Keep the Panic circle visible throughout normal play. Off: show after the outside delay or immediately on overheating. Keyboard/controller activation still works while hidden. Saved boolean, on by default.'],
   panic_outside_seconds:['Panic appearance delay','Continuous seconds outside before Panic appears. Overheating reveals it immediately. Default 3; range 0–30. Session only.'],
   panic_cooldown_seconds:['Panic cooldown','Seconds of play between rescues. Pause/Help freeze it; new level or retry resets it. Default 30; range 0–300. Session only.'],
+  panic_score_penalty_percent:['Panic score penalty percent','Percent of the current run score deducted once per successful rescue when panic_penalty is on, rounded to nearest whole points. All-time records are unchanged. Default 5; range 0–100. Session only.'],
   damage:['Damage','Allow normal-level cell damage from boundaries and laser grids, including shutters.'],
   lasers:['Laser grids','Enable laser hazards, including electric shutters.'],
   bounds:['Boundary damage','Allow corridor boundaries to shave off exposed cells and trigger overheating.'],
@@ -53,7 +55,7 @@ const DETAILS=Object.freeze({
   loss_min_level:['LOSS starting level','First level whose exit stops refilling the body; default 16 in mode 20, 44 in mode 50. Integer 0 to the active cap; 0 starts at level 1. Moves the LOSS banner. Session only.'],
   loss_grey_min_level:['Colour fade starting level','Start barely perceptible colour loss here, then fade quadratically to full grey at the active cap. Default 10 in mode 20, 44 in mode 50. 0 starts at level 1. Independent of LOSS. Session only.'],
   route_outline:['Upcoming corridor outlines','Show faint exterior edges ahead during normal play without revealing distant hazards. Saved boolean; independent of the opening preview.'],
-  route_outline_ahead_legs:['Upcoming outline distance','Number of legs ahead to outline during play, default 3. 0 hides them. Session only; does not reveal hazards.'],
+  route_outline_ahead_legs:['Upcoming outline distance','Number of legs ahead to outline during play, default 5. 0 hides them. Session only; does not reveal hazards.'],
   route_outline_fade_after_legs:['Upcoming outline fade starts after','Keep this many upcoming legs at full outline opacity, then fade with distance; default 1.'],
   route_outline_opacity:['Upcoming outline brightness','Near opacity during play, 0–1; default 0.32.'],
   route_outline_far_opacity:['Upcoming far outline fraction','Fraction of near opacity at the far end, 0–1; default 0.25.'],

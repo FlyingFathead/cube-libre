@@ -478,18 +478,28 @@ collision positions, spin, damage or controls. Bonus bodies and the white
 ending cube retain their own colours. `test loss` previews the card plus an
 incomplete demonstration body; `level 16` shows the default full-body introduction (`level 44` in mode 50).
 
-The gameplay route guide now reuses four exterior edges for each of up to three
+The gameplay route guide now reuses four exterior edges for each of up to five
 upcoming legs. Its draw range moves forward through the existing buffer: at most
-12 segments with defaults, one line draw, no new per-frame geometry. It omits
+20 segments with defaults, one line draw, no new per-frame geometry. It omits
 ghost edges where nearby detail is already drawn. Gates, shutters, culling of
 detailed walls, physical contact and hazard revelation retain their own rules.
 
 Use `route_outline`, `route_outline_ahead_legs`,
 `route_outline_fade_after_legs`, `route_outline_opacity` and
-`route_outline_far_opacity` (defaults true, 3, 1, 0.32, 0.25).
+`route_outline_far_opacity` (defaults true, 5, 1, 0.32, 0.25).
 `ROUTE_OUTLINE_NUMBERS` defines numeric ranges/defaults. The last opacity is a
 fraction of the near opacity; fade follows the route. `preview_*` still applies
 only to the opening overview. Desktop and mobile share the gameplay outline.
+
+Since v0.29.1, `viewLocation` in `space-view.mjs` preserves the ordinary local
+lookup while it has a match. When it falls back to leg one because the player
+is outside its search volume, only rendering finds the nearest corridor instead.
+The detail window, outline start and nearby portal visibility use that location;
+previously revealed nearby walls retain their known appearance. This prevents
+the view from jumping back to the collapsed entrance during drift on later legs.
+It does not move the player, reveal hazards, reset timers, advance checkpoints
+or change collision/collapse queries. The fallback searches at most 50 legs;
+drawing still uses a bounded local window, including on mobile.
 
 The three new booleans persist through console changes. Numeric overrides are
 session-only. Help does not expose LOSS or its difficulty controls as checkboxes.
@@ -1023,12 +1033,16 @@ layout comfort still need device playtesting; iPhone/iPad remain unverified.
 Panic recovery, arising from this Android feedback, is implemented in v0.29.0;
 its live beam/prison and sound still need device playtesting.
 
-## Panic recovery (web 0.29.0)
+## Panic recovery (updated in web 0.29.1)
 
 Press V, Xbox B or the shedding-cube PANIC circle during any normal leg.
 Options → ALLOW PANIC BUTTON defaults on. B remains Back in menus and keeps its
 menu action in bonus rounds, where Panic is unavailable. Recouple has the same
 circular UI on desktop as on both touch layouts, with disabled/status feedback.
+The action HUD is separate from the optional touch steering/depth container.
+Desktop shows both circles during level setup and play, with V / Xbox B under
+Panic and C / LB / X under Recouple. Setup, pause and Help disable activation;
+bonus, title and ending scenes hide the action HUD.
 
 **PANIC RECOVERY REQUESTED** starts a 0.65-second white tractor pull into a
 laser-bar prison, followed by 1.2 seconds confined and 0.9 seconds opening the
@@ -1041,7 +1055,7 @@ The fresh leg timer, hazard animation, loose-fragment expiry and movement freeze
 during recall. On arrival, one normal lossy Recouple request can pull in existing
 recoverable fragments, with the usual quota and yield. An accepted recovery is
 continued instead of duplicated. The rescue does not regenerate missing cells,
-award points, refill LOSS or alter the level-entry body/save. The old pipe stays
+award points, refill LOSS or alter the level-entry body. The old pipe stays
 sealed; only the return junction stays safe until the body leaves forward.
 A 0.75-second release grace protects against immediate normal laser damage.
 
@@ -1057,13 +1071,27 @@ character. Timer sirens stop during the recall.
 | --- | --- | --- |
 | `panic` | `true` | Allow rescue; saved, also exposed in Options. |
 | `panic_show_inactive` | `true` | Show while safe; saved. Off hides until outside delay or earlier overheating. V/B still work when hidden. |
-| `panic_outside_seconds` | `3` | Hidden-mode reveal delay, 0–30 seconds; session only. Actual overheating at 2.4 / 1.4 seconds reveals and flashes it earlier. |
+| `panic_outside_seconds` | `3` | Hidden-mode reveal delay, 0–30 seconds; session only. Actual overheating at 2.4 / 1.4 seconds reveals it earlier; only usable Panic flashes. |
 | `panic_cooldown_seconds` | `30` | Cooldown for subsequent uses, 0–300 seconds; session only. |
+| `panic_penalty` | `false` | Enable a score deduction per accepted use; session only. |
+| `panic_score_penalty_percent` | `5` | Percentage of current run score deducted when the penalty is enabled, 0–100; session only. |
 
 All are registered in `viewconfig` and accept the standard inert status queries.
 The circle greys out on cooldown and shows `COOLDOWN 30 s`, counting up-rounded
-whole seconds with no fractions. Heat flashes it immediately even on cooldown;
-the warning uses simulation time and freezes when play is paused.
+whole seconds with no fractions. Only an available action can pulse orange-red,
+including its circle, name, status and key labels. Panic warns on overheating or
+with 10 seconds or less left on a timed leg. Recouple warns when a recoverable
+fragment has less than 1.75 seconds left. The pulse uses simulation time at
+1.5 Hz; cooldown, active recall/recovery, heat-blocked Recouple and pause/Help
+remove the warning. Hidden-mode Panic still uses the outside/heat reveal rule.
+
+The optional score penalty is off by default. When enabled, round the configured
+percentage of the current run score to nearest whole points and deduct it once
+after an accepted request. Repeated uses compound. Failed presses cost nothing,
+and all-time records remain unchanged. Display the actual deduction beneath
+PANIC RECOVERY REQUESTED. Save it immediately with the existing level-entry
+cells, so reload and retry keep the cost without saving the rescue pose or
+live hazards. A console preview cannot overwrite a campaign checkpoint.
 
 ## Versioning
 
@@ -1071,14 +1099,14 @@ the warning uses simulation time and freezes when play is paused.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.29.0**, continuing from published **0.28.2** (`f6a91de`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.29.1**, continuing from published **0.29.0** (`cd7c357`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.28.3`, `0.28.4`, etc. for fixes, and `0.29.0` for the
+For future releases, use `0.29.2`, `0.29.3`, etc. for fixes, and `0.30.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.29.0.zip` and `v0.29.0`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.29.1.zip` and `v0.29.1`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior
@@ -1148,9 +1176,15 @@ immunity, warning/closed rendering, local audio events, movable introductions,
 camera centering, legacy and irregular skies, saved pattern switching and full
 configuration listings. Web 0.23.0 adds controller axes/buttons and browser-dispatch
 checks, record resets, globally capped alternating shutters, preview limits/fade
-uniforms, startup cache replacement and live leg totals. The suite now has 200 passing test groups, including Panic return geometry and safety
+uniforms, startup cache replacement and live leg totals. The suite now has 204 passing test groups, including Panic return geometry and safety
 at every leg start, exact-body preservation without debris, normal recovery limits,
-whole-second cooldown, saved preferences and actual keyboard/controller/touch dispatch. Existing regression fixtures select
+whole-second cooldown, saved preferences and actual keyboard/controller/touch dispatch.
+The action HUD checks cover setup visibility, desktop key labels and urgency only
+while usable. Penalty checks cover default-off behavior, console settings,
+compounding, rejected requests, unchanged records and saved deductions.
+Outside-drift regression checks cover levels 7, 8 and both campaign caps, actual
+nearby wall drawing and touch input on both mobile layouts.
+Existing regression fixtures select
 mode 50 explicitly; `game-modes.test.mjs` exercises the default 20-level variant,
 both caps, curve endpoints, legacy checkpoint migration, mode-isolated records,
 LOSS carry and final traversal. Ending tests inspect monochrome wave motion, the final blank white pause,

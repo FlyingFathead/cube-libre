@@ -7,7 +7,7 @@
   <meta name="description" content="Cube Libre web version by FlyingFathead. A rotating 3D survival puzzle. Reach the portal with your remaining pieces.">
   <title>Cube Libre · FlyingFathead</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=0.29.0">
+  <link rel="stylesheet" href="./style.css?v=0.29.1">
 </head>
 <body>
   <main id="game" tabindex="-1" aria-label="Cube Libre game">
@@ -79,14 +79,13 @@
       <circle id="touch-ring"/><circle id="touch-knob" r="9"/>
       <text id="touch-rush-label" text-anchor="middle"></text>
     </svg>
-    <section id="touch-controls" aria-label="Game controls" hidden>
-      <div class="touch-left"><div id="touch-steer" role="group" aria-label="Drag to steer; beyond the grey ring to rush"><span>✥</span><small>DRAG</small></div>
-        <div id="panic-wrap" hidden><button id="panic-button" aria-label="Panic: emergency return" disabled><svg viewBox="0 0 60 60" aria-hidden="true"><g class="panic-core"><path d="m28 17 13 7v15l-13 8-13-8V24Z"/><path d="m15 24 13 8 13-8M28 32v15"/></g><g class="panic-pieces"><path d="m9 7 5 3v6l-5 3-5-3v-6Zm38-4 5 3v6l-5 3-5-3V6ZM51 38l5 3v6l-5 3-5-3v-6ZM8 44l4 2v5l-4 2-4-2v-5Z"/><path d="m13 19-3-4m29 2 5-5m-1 23 6 6M17 40l-5 6"/></g></svg></button><strong>PANIC</strong><small id="panic-status"></small><small id="panic-key" class="action-key">V / B</small></div>
-      </div>
-      <div class="touch-right">
-        <div id="touch-depth" role="group" aria-label="Drag up to move away from the camera; down to move toward it"><span>↑ AWAY</span><strong>DEPTH</strong><span>↓ TOWARD</span></div>
-        <div id="touch-recoup-wrap"><button id="touch-c" aria-label="Re-couple: no pieces" disabled><svg viewBox="0 0 60 60" aria-hidden="true"><path d="M30 5 53 18 53 43 30 56 7 43 7 18Z"/><path d="m7 18 23 13 23-13M30 31v25M18.5 11.5l23 13v25M41.5 11.5l-23 13v25M7 30.5l23 13 23-13"/></svg></button><strong>RECOUPLE</strong><small id="touch-recouple-status">NO PIECES</small><small id="recouple-key" class="action-key">C / LB / X</small></div>
-      </div>
+    <section id="touch-controls" aria-label="Extra touch controls" hidden>
+      <div id="touch-steer" role="group" aria-label="Drag to steer; beyond the grey ring to rush"><span>✥</span><small>DRAG</small></div>
+      <div id="touch-depth" role="group" aria-label="Drag up to move away from the camera; down to move toward it"><span>↑ AWAY</span><strong>DEPTH</strong><span>↓ TOWARD</span></div>
+    </section>
+    <section id="game-actions" aria-label="Panic and Recouple" hidden>
+      <div id="panic-wrap" hidden><button id="panic-button" title="Panic recovery (V / Xbox B)" aria-label="Panic: emergency return" disabled><svg viewBox="0 0 60 60" aria-hidden="true"><g class="panic-core"><path d="m28 17 13 7v15l-13 8-13-8V24Z"/><path d="m15 24 13 8 13-8M28 32v15"/></g><g class="panic-pieces"><path d="m9 7 5 3v6l-5 3-5-3v-6Zm38-4 5 3v6l-5 3-5-3V6ZM51 38l5 3v6l-5 3-5-3v-6ZM8 44l4 2v5l-4 2-4-2v-5Z"/><path d="m13 19-3-4m29 2 5-5m-1 23 6 6M17 40l-5 6"/></g></svg></button><strong>PANIC</strong><small id="panic-status"></small><small id="panic-key" class="action-key"><kbd>V</kbd><span>Xbox B</span></small></div>
+      <div id="touch-recoup-wrap"><button id="touch-c" title="Re-couple (C / Xbox LB or X)" aria-label="Re-couple: no pieces" disabled><svg viewBox="0 0 60 60" aria-hidden="true"><path d="M30 5 53 18 53 43 30 56 7 43 7 18Z"/><path d="m7 18 23 13 23-13M30 31v25M18.5 11.5l23 13v25M41.5 11.5l-23 13v25M7 30.5l23 13 23-13"/></svg></button><strong>RECOUPLE</strong><small id="touch-recouple-status">NO PIECES</small><small id="recouple-key" class="action-key"><kbd>C</kbd><span>LB / X</span></small></div>
     </section>
     <dialog id="modal" aria-labelledby="modal-title"><h2 id="modal-title"></h2><div id="modal-body"></div><div id="modal-actions"></div></dialog>
     <dialog id="console" aria-labelledby="console-title">
@@ -96,32 +95,32 @@
     </dialog>
     <noscript>Cube Libre requires JavaScript and WebGL 2. Enable JavaScript to play.</noscript>
   </main>
-  <script id="release-data" type="application/json">{"name":"Cube Libre","edition":"web","version":"0.29.0","repository":"https://github.com/FlyingFathead/cube-libre","upstream":{"edition":"pygame","version":"0.15.79","repository":"https://github.com/FlyingFathead/cube-libre-pygame","commit":"ecf8f0148713e5606e64624464eecc4545c71047"}}</script>
+  <script id="release-data" type="application/json">{"name":"Cube Libre","edition":"web","version":"0.29.1","repository":"https://github.com/FlyingFathead/cube-libre","upstream":{"edition":"pygame","version":"0.15.79","repository":"https://github.com/FlyingFathead/cube-libre-pygame","commit":"ecf8f0148713e5606e64624464eecc4545c71047"}}</script>
   <script id="release-imports" type="importmap">{
   "imports": {
-    "./js/app.mjs": "./js/app.mjs?v=0.29.0",
-    "./js/audio.mjs": "./js/audio.mjs?v=0.29.0",
-    "./js/bonus.mjs": "./js/bonus.mjs?v=0.29.0",
-    "./js/changes.mjs": "./js/changes.mjs?v=0.29.0",
-    "./js/config.mjs": "./js/config.mjs?v=0.29.0",
-    "./js/console-config.mjs": "./js/console-config.mjs?v=0.29.0",
-    "./js/core.mjs": "./js/core.mjs?v=0.29.0",
-    "./js/difficulty.mjs": "./js/difficulty.mjs?v=0.29.0",
-    "./js/ending.mjs": "./js/ending.mjs?v=0.29.0",
-    "./js/gamepad.mjs": "./js/gamepad.mjs?v=0.29.0",
-    "./js/help-tabs.mjs": "./js/help-tabs.mjs?v=0.29.0",
-    "./js/loss.mjs": "./js/loss.mjs?v=0.29.0",
-    "./js/mobile.mjs": "./js/mobile.mjs?v=0.29.0",
-    "./js/orientation.mjs": "./js/orientation.mjs?v=0.29.0",
-    "./js/panic.mjs": "./js/panic.mjs?v=0.29.0",
-    "./js/portal-light.mjs": "./js/portal-light.mjs?v=0.29.0",
-    "./js/render.mjs": "./js/render.mjs?v=0.29.0",
-    "./js/save-game.mjs": "./js/save-game.mjs?v=0.29.0",
-    "./js/space-view.mjs": "./js/space-view.mjs?v=0.29.0",
-    "./js/title-layout.mjs": "./js/title-layout.mjs?v=0.29.0",
-    "./js/updates.mjs": "./js/updates.mjs?v=0.29.0",
-    "./vendor/three.core.min.js": "./vendor/three.core.min.js?v=0.29.0",
-    "./vendor/three.module.min.js": "./vendor/three.module.min.js?v=0.29.0"
+    "./js/app.mjs": "./js/app.mjs?v=0.29.1",
+    "./js/audio.mjs": "./js/audio.mjs?v=0.29.1",
+    "./js/bonus.mjs": "./js/bonus.mjs?v=0.29.1",
+    "./js/changes.mjs": "./js/changes.mjs?v=0.29.1",
+    "./js/config.mjs": "./js/config.mjs?v=0.29.1",
+    "./js/console-config.mjs": "./js/console-config.mjs?v=0.29.1",
+    "./js/core.mjs": "./js/core.mjs?v=0.29.1",
+    "./js/difficulty.mjs": "./js/difficulty.mjs?v=0.29.1",
+    "./js/ending.mjs": "./js/ending.mjs?v=0.29.1",
+    "./js/gamepad.mjs": "./js/gamepad.mjs?v=0.29.1",
+    "./js/help-tabs.mjs": "./js/help-tabs.mjs?v=0.29.1",
+    "./js/loss.mjs": "./js/loss.mjs?v=0.29.1",
+    "./js/mobile.mjs": "./js/mobile.mjs?v=0.29.1",
+    "./js/orientation.mjs": "./js/orientation.mjs?v=0.29.1",
+    "./js/panic.mjs": "./js/panic.mjs?v=0.29.1",
+    "./js/portal-light.mjs": "./js/portal-light.mjs?v=0.29.1",
+    "./js/render.mjs": "./js/render.mjs?v=0.29.1",
+    "./js/save-game.mjs": "./js/save-game.mjs?v=0.29.1",
+    "./js/space-view.mjs": "./js/space-view.mjs?v=0.29.1",
+    "./js/title-layout.mjs": "./js/title-layout.mjs?v=0.29.1",
+    "./js/updates.mjs": "./js/updates.mjs?v=0.29.1",
+    "./vendor/three.core.min.js": "./vendor/three.core.min.js?v=0.29.1",
+    "./vendor/three.module.min.js": "./vendor/three.module.min.js?v=0.29.1"
   }
 }</script>
   <script>

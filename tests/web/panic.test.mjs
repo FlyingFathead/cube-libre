@@ -6,6 +6,7 @@ import {Game,V,C} from '../../web/js/core.mjs';
 import {PANIC,panicStatus,reachedLeg} from '../../web/js/panic.mjs';
 import {Renderer} from '../../web/js/render.mjs';
 import {GameAudio} from '../../web/js/audio.mjs';
+import {validateCheckpoint} from '../../web/js/save-game.mjs';
 
 const duration=PANIC.pullSeconds+PANIC.holdSeconds+PANIC.openSeconds;
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-7,`${a} != ${b}`);
@@ -153,6 +154,54 @@ test('Panic browser preferences restore and save through console without replaci
   }
   const saves=[];game.saveCheckpoint=value=>saves.push(value);game.newRun();game.setState('playing');const count=saves.length;
   game.flags.panic=true;game.requestPanic();advance(game,duration+.01);assert.equal(saves.length,count);
+});
+
+test('optional Panic penalty defaults off, charges once per accepted use, compounds and leaves all-time records alone',()=>{
+  for(const mode of [20,50]) {
+    const g=setup(mode,1);g.score=1000;g.stats.best_score=50000;
+    const records=JSON.stringify(g.modeRecords);
+    assert.equal(g.flags.panic_penalty,false);assert.equal(g.panicScorePenaltyPercent,5);
+    assert.equal(g.requestPanic(),true);assert.equal(g.score,1000);assert.equal(g.message,'PANIC RECOVERY REQUESTED');
+    advance(g,duration+.02);g.panicCooldown=0;
+    g.command('set panic_penalty on');assert.equal(g.requestPanic(),true);
+    assert.equal(g.score,950);assert.match(g.message,/SCORE -50 \(5%\)/);
+    assert.equal(g.requestPanic(),false);assert.equal(g.score,950);
+    advance(g,duration+.02);assert.equal(g.requestPanic(),false);assert.equal(g.score,950);
+    g.panicCooldown=0;assert.equal(g.requestPanic(),true);assert.equal(g.score,902,'47.5 points rounds to 48');
+    advance(g,duration+.02);g.panicCooldown=0;
+    for(const field of ['paused','help']) {g[field]=true;assert.equal(g.requestPanic(),false);assert.equal(g.score,902);g[field]=false;}
+    g.flags.panic=false;assert.equal(g.requestPanic(),false);assert.equal(g.score,902);g.flags.panic=true;
+    for(const state of ['title','bonus_playing','course_materialize','death_dissolve','ascension']) {
+      g.setState(state);assert.equal(g.requestPanic(),false);assert.equal(g.score,902);
+    }
+    g.setState('playing');g.command('set panic_penalty off');assert.equal(g.requestPanic(),true);assert.equal(g.score,902);
+    assert.equal(JSON.stringify(g.modeRecords),records);
+  }
+});
+
+test('Panic penalty console tuning is inert until rescue and saves deductions with the existing entrance checkpoint',()=>{
+  const saves=[],g=new Game({rng:()=>.5,saveCheckpoint:data=>saves.push(structuredClone(data))});
+  g.newRun();g.ready(17,{survivors:[0,1,2,3,4]});g.setState('playing');g.score=1000;g.checkpoint();
+  const entry=saves.at(-1),count=saves.length;
+  g.command('set panic_score_penalty_percent 2.5');g.command('set panic_penalty true');
+  for(const key of ['panic_penalty','panic_score_penalty_percent'])for(const verb of ['get','view','status'])g.command(`${verb} ${key}`);
+  assert.match(g.command('viewconfig'),/panic_score_penalty_percent \| 2.5/);
+  assert.equal(saves.length,count);assert.equal(g.score,1000);
+  for(const value of ['-1','101','NaN','Infinity','off'])assert.throws(()=>g.command(`set panic_score_penalty_percent ${value}`));
+  assert.equal(g.panicScorePenaltyPercent,2.5);
+  g.player.alive.delete(4);g.requestPanic();assert.equal(g.score,975);assert.equal(saves.length,count+1);
+  const saved=saves.at(-1);assert.ok(validateCheckpoint(saved));
+  assert.deepEqual(saved,{...entry,score:975});assert.deepEqual([...g.player.alive],[0,1,2,3]);
+  g.command('set panic_score_penalty_percent 50');g.tick(PANIC.pullSeconds+.01);
+  assert.match(g.message,/SCORE -25 \(2.5%\)/,'An in-progress recall retains the cost actually charged');
+  const restored=new Game();assert.equal(restored.resumeCheckpoint(saved),true);restored.restoreCheckpoint();
+  assert.equal(restored.score,975);assert.deepEqual([...restored.player.alive],entry.cells);
+  g.retry();assert.equal(g.score,975);g.setState('playing');g.command('set panic_score_penalty_percent 0');
+  g.requestPanic();assert.equal(g.score,975);advance(g,duration+.02);g.panicCooldown=0;
+  g.command('set panic_score_penalty_percent 100');g.requestPanic();assert.equal(g.score,0);
+  advance(g,duration+.02);g.panicCooldown=0;g.requestPanic();assert.equal(g.score,0,'Score cannot become negative');
+  g.score=1000;g.command('test end_portal');const previewCount=saves.length;
+  g.requestPanic();assert.equal(saves.length,previewCount,'Preview cannot rewrite a campaign save');
 });
 
 test('Panic sound is emitted once and drops timer sirens through the live rescue',()=>{

@@ -340,8 +340,9 @@ export class Game {
     for(const [id,change] of Object.entries(CHANGES))this.flags[id]=change.enabled;this.flags.change_4_pattern=true;this.flags.change_1_random_per_leg=CHANGES.change_1.randomPerLeg;this.flags.change_1_no_repeat_leg=CHANGES.change_1.noRepeatLeg;
     this.changeSettings=createChangeSettings();
     this.flags.loss=this.balance.lossEnabled;this.lossMinLevel=this.balance.lossMinLevel;this.lossGreyMinLevel=this.balance.lossGreyMinLevel;
-    this.flags.loss_grey=true;this.flags.panic=true;this.flags.panic_show_inactive=true;
+    this.flags.loss_grey=true;this.flags.panic=true;this.flags.panic_show_inactive=true;this.flags.panic_penalty=false;
     this.panicOutsideSeconds=PANIC.outsideSeconds;this.panicCooldownSeconds=PANIC.cooldownSeconds;
+    this.panicScorePenaltyPercent=PANIC.scorePenaltyPercent;
     this.flags.route_outline=VISUAL_EFFECTS.routeOutline;
     this.routeOutlineSettings=Object.fromEntries(Object.entries(ROUTE_OUTLINE_NUMBERS).map(([k,r])=>[k,r.value]));
     this.entryCells=Object.freeze(cells.map((_,i)=>i));this.missingEntryCells=[];this.portalCarry=null;this.pendingLevelCells=null;
@@ -551,7 +552,7 @@ export class Game {
   requestPanic() {
     if(!panicStatus(this).enabled)return false;
     // Transport the existing body; only a normal, lossy recoupling request
-    // may add still-recoverable fragments. Keep score, collapse history and quota.
+    // may add still-recoverable fragments. Keep collapse history and quota.
     const module=this.course.modules[this.panicLeg];
     const center=this.panicLeg>0?module.start:V.of(C.START_ORIGIN),from=this.player.origin;
     this.driftVelocity=new V();this.rotationShock={angle:new V(),velocity:new V(),hits:0};
@@ -560,9 +561,13 @@ export class Game {
     this.timedModule=this.panicLeg;this.resetLegClock();
     this.course.rescueJoint=this.panicLeg-1;this.course.rescueChamber={module,center};
     this.course.revealed.set(this.panicLeg,this.t-2);
-    this.panic={time:0,module,center,from,arrived:false};
+    const scorePenaltyPercent=this.flags.panic_penalty?this.panicScorePenaltyPercent:0,scoreCost=Math.round(this.score*(scorePenaltyPercent/100));
+    this.score-=scoreCost;
+    this.panic={time:0,module,center,from,arrived:false,scoreCost,scorePenaltyPercent};
     this.panicCooldown=this.panicCooldownSeconds;
-    this.emit('panic');this.messageSet('PANIC RECOVERY REQUESTED',PANIC.pullSeconds+PANIC.holdSeconds+PANIC.openSeconds);
+    // Save the cost with the existing level-entry body, never the rescue pose.
+    if(scoreCost>0)this.checkpoint();
+    this.emit('panic');this.messageSet('PANIC RECOVERY REQUESTED'+(scorePenaltyPercent>0?`\nSCORE -${scoreCost} (${scorePenaltyPercent}%)`:''),PANIC.pullSeconds+PANIC.holdSeconds+PANIC.openSeconds);
     return true;
   }
   trackPanicLeg() {
@@ -789,7 +794,7 @@ export class Game {
         if(!rescue.arrived) {
           rescue.arrived=true;
           if(!this.recoupling.length&&this.player.fragments.some(f=>f.age<7.95))this.requestRecouple(true);
-          this.messageSet('PANIC RECOVERY REQUESTED',PANIC.holdSeconds+PANIC.openSeconds);
+          this.messageSet('PANIC RECOVERY REQUESTED'+(rescue.scorePenaltyPercent>0?`\nSCORE -${rescue.scoreCost} (${rescue.scorePenaltyPercent}%)`:''),PANIC.holdSeconds+PANIC.openSeconds);
         }
         this.tickRecouple(Math.min(dt,rescue.time-PANIC.pullSeconds));
       }
@@ -951,7 +956,7 @@ export class Game {
       const n=Number(value);if(value===undefined||!Number.isInteger(n)||n<0||n>1000000)throw Error('auto_locate_min_level expects an integer from 0 to 1000000');
       this.autoLocateMinLevel=n;return n;
     }});
-    for(const [key,property,max] of [['panic_outside_seconds','panicOutsideSeconds',30],['panic_cooldown_seconds','panicCooldownSeconds',300]])
+    for(const [key,property,max] of [['panic_outside_seconds','panicOutsideSeconds',30],['panic_cooldown_seconds','panicCooldownSeconds',300],['panic_score_penalty_percent','panicScorePenaltyPercent',100]])
       numeric.set(key,{get:()=>this[property],set:value=>{
         const n=Number(value);if(value===undefined||String(value).trim()===''||!Number.isFinite(n)||n<0||n>max)throw Error(`${key} expects a number from 0 to ${max}`);
         this[property]=n;return n;

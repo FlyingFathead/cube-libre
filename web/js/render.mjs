@@ -6,7 +6,7 @@ import {PIECES_RULES,recoveredShape,rotateQ,multiplyQ,bonusHeat} from './bonus.m
 import {AscensionScene,ascensionPose,drawArrivalWaves} from './ending.mjs';
 import {titleBounds,frameTitle} from './title-layout.mjs';
 import {updatePortalWhiteLight,isEndPortal} from './portal-light.mjs';
-import {RouteGuide,detailWindow,overviewZoom,createInfiniteStarfield,positionInfiniteStarfield,setStarPattern} from './space-view.mjs';
+import {RouteGuide,detailWindow,viewLocation,overviewZoom,createInfiniteStarfield,positionInfiniteStarfield,setStarPattern} from './space-view.mjs';
 import { ASCENSION_TIMING,C,V,cells,cellColor,clamp,smooth,mix,lerp,rotate,radians,portalMetrics } from './core.mjs';
 
 const vec=p=>new T.Vector3(p.x,p.y,p.z);
@@ -552,7 +552,7 @@ export class Renderer {
       this.camera.position.set(g.flags.shake&&g.shake?Math.sin(g.t*145)*g.shake*.8:0,g.flags.shake&&g.shake?Math.cos(g.t*139)*g.shake*.8:0,zoom*Math.max(1,.9/this.camera.aspect));
       if(!rebuilding) {
         this.course(g,preview);
-        if(preview||!g.flags.culling||g.course.location(g.player.origin).index>=g.course.modules.length-2)this.portal(g);
+        if(preview||!g.flags.culling||viewLocation(g.course,g.player.origin).index>=g.course.modules.length-2)this.portal(g);
         if(g.state!=='death_dissolve') this.player(g);
         for(const p of g.particles) this.lines.line(p.pos,p.pos.sub(p.vel.mul(.035)),p.color,1-p.age/p.life);
         for(const p of g.impacts) {

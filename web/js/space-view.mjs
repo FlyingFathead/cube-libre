@@ -1,9 +1,25 @@
 import * as T from '../vendor/three.module.min.js';
-import {V,smooth} from './core.mjs';
+import {V,smooth,clamp} from './core.mjs';
 import {isEndPortal} from './portal-light.mjs';
 
+// Collision's local lookup deliberately falls back to leg one when outside
+// its search volume. Rendering must keep nearby corridors in view instead.
+export function viewLocation(course,p) {
+  const hint=course.location(p),local=course.modules[hint.index].local(p);
+  if(Math.abs(local.y)<=14&&Math.abs(local.z)<=14&&local.x>=-30&&local.x<=30)return hint;
+  let nearest=hint,distance=Infinity;
+  for(const m of course.modules) {
+    const v=m.local(p),dx=Math.max(-23-v.x,0,v.x-23);
+    const dy=Math.max(0,Math.abs(v.y)-7),dz=Math.max(0,Math.abs(v.z)-7);
+    const squared=dx*dx+dy*dy+dz*dz;
+    if(squared<distance){distance=squared;nearest={index:m.index,x:clamp(v.x,-23,23)};}
+  }
+  return nearest;
+}
+
 export function detailWindow(g,preview=false) {
-  const c=g.course,location=c.location(g.player.origin),reveal=c.revealIndex(g.player.origin);
+  const c=g.course,location=viewLocation(c,g.player.origin);
+  const reveal=Math.max(c.revealIndex(g.player.origin),c.revealed.has(location.index)?location.index:0);
   const overview=preview&&g.stateTime/7<.78,full=!g.flags.culling||g.level<g.balance.spaceStartLevel;
   return {location,reveal,overview,
     first:preview?0:full?0:Math.max(0,location.index-1),

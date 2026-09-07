@@ -41,6 +41,6 @@ export function createVisualOptions(document,game,write) {
   const input=document.createElement('input');input.type='checkbox';input.checked=game.flags.panic;input.dataset.setting='panic';
   input.addEventListener('change',()=>{game.command(`set panic ${input.checked}`);write('cube-libre-panic-v1',game.flags.panic);});
   row.append(input,'ALLOW PANIC BUTTON');body.append(row);
-  const note=document.createElement('p');note.textContent='Return to the start of your reached leg with your surviving cubes and a fresh timer. The tractor beam also requests normal Recouple for recoverable loose pieces. Available throughout a normal leg, with a 30-second cooldown. On by default.';body.append(note);
+  const note=document.createElement('p');note.textContent=`Return to the start of your reached leg with your surviving cubes and a fresh timer. The tractor beam also requests normal Recouple for recoverable loose pieces. Available throughout a normal leg, with a ${game.panicCooldownSeconds}-second cooldown. On by default. Score penalty: ${game.flags.panic_penalty?`${game.panicScorePenaltyPercent}% of this run per use, rounded to whole points`:'off'}. All-time records stay unchanged; the penalty is console-configurable and off by default.`;body.append(note);
   return body;
 }

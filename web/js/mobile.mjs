@@ -86,8 +86,8 @@ export function createTouchHelp(document,inBonus,diagramURL){
   for(const text of [
     'The grey ring stays where you first touched. Cross it to rush; move back inside to slow down. Release to coast. Drag the opposite way to brake.',
     'Grab the centre for free dragging in the screen plane. Optional extra drag/depth areas are available in Options if you prefer them. DEPTH: up moves away from the camera, down moves toward it.',
-    inBonus?'Re-coupling is automatic by contact in this bonus round.':'RECOUPLE lights up when pieces can be recovered. A dim button means no loose pieces, an active recovery, overheating or cooldown; its small status label explains which.',
-    inBonus?'Panic is unavailable in bonus rounds.':`PANIC works throughout a normal leg and flashes immediately on overheating. Tap the shedding-cube icon to return your survivors to the start of the furthest reached leg. A white tractor beam brings you into a laser-bar prison and requests normal Recouple for any recoverable pieces. The bars open forward, then the fresh leg timer runs. Cooldown: 30 seconds of play. Options can disable it.`,
+    inBonus?'Re-coupling is automatic by contact in this bonus round.':'RECOUPLE lights up when pieces can be recovered. Its circle and labels pulse orange-red during the last chance to recover loose pieces, only while the button is usable. A dim button means no loose pieces, an active recovery, overheating or cooldown; its small status label explains which.',
+    inBonus?'Panic is unavailable in bonus rounds.':`PANIC works throughout a normal leg. Its circle and labels pulse orange-red on overheating or in the final 10 seconds, only while usable. Tap the shedding-cube icon to return your survivors to the start of the furthest reached leg. A white tractor beam brings you into a laser-bar prison and requests normal Recouple for any recoverable pieces. The bars open forward, then the fresh leg timer runs. Cooldown: 30 seconds of play. Options can disable it. The optional score penalty is off by default; the console can enable and tune it. It affects the current run only.`,
     'Portrait and landscape are both supported. Play whichever way feels right to you. Pause before changing grip. Fullscreen is optional; system navigation gestures can still leave the game.',
     'Options → Lock current orientation keeps your current portrait or landscape view where supported. It starts off each visit. If the browser needs fullscreen, use Fullscreen & lock; otherwise use your device’s rotation lock. Unlocked rotation still pauses play.',
     'Help → Options → Input mode switches between automatic detection, touch and keyboard/controller. Keyboard and controller inputs remain available in touch mode.'
@@ -183,7 +183,7 @@ export class MobileControls {
     panic.addEventListener('click',e=>{
       e.preventDefault();if(e.detail===0&&this.canAct()&&this.game.requestPanic()){this.reset();this.focus();}
     });
-    for(const el of [this.$('scene'),this.$('touch-controls')])el.addEventListener('contextmenu',e=>{if(this.enabled)e.preventDefault();});
+    for(const el of [this.$('scene'),this.$('touch-controls'),this.$('game-actions')])el.addEventListener('contextmenu',e=>{if(this.enabled)e.preventDefault();});
   }
   movement(){
     if(!this.canPlay())return emptyMovement();
@@ -197,14 +197,27 @@ export class MobileControls {
     const active=this.canPlay(),state=this.game.state;
     if(!active||state!==this.lastState)this.reset();
     this.active=active;this.lastState=state;this.bonus=state==='bonus_playing';
-    this.$('touch-controls').hidden=!(this.canAct()||active);this.$('touch-steer').hidden=!active||!this.helpers;this.$('touch-depth').hidden=!active||this.bonus||!this.helpers;this.$('touch-recoup-wrap').hidden=this.bonus;
+    // Optional gesture areas and action buttons have independent visibility.
+    // Desktop keeps the action HUD through setup and pause, with disabled states.
+    this.$('touch-controls').hidden=!active||!this.helpers;
+    this.$('touch-steer').hidden=!active||!this.helpers;this.$('touch-depth').hidden=!active||this.bonus||!this.helpers;
+    const desktopScene=!this.enabled&&['level_ready','course_materialize','playing','reassembly_flash'].includes(state);
+    this.$('game-actions').hidden=this.document.hidden||!(desktopScene||this.canAct());
+    this.$('touch-recoup-wrap').hidden=this.bonus;
+    for(const id of ['panic-key','recouple-key'])this.$(id).hidden=this.enabled;
     const panic=panicStatus(this.game),panicButton=this.$('panic-button');
-    this.$('panic-wrap').hidden=!panic.visible;panicButton.disabled=!panic.enabled;
-    // Drive the warning from simulation time so pause/Help freezes the pulse.
-    panicButton.classList.toggle('panic-flash',panic.warning&&Math.sin(this.game.t*Math.PI*3)>0);
+    this.$('panic-wrap').hidden=!(panic.visible||desktopScene&&this.game.flags.panic&&this.game.flags.panic_show_inactive);panicButton.disabled=!panic.enabled;
+    // Shared warm pulse covers the circle and its labels, only when usable.
+    const pulse=Math.sin(this.game.t*Math.PI*3)>0;
+    this.$('panic-wrap').classList.toggle('action-alert',panic.warning&&pulse);
     panicButton.setAttribute('aria-label',`Panic: ${panic.text||'emergency return to leg '+(this.game.panicLeg+1)}`);
     this.$('panic-status').textContent=panic.text;
-    if(this.canAct()){const status=recoupleStatus(this.game),button=this.$('touch-c');button.disabled=!status.enabled;button.setAttribute('aria-label',`Re-couple: ${status.text.toLowerCase()}`);this.$('touch-recouple-status').textContent=status.text;}
+    {const status=recoupleStatus(this.game),button=this.$('touch-c');
+      const lastChance=status.enabled&&this.game.player.fragments.some(f=>f.age<7.95&&8-f.age<1.75);
+      button.disabled=!status.enabled;button.setAttribute('aria-label',`Re-couple: ${status.text.toLowerCase()}`);
+      this.$('touch-recouple-status').textContent=status.text;
+      this.$('touch-recoup-wrap').classList.toggle('action-alert',lastChance&&pulse);
+    }
   }
   draw(){
     if(!this.active)return;

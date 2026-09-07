@@ -1,6 +1,6 @@
 # Cube Libre web progression
 
-Default schedule for web **0.29.0**, based on published v0.28.2 (`f6a91de`).
+Default schedule for web **0.29.1**, based on published v0.29.0 (`cd7c357`).
 `DEFAULT_GAME_MODE = 20` and the immutable `GAME_MODES` registry live in
 [`web/js/difficulty.mjs`](../web/js/difficulty.mjs). Each `Game` owns its active
 balance; `featuresForSettings(settings, flags, lossMinLevel, game.balance)` drives
@@ -261,13 +261,13 @@ During-play outlines have separate console settings from the introductory view:
 | Console parameter | Default | Meaning |
 | --- | --- | --- |
 | `route_outline` | `true` | Enable upcoming exterior outlines; saved boolean |
-| `route_outline_ahead_legs` | `3` | Outline this many upcoming legs; 0 hides them |
+| `route_outline_ahead_legs` | `5` | Outline this many upcoming legs; 0 hides them |
 | `route_outline_fade_after_legs` | `1` | Fade after this many near upcoming legs |
 | `route_outline_opacity` | `0.32` | Near line opacity, 0–1 |
 | `route_outline_far_opacity` | `0.25` | Far opacity as a fraction of near opacity, 0–1 |
 
 Numeric outline values last for the session. Defaults live in
-`ROUTE_OUTLINE_NUMBERS`. Three legs use at most twelve cached line segments,
+`ROUTE_OUTLINE_NUMBERS`. Five legs use at most twenty cached line segments,
 with no extra wall lattice, caps or hazards. Existing nearby detail replaces
 its overlapping ghost edges. No collision, reveal or shutter timing is changed.
 
@@ -369,7 +369,7 @@ fade, two-second white pause, title/subtitle and full thank-you sequence remain.
 Pause and Help freeze every part. These presentation changes apply to both modes
 and the existing `test ending_1` and `test end_portal` previews.
 
-## Optional Panic recovery (0.29.0)
+## Optional Panic recovery (updated in 0.29.1)
 
 Available throughout normal legs, on by default in Options. V / Xbox B / PANIC
 returns the surviving body to the start of the furthest physically reached leg.
@@ -378,5 +378,13 @@ the fresh leg timer starts counting down. One normal lossy Recouple request
 may recover existing loose pieces. The return never rebuilds missing pieces or
 refills the LOSS entry body. Previous pipes stay sealed. Bonus rounds exclude it.
 The cooldown is 30 seconds of play, including recall, frozen during pause/Help.
+An available Panic circle pulses orange-red on overheating or with at most
+10 seconds left. Available Recouple pulses in its last-chance window. Unavailable
+actions never pulse. Desktop shows keyboard/controller labels beneath both.
+Console `panic_penalty` defaults false. If enabled, each successful use costs
+`panic_score_penalty_percent` of the current run score (default 5, range 0–100),
+rounded to whole points. Repeated uses compound; all-time records are unchanged.
+The cost is saved with the entrance body and survives reload/retry. Penalty
+settings are session only; a fresh page starts with the penalty off.
 This assistance changes practical difficulty; the underlying level curves above
 stay the same. Human playtesting remains needed.

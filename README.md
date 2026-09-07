@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.29.0
+# Cube Libre — Web v0.29.1
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,7 +23,31 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.29.0 · Panic recovery
+## Web release 0.29.1 · Desktop action HUD
+
+Fix a reproduced disappearing-corridor edge case on levels 7, 8 and later:
+when outside drift loses the local route lookup, keep drawing the nearby
+corridor instead of the collapsed entrance. Upcoming outlines now extend
+five legs ahead by default (`route_outline_ahead_legs`).
+
+Panic and Recouple now have a dedicated action HUD, separate from the optional
+touch controls. Desktop shows the round icons during level setup and play,
+with **V / Xbox B** under Panic and **C / LB / X** under Recouple. Unavailable
+actions are greyed out. Both touch layouts keep the matching circles.
+
+The circle and its labels pulse orange-red **only while usable**: Recouple
+during its last-chance window, Panic on overheating or in a timed leg's final
+10 seconds. Unavailable actions never flash, including during cooldown.
+
+An optional Panic score penalty is **off by default**. Console:
+`set panic_penalty true` enables it; `set panic_penalty false` disables it.
+`set panic_score_penalty_percent 5` sets the percentage (default 5, range 0–100).
+When enabled, each successful use deducts that percentage of the **current run**
+score, rounded to whole points; repeated uses compound. All-time records are
+unchanged. Deductions survive reload and retry. These settings last for the
+session; a fresh page starts with the penalty off.
+
+### Panic recovery
 
 **A way back when a leg goes badly.** Press **V**, **Xbox B**, or tap the
 bottom-left **PANIC** circle. A white tractor beam pulls your existing body
@@ -35,7 +59,7 @@ it does not rebuild your body. Old corridors remain sealed.
 
 Panic is available throughout normal legs, with a **30-second cooldown** and
 whole-second countdown. Both mobile layouts and desktop get matching Panic and
-Recouple circles. Panic flashes immediately on overheating. **Options → ALLOW
+Recouple circles. Available Panic flashes immediately on overheating. **Options → ALLOW
 PANIC BUTTON** defaults on. `set panic_show_inactive false` hides the circle
 until 3 seconds outside or earlier overheating; V/B remain available while
 hidden. The visibility choice is saved. Bonus rounds do not offer Panic.
@@ -136,13 +160,13 @@ The only mode values are **20** and **50**; boolean toggles are rejected.
 first level, up to the active cap, and last for the session. `loss_grey true` /
 `false` is a saved visual switch. Gameplay tuning stays console-only.
 
-**See a little farther ahead.** During play, three upcoming corridor legs have
+**See a little farther ahead.** During play, five upcoming corridor legs have
 faint exterior outlines without revealing distant laser grids or shutters.
 Their independent settings remain:
 
 ```text
 set route_outline true
-set route_outline_ahead_legs 3
+set route_outline_ahead_legs 5
 set route_outline_fade_after_legs 1
 set route_outline_opacity 0.32
 set route_outline_far_opacity 0.25
@@ -558,11 +582,15 @@ node --test tests/web/*.test.mjs
 
 See [WEB_PORT.md](WEB_PORT.md) for gameplay details, browser differences,
 source layout, and optional regeneration using a separate PyGame checkout.
-Web 0.28.2 (`f6a91de`) is the published baseline. This release passes 200
+Web 0.29.0 (`cd7c357`) is the published baseline. This release passes 204
 automated test groups and static checks on Node.js 18.19.1, including both
 campaigns, legacy save migration, independent records, LOSS body carry, ending
 wave/audio timing and render data, controller/touch dispatch, simulated final routes,
 and Panic returns at every leg start in both campaigns with preserved recovery limits.
+Action checks cover desktop/touch availability and orange-red urgency; optional
+penalty checks cover repeated uses, unchanged records and saved deductions.
+Outside-drift checks keep nearby walls drawn on levels 7, 8 and both campaign
+caps, including the touch-input path on both mobile layouts.
 The baseline tests explicitly select mode 50; additional mode tests exercise the
 default 20-level campaign. The shorter campaign's human balance and Panic's
 visual/audio pacing still need device playtesting. Automated traversal does not

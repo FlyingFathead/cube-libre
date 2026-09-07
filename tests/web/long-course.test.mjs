@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import * as T from '../../web/vendor/three.module.min.js';
 import {Game,Course,V,clamp} from '../../web/js/core.mjs';
 import {Renderer} from '../../web/js/render.mjs';
-import {detailWindow,createInfiniteStarfield,positionInfiniteStarfield} from '../../web/js/space-view.mjs';
+import {detailWindow,viewLocation,createInfiniteStarfield,positionInfiniteStarfield} from '../../web/js/space-view.mjs';
 
 function captureCourse() {
   const r=Object.create(Renderer.prototype),lasers=[];let lines=0;
@@ -17,7 +17,7 @@ function captureCourse() {
   return {r,lasers,count:()=>lines,reset(){lines=0;lasers.length=0;}};
 }
 
-test('play outlines cover three upcoming legs with independent tuning and no extra hazard reveals or buffer allocation',()=>{
+test('play outlines cover five upcoming legs with independent tuning and no extra hazard reveals or buffer allocation',()=>{
   for(const level of [4,5,50]) {
     const g=new Game({gameMode:50});g.ready(level);g.setState('playing');const cap=captureCourse();
     let geometry;
@@ -26,8 +26,8 @@ test('play outlines cover three upcoming legs with independent tuning and no ext
       const reveals=[...g.course.revealed],active=g.course.activeLasers(g.player.origin,g.t),window=detailWindow(g);
       cap.reset();cap.r.course(g);const guide=cap.r.routeGuide;
       geometry??=guide.lines.geometry;assert.equal(guide.lines.geometry,geometry);
-      assert.deepEqual(geometry.drawRange,{start:(index+1)*8,count:Math.min(3,level-index-1)*8});
-      assert.ok(geometry.drawRange.count/2<=12,'At most twelve simple line segments');
+      assert.deepEqual(geometry.drawRange,{start:(index+1)*8,count:Math.min(5,level-index-1)*8});
+      assert.ok(geometry.drawRange.count/2<=20,'At most twenty simple line segments');
       assert.deepEqual([...g.course.revealed],reveals);assert.deepEqual(g.course.activeLasers(g.player.origin,g.t),active);
       assert.ok(cap.lasers.every(i=>i<=window.last));
       g.command('set route_outline off');cap.r.course(g);assert.equal(guide.lines.visible,false);
@@ -105,6 +105,37 @@ test('the overview contains only cached ghost outlines and the exit, while gamep
   }
   g.flags.culling=false;g.ready(50);g.setState('playing');cap.reset();cap.r.course(g);assert.equal(cap.lasers.length,250);
   cap.r.routeGuide.dispose();assert.equal(cap.r.world.children.length,0);
+});
+
+test('levels seven, eight and later routes keep nearby corridors drawn when outside drift loses the local lookup',()=>{
+  for(const mode of [20,50])for(const level of new Set([7,8,mode]))for(const index of new Set([2,3,4,5,level-2]))for(const offset of [[0,14.1],[-14.1,0],[0,-14.1]]) {
+    const g=new Game({gameMode:mode,rng:()=>.5});g.ready(level);g.setState('playing');g.flags.damage=false;g.flags.suction=false;
+    // Reach this leg and let the sealed entrance disappear before drifting out.
+    for(let i=0;i<=index;i++){g.player.origin=g.course.modules[i].world(0);g.tick(.01);}
+    g.tick(1.5);const m=g.course.modules[index];g.player.origin=m.world(0,...offset);g.tick(.01);
+    assert.equal(g.timedModule,index);assert.equal(g.course.location(g.player.origin).index,0,'Reproduce the gameplay lookup fallback');
+    const before=JSON.stringify({collapsed:[...g.course.collapsed],revealed:[...g.course.revealed],clock:g.legTime,panicLeg:g.panicLeg});
+    const window=detailWindow(g);assert.equal(window.location.index,index);
+    assert.ok(window.first<=index&&window.last>=index);assert.ok(window.last-window.first<=2);
+    assert.equal(window.reveal,index,'Known walls retain their revealed appearance outside');
+    const cap=captureCourse();let nearbyWalls=0;
+    const box=cap.r.box;cap.r.box=function(map,...args){
+      const middle=map((args[0]+args[1])/2,0,0);
+      if(middle.sub(m.world(0)).length()<.01&&args.at(-1)>.1)nearbyWalls++;
+      return box.call(this,map,...args);
+    };
+    for(const culling of [true,false]) {
+      g.flags.culling=culling;cap.reset();nearbyWalls=0;cap.r.course(g);
+      assert.ok(nearbyWalls>0,'Render the actual nearby corridor, not the collapsed entrance');
+      assert.ok(cap.count()>100);assert.equal(cap.r.routeGuide.lines.geometry.drawRange.start,(index+1)*8);
+    }
+    assert.equal(JSON.stringify({collapsed:[...g.course.collapsed],revealed:[...g.course.revealed],clock:g.legTime,panicLeg:g.panicLeg}),before,'Drawing does not advance progress or change hazards');
+    cap.r.routeGuide.dispose();
+  }
+  const g=new Game({gameMode:50});g.ready(50);
+  for(const m of g.course.modules)for(const x of [-23,-16,0,16,23]) {
+    g.player.origin=m.world(x);assert.deepEqual(viewLocation(g.course,g.player.origin),g.course.location(g.player.origin),'Normal in-course lookup is unchanged');
+  }
 });
 
 test('the previous corridor collapses once after clearing its junction, with sound, culling and sealed backtracking',()=>{

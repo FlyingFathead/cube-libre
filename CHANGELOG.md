@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.29.1 — Desktop action HUD
+
+Based on published web v0.29.0 (`cd7c357`).
+
+- Give Panic and Recouple a dedicated action HUD, separate from optional touch
+  steering/depth controls. Desktop keeps the round icons visible during level
+  setup and play, disabled whenever unavailable. Show V / Xbox B beneath Panic
+  and C / LB / X beneath Recouple. Keep both mobile layouts and position Recouple
+  on the right even when Panic is hidden or disabled in Options.
+- Pulse the circle and all its labels orange-red only while the action is usable.
+  Recouple warns during the last 1.75 seconds of recoverable fragment life;
+  Panic warns immediately on overheating or in a timed leg's final 10 seconds.
+  Unavailable actions never pulse, including during cooldown, active recovery,
+  confinement, heat-blocked Recouple, pause and Help.
+- Add console-only `panic_penalty`, off by default, and
+  `panic_score_penalty_percent`, default 5 and range 0–100. Both are session
+  settings. When enabled, deduct that percentage of the current run score once
+  per successful use, rounding the deduction to whole points. Repeated uses
+  compound; refused presses cost nothing. All-time records remain unchanged.
+- Show an enabled penalty's actual deduction beneath PANIC RECOVERY REQUESTED
+  and save the reduced score immediately with the existing entrance body.
+  Reload and retry retain the cost; the rescue pose and live hazards are never
+  saved. Keep preview isolation, ordinary rescue mechanics and ambulance audio.
+- Update Help, Options explanations and current documentation for availability
+  warnings and the optional penalty.
+- Fix a reproduced corridor disappearance when outside drift leaves the local
+  location lookup on levels 7, 8 and later. Keep drawing the nearest corridor
+  instead of jumping to the already-collapsed entrance. Keep known walls and
+  nearby portal drawing visible, without changing collision, timers, physical
+  progress, hazard activation or sealed-pipe rules.
+- Increase `route_outline_ahead_legs` from 3 to 5 by default. The two extra
+  upcoming outlines reuse the same buffer and do not reveal distant hazards.
+
+Validation: 204 automated test groups and static checks pass on Node.js 18.19.1.
+Expanded control checks cover desktop and both touch layouts, setup visibility,
+key labels and availability-gated urgency. New penalty checks cover both modes,
+default-off behavior, repeated/blocked requests, rounding, console validation,
+unchanged records, saved entry cells, reload/retry and preview isolation.
+Corridor checks reproduce outside lookup loss on levels 7, 8, 20 and 50, verify
+the actual nearby wall drawing and use touch-driven drift on both mobile
+layouts. Normal in-course lookup and the bounded detail window are preserved.
+Browser/device visual and audio playtesting remains needed.
+
 ## 0.29.0 — Panic recovery
 
 Based on published web v0.28.2 (`f6a91de`).

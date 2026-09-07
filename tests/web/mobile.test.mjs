@@ -7,6 +7,7 @@ import {Game} from '../../web/js/core.mjs';
 import {Renderer} from '../../web/js/render.mjs';
 import {DragStick,MobileControls,TOUCH_RULES,detectMobile,touchEnabled,touchMovement,recoupleStatus,axisHandles,selectPull} from '../../web/js/mobile.mjs';
 import {emptyMovement,mergeMovement} from '../../web/js/gamepad.mjs';
+import {detailWindow} from '../../web/js/space-view.mjs';
 
 const identity={right:{x:1,y:0,z:0},up:{x:0,y:1,z:0},forward:{x:0,y:0,z:-1}};
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-7,`${a} != ${b}`);
@@ -15,7 +16,7 @@ function setup({mode=0,detected=true}={}) {
     if(!nodes.has(id)){
       const listeners={},classes=new Set(),captures=new Set();
       nodes.set(id,{dataset:{},style:{},hidden:false,disabled:false,textContent:'',attrs:{},
-        classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),toggle:(x,on)=>on?classes.add(x):classes.delete(x)},
+        classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x),toggle:(x,on)=>on?classes.add(x):classes.delete(x)},
         setAttribute(k,v){this.attrs[k]=v;},addEventListener(k,fn){(listeners[k]??=[]).push(fn);},
         fire(k,options={}){const e={pointerId:1,clientX:200,clientY:200,button:0,detail:1,preventDefault(){this.prevented=true;},...options};for(const fn of listeners[k]||[])fn(e);return e;},
         setPointerCapture(id){captures.add(id);},hasPointerCapture:id=>captures.has(id),releasePointerCapture(id){captures.delete(id);this.fire('lostpointercapture',{pointerId:id});},
@@ -188,7 +189,8 @@ test('mobile console tuning validates values, lists descriptions and keeps statu
 test('Panic and Recouple circles work on both touch layouts and desktop with one request per press',()=>{
   for(const mode of [1,2])for(const helpers of [false,true]) {
     const {mobile,game,node}=setup({mode});mobile.setHelpers(helpers);mobile.sync();
-    assert.equal(node('touch-controls').hidden,false);assert.equal(node('panic-wrap').hidden,false);
+    assert.equal(node('game-actions').hidden,false);assert.equal(node('touch-controls').hidden,mode===2||!helpers);assert.equal(node('panic-wrap').hidden,false);
+    for(const key of ['panic-key','recouple-key'])assert.equal(node(key).hidden,mode===1);
     assert.equal(node('panic-button').disabled,false);assert.equal(node('touch-c').disabled,true);
     game.player.destroy(0,game.player.origin);mobile.sync();assert.equal(node('touch-c').disabled,false);
     node('touch-c').fire('pointerdown');node('touch-c').fire('click');assert.equal(game.requests.length,1);
@@ -202,15 +204,61 @@ test('Panic and Recouple circles work on both touch layouts and desktop with one
     assert.match(node('panic-status').textContent,/^COOLDOWN \d+ s$/);
     node('panic-button').fire('pointerdown',{pointerId:3});assert.equal(game.events.filter(e=>e.name==='panic').length,1);
     game.command('panic false');mobile.sync();assert.equal(node('panic-wrap').hidden,true);
+    game.command('panic true');
+    for(const state of ['level_ready','course_materialize','reassembly_flash']) {
+      game.setState(state);mobile.sync();assert.equal(node('game-actions').hidden,mode===1);
+      assert.equal(node('panic-button').disabled,true);assert.equal(node('touch-c').disabled,true);
+    }
+    for(const state of ['title','opening_intro','bonus_playing','ascension']) {
+      game.setState(state);mobile.sync();assert.equal(node('game-actions').hidden,true);
+    }
   }
 });
 
-test('Panic visibility preference and overheat warning reach the actual shared controls',()=>{
-  const {mobile,game,node}=setup();game.command('panic_show_inactive false');mobile.sync();
-  assert.equal(node('panic-wrap').hidden,true);game.outside=true;game.outsideTime=3;mobile.sync();
-  assert.equal(node('panic-wrap').hidden,false);game.heat=1;game.t=.1;mobile.sync();
-  const warned=node('panic-button').attrs['aria-label'];assert.match(warned,/Panic:/);
-  game.paused=true;mobile.sync();assert.equal(node('touch-controls').hidden,true);
-  game.paused=false;game.outside=false;game.heat=0;game.outsideTime=0;mobile.sync();
-  assert.equal(node('panic-wrap').hidden,true);
+test('mobile drift on levels seven and eight keeps the nearby corridor drawn after the entrance has collapsed',()=>{
+  for(const helpers of [false,true])for(const level of [7,8])for(const index of [2,3,5]) {
+    const {mobile,game,node,renderer}=setup({mode:1});mobile.setHelpers(helpers);game.ready(level);game.setState('playing');
+    const m=game.course.modules[index];
+    renderer.touchView=()=>({x:190,y:180,radius:15,visible:true,basis:{right:m.bz,up:m.by,forward:m.bx}});
+    for(let i=0;i<=index;i++){game.player.origin=game.course.modules[i].world(0);game.tick(.01);}
+    game.tick(1.5);mobile.sync();mobile.draw();assert.equal(game.timedModule,index);assert.ok(game.course.collapsed.has(0));
+    node('scene').fire('pointerdown',{clientX:200,clientY:200});
+    node('scene').fire('pointermove',{clientX:280,clientY:200});
+    let reproduced=false;
+    for(let frame=0;frame<360;frame++) {
+      game.tick(1/120,mobile.movement());mobile.sync();
+      const window=detailWindow(game);
+      assert.ok(window.first<=index&&window.last>=index,'The current corridor must stay in the draw range');
+      if(game.course.location(game.player.origin).index===0){reproduced=true;break;}
+    }
+    assert.equal(reproduced,true);assert.equal(game.state,'playing');assert.equal(game.timedModule,index);
+  }
+});
+
+test('action circles and labels pulse for urgent recovery only while usable, on desktop and both touch layouts',()=>{
+  for(const mode of [1,2])for(const helpers of [false,true]) {
+    const {mobile,game,node}=setup({mode});mobile.setHelpers(helpers);game.t=.1;
+    const warned=id=>node(id).classList.contains('action-alert');
+    game.command('panic_show_inactive false');mobile.sync();assert.equal(node('panic-wrap').hidden,true);
+    game.outside=true;game.outsideTime=3;mobile.sync();assert.equal(node('panic-wrap').hidden,false);
+    assert.equal(warned('panic-wrap'),false);game.heat=1;mobile.sync();assert.equal(warned('panic-wrap'),true);
+    game.panicCooldown=.1;mobile.sync();assert.equal(warned('panic-wrap'),false);
+    game.panicCooldown=0;game.paused=true;mobile.sync();assert.equal(warned('panic-wrap'),false);
+    game.paused=false;game.help=true;mobile.sync();assert.equal(warned('panic-wrap'),false);game.help=false;
+    game.outside=false;game.heat=0;game.outsideTime=0;mobile.sync();assert.equal(node('panic-wrap').hidden,true);
+    game.command('panic_show_inactive true');game.legTime=10.01;mobile.sync();assert.equal(warned('panic-wrap'),false);
+    game.legTime=10;mobile.sync();assert.equal(warned('panic-wrap'),true);
+    game.t=.5;mobile.sync();assert.equal(warned('panic-wrap'),false,'Pulse has a cool phase');game.t=.1;
+    game.level=1;mobile.sync();assert.equal(warned('panic-wrap'),false,'Untimed legs never warn about a deadline');
+    game.level=15;game.legTime=30;game.player.destroy(0,game.player.origin);
+    const fragment=game.player.fragments[0];fragment.age=6.25;mobile.sync();assert.equal(warned('touch-recoup-wrap'),false);
+    fragment.age=6.26;mobile.sync();assert.equal(warned('touch-recoup-wrap'),true);
+    game.heat=1;mobile.sync();assert.equal(warned('touch-recoup-wrap'),false);game.heat=0;
+    game.cooldown=.1;mobile.sync();assert.equal(warned('touch-recoup-wrap'),false);game.cooldown=0;
+    game.requests=Array(5).fill(game.t);mobile.sync();assert.equal(warned('touch-recoup-wrap'),false);game.requests=[];
+    for(const field of ['paused','help']){game[field]=true;mobile.sync();assert.equal(warned('touch-recoup-wrap'),false);game[field]=false;}
+    fragment.age=7.95;mobile.sync();assert.equal(warned('touch-recoup-wrap'),false);
+    fragment.age=7;game.requestRecouple();mobile.sync();assert.equal(warned('touch-recoup-wrap'),false);
+    game.requestPanic();mobile.sync();assert.equal(warned('panic-wrap'),false);assert.equal(warned('touch-recoup-wrap'),false);
+  }
 });
