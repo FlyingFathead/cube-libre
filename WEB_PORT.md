@@ -91,7 +91,7 @@ remain active. Regression coverage is in `tests/web/collapse-contact.test.mjs`.
 | Portal | Per-cell slab contact, suction, charge, absorption and 98.5% body commitment |
 | Progression | Preview, level-ready cards, portal warp, result cards and automatic progression up to level 50, then ascension, thank-you fades and run statistics |
 | Death | Dissolve into the void, reconstruct the level-entry body, retry the current level with fresh geometry and timer |
-| Persistence | Best escape, best score and highest level in localStorage, plus mute, shaking, player rotation, hit rotation shocks, portal light, culling, microgravity, heat restriction, shutter booleans and sky preferences |
+| Persistence | Level-entry campaign checkpoints, best escape, best score and highest level in localStorage, plus mute, shaking, player rotation, hit rotation shocks, portal light, culling, microgravity, heat restriction, shutter booleans and sky preferences |
 | UI | Original cube-letter title and dot-matrix prompt; help, pause, menu/reset confirmations, fullscreen |
 | Console | Flags, level/restart/newrun, heal/kill/cubes, portal teleport, position/route, score, locate, and a scrollable live parameter listing |
 | Audio | 21 sounds in two codecs: 18 originals, shutter buzz/whoosh and a generated LOSS engine wind-down |
@@ -350,6 +350,79 @@ The console scrolls vertically with the mouse wheel and Page Up / Page Down;
 its output can also receive keyboard focus. Long responses are retained in full.
 Use `status name` for one value. Numeric settings use `set name number`, except
 existing score/cell cheats which use `score N` and `cubes N`.
+
+## Continue and the final portal (web 0.27.0)
+
+`web/js/save-game.mjs` owns the browser store, checkpoint schema validation and
+welcome timing. Campaign data uses `cube-libre-campaign-v1`, separately from
+`cube-libre-scores-v1` and preferences. `Game` receives a `saveCheckpoint`
+callback; simulation code has no direct browser-storage dependency.
+
+A schema-1 checkpoint contains a level, a stage (`level`, `bonus` or `ending`),
+exact cell IDs, score, run statistics, completed level, last escape count and
+completed bonus scheduling history. It contains no live movement, input, debris,
+renderer buffers or clock position. Continue always restarts the saved stage;
+normal levels start at their first leg with their full level-entry allowance.
+
+- New run enables checkpoint writes and creates the level-one checkpoint.
+- Level entry and the next-level transition save the body that belongs there.
+  Before LOSS it is full; exits from 44 onward carry the exact survivors.
+- Reloading during milestone cards or a portal transition already has the next
+  checkpoint. Continue shows that level's applicable cards after its welcome.
+- A pending scheduled bonus is saved before it starts. Reloading restarts that
+  bonus, retaining the normal survivor body and score from before the bonus.
+  Completion saves the next normal level immediately, including any awarded
+  points, so revisiting cannot duplicate a completed reward.
+- Clearing 50 saves an ending checkpoint. Resume replays the ending without
+  re-awarding the portal score. The ordinary statistics-to-menu transition clears
+  the completed checkpoint. Preview endings never clear a campaign save.
+- Console previews, level jumps, healing, cube-count/score edits and the portal
+  teleport stop checkpoint writes for that debug session. New run or Continue
+  establishes a campaign again. Visual switches and status queries remain safe
+  to use during a saved run. This is save isolation, not an anti-cheat system.
+
+The title's main button and Space/Enter/controller A continue when a checkpoint
+exists. A separate New run button asks before replacing it. Touch uses those
+same buttons. The entire title action group is measured by the existing title
+fitter, so save text and the extra choice reserve room above the cube logo.
+
+Continue uses `resume_intro` against blank white. `RESUME_TIMING` gives the
+first line a one-second fade; "Welcome back." starts at 1.5 seconds and fades
+in over 1.5 seconds. Both hold until 4.5 seconds, fade out over 1.5 seconds, then
+restore the checkpoint. Pause/Help freeze this sequence; Continue input cannot
+skip it. An incomplete LOSS body subsequently uses `loss_assembly`, its original
+missing-cell forms, wind-down, partial-success caption and level-dependent grey.
+
+The browser adapter catches unavailable storage and quota errors. A same-page
+checkpoint remains usable but the title says it will not survive leaving the
+page. Invalid or unknown-schema saves are not loaded or silently deleted; only
+an explicit new run replaces them. No cookies, backend or GitHub API are required
+for the checkpoint. It is local to the browser/device, not a cloud save. Existing
+high-level records from older releases do not contain enough data to migrate a
+campaign. The roadmap retains full-body Continue as a possible mercy alternative.
+
+### Final exit and its playable preview
+
+`end_portal` defaults true and is saved under `cube-libre-end-portal-v1`.
+`END_PORTAL` in `config.mjs` sets the final frame scale (3), halo diameter (80),
+core diameter (24) and approach distance (85), in scene units. The corridor is
+14 units wide. The predicate follows `BALANCE.levelCap` (currently 50) and excludes
+bonus scenes. All final frame/spiral lines and the distant endpoint marker are
+white. The original small glow texture is shared by the halo and one extra
+reusable core sprite. No bloom pass, real-time lights or remote asset is added.
+
+The `portal_white_light` switch disables both glow layers; `end_portal false`
+restores ordinary portal presentation. Capture, suction, collision and the
+level-cap ending trigger use the existing simulation constants.
+
+`test end_portal` starts level 50 on its last leg, at local X=10.8 in the safe
+gap between the last two gates. All earlier legs are already revealed/collapsed;
+the last is active, its clock begins at ten seconds, drift is neutral and the
+camera follows the cube. The console closes and the test runs immediately.
+Normal movement through the exit triggers the full ending and thank-you note.
+Automatic and manual retries return to that gap. Test play, deaths and arrival
+award no score, top level, records or run-stat increments, and leave an existing
+campaign checkpoint untouched. The summary is marked as an END PORTAL preview.
 
 ## LOSS and route visibility (web 0.26.0)
 
@@ -921,14 +994,14 @@ unimplemented panic/return proposal arising from this Android feedback.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.26.0**, continuing from the **0.25.1** package. The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.27.0**, continuing from published **0.26.0** (`bb6a420`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.26.1`, `0.26.2`, etc. for fixes, and `0.27.0` for the
+For future releases, use `0.27.1`, `0.27.2`, etc. for fixes, and `0.28.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.26.0.zip` and `v0.26.0`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.27.0.zip` and `v0.27.0`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior

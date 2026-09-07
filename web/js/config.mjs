@@ -14,6 +14,9 @@ export const VISUAL_EFFECTS=Object.freeze({
   overheatCellAmplitude:.09,
 });
 
+// Final exit presentation. Its glow is visual; capture/suction keep their normal size.
+export const END_PORTAL=Object.freeze({enabled:true,frameScale:3,haloSize:80,coreSize:24,glowDistance:85});
+
 // Rotation moves the actual player cells as well as their rendered geometry.
 export const PLAYER_ROTATION=Object.freeze({
   enabled:true,

@@ -14,6 +14,7 @@ const DETAILS=Object.freeze({
   spin:['Player auto-rotation','Slowly tumble the surviving body across X/Y/Z in normal levels; rotated cells affect collision.'],
   rotation_shocks:['Hit rotation shocks','Apply a brief visual rotational recoil when the body takes a hit.'],
   portal_white_light:['Portal white light','Show a white halo that strengthens near the portal.'],
+  end_portal:['Final white portal','Give the level-cap exit an oversized pure-white frame and glow. Saved visual flag; portal_white_light controls its halo. Capture and suction stay unchanged.'],
   culling:['Cull distant corridors','Limit rendered corridor detail; disabling this does not reveal or arm distant laser hazards.'],
   microgravity:['Microgravity propulsion','Use thrust, coasting and braking in normal levels; off restores direct movement.'],
   overheat_blocks_recoupling:['Overheating blocks re-coupling','Reject new re-coupling requests while hot once the configured HEAT level gate is satisfied.'],

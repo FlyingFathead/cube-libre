@@ -1,10 +1,10 @@
 import * as T from '../vendor/three.module.min.js';
-import {VISUAL_EFFECTS} from './config.mjs';
+import {VISUAL_EFFECTS,END_PORTAL} from './config.mjs';
 import {lossGreyAmount,lossBodyColor,lossGhostPose} from './loss.mjs';
 import {PIECES_RULES,recoveredShape,rotateQ,multiplyQ,bonusHeat} from './bonus.mjs';
 import {AscensionScene,ascensionPose} from './ending.mjs';
 import {titleBounds,frameTitle} from './title-layout.mjs';
-import {updatePortalWhiteLight} from './portal-light.mjs';
+import {updatePortalWhiteLight,isEndPortal} from './portal-light.mjs';
 import {RouteGuide,detailWindow,overviewZoom,createInfiniteStarfield,positionInfiniteStarfield,setStarPattern} from './space-view.mjs';
 import { BALANCE,C,V,cells,cellColor,clamp,smooth,mix,lerp,rotate,radians,portalMetrics } from './core.mjs';
 
@@ -347,11 +347,12 @@ export class Renderer {
   }
   portal(g) {
     const t=g.t,m=g.course.portal,charge=g.state==='playing'?portalMetrics(g.course,g.player).charge:0;
-    const local=(x,y,z)=>m.world(20+x,y,z),half=C.PORTAL_SIZE/2;
+    const final=isEndPortal(g),scale=final?END_PORTAL.frameScale:1;
+    const local=(x,y,z)=>m.world(20+x,y,z),half=C.PORTAL_SIZE/2*scale;
     for(let ring=0;ring<7;ring++) {
-      const h=half+ring*(.13+.16*charge),depth=Math.sin(t*2+ring*.7)*.12;
+      const h=half+ring*(.13+.16*charge)*scale,depth=Math.sin(t*2+ring*.7)*.12;
       this.lines.loop([local(depth,-h,-h),local(depth,h,-h),local(depth,h,h),local(depth,-h,h)],
-        hsv(.48+ring*.04+t*.045,.8,1),.7-ring*.075);
+        final?white:hsv(.48+ring*.04+t*.045,.8,1),(final?1:.7)-ring*.075);
     }
     for(let k=0;k<14;k++) {
       const pts=[],phase=t*(.5+charge*1.8)+k*Math.PI*2/14;
@@ -359,12 +360,12 @@ export class Renderer {
         const r=half*n/20,a=phase+r*(1.1+charge*1.3);
         pts.push(local(.04+Math.sin(r+t)*.05,Math.cos(a)*r,Math.sin(a)*r));
       }
-      for(let n=1;n<pts.length;n++) this.lines.line(pts[n-1],pts[n],hsv(t*.08+k/30,.75,1),.24+charge*.5);
+      for(let n=1;n<pts.length;n++) this.lines.line(pts[n-1],pts[n],final?white:hsv(t*.08+k/30,.75,1),final?.6+charge*.4:.24+charge*.5);
     }
     for(let k=0;k<8;k++) {
       const a=k*Math.PI/4+t*.22,r=half+.2+charge*2.4;
       this.lines.loop([local(0,Math.cos(a)*half,Math.sin(a)*half),local(-charge,Math.cos(a-.17)*r,Math.sin(a-.17)*r),
-        local(-charge,Math.cos(a+.17)*r,Math.sin(a+.17)*r)],hsv(k/8+t*.08,.8,1),.35+.5*charge);
+        local(-charge,Math.cos(a+.17)*r,Math.sin(a+.17)*r)],final?white:hsv(k/8+t*.08,.8,1),final?.65+.35*charge:.35+.5*charge);
     }
   }
   player(g) {

@@ -1,5 +1,6 @@
 import * as T from '../vendor/three.module.min.js';
 import {V,smooth} from './core.mjs';
+import {isEndPortal} from './portal-light.mjs';
 
 export function detailWindow(g,preview=false) {
   const c=g.course,location=c.location(g.player.origin),reveal=c.revealIndex(g.player.origin);
@@ -67,6 +68,8 @@ export class RouteGuide {
     u.opacity.value=preview?settings.preview_opacity*(.28+.72*smooth(g.stateTime/7))*(1-smooth((g.stateTime/7-.8)/.2)):route.route_outline_opacity;
     u.routeFadeAfter.value=route.route_outline_fade_after_legs;u.routeCount.value=route.route_outline_ahead_legs;u.routeFarOpacity.value=route.route_outline_far_opacity;
     u.detailFirst.value=window.first;u.detailLast.value=window.last;
+    const final=isEndPortal(g);this.marker.material.color.setHex(final?0xffffff:0xb5fff0);
+    this.marker.material.size=final?11:7;
     this.marker.visible=true;this.marker.material.opacity=preview?smooth(g.stateTime/2):.8;
   }
   dispose() {

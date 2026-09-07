@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.27.0 — Welcome back
+
+Based on published web v0.26.0 (`bb6a420`).
+
+- Add local browser campaign checkpoints and Continue alongside New run. Restore
+  the level entrance, exact cells and holes, score and run progress. Ask before
+  replacing a saved run; report when browser storage is unavailable.
+- Welcome returning players on white with "Continuing from level X ...", then
+  fade in "Welcome back." Hold briefly and fade out before the level begins.
+  Include pause handling and prevent early input from skipping the sequence.
+- Preserve the LOSS level-entry body on Continue. From the carry into level 45,
+  incomplete bodies perform the existing failed reassembly: missing grey forms
+  shake and drift away, the engine winds down, and the partial-success caption
+  appears. Keep the resumed level's grey colour progression.
+- Save pending bonuses separately from the normal body; bank completed bonus
+  rewards once. Resume a completed level-50 ending without another score award,
+  and clear the completed checkpoint after the statistics-to-menu transition.
+- Make the final portal three times larger, with pure-white lines, an oversized
+  halo and bright core beyond the corridor. Share the existing texture and reuse
+  two sprites. Keep normal portal capture/suction and earlier portal colours.
+- Add test end_portal: start on LEG 50/50 before the final gate, with located camera
+  and the normal ten-second allowance. Actual entry plays the full ending.
+  Retries return to the test gap; award no test records, points or run statistics.
+  Add the saved end_portal visual flag. Debug previews/jumps leave campaign saves
+  intact. No new difficulty controls are added to the public Options tab.
+- Update title fitting for the Continue controls, versioned loading, docs and
+  roadmap. Record the possible full-body Continue reprieve during LOSS as
+  considered, not implemented.
+
+Validation: all 175 automated test groups and static checks pass on Node.js
+18.19.1. Coverage includes checkpoint validation and unavailable storage, bonus
+reward isolation, exact LOSS shapes and assembly, welcome fades and input guards,
+final-portal geometry/glow reuse, and real portal entry into the full ending.
+Real browser/device testing of the new layout and white-portal brightness is
+still needed; automated simulation and render-data checks do not establish it.
+
 ## 0.26.0 — What remains
 
 Based on the web v0.25.1 package.

@@ -1,6 +1,6 @@
 # Cube Libre web progression
 
-Default schedule for web **0.26.0**, continuing from the v0.25.1 package.
+Default schedule for web **0.27.0**, continuing from published v0.26.0 (`bb6a420`).
 [`featuresForSettings()`](../web/js/difficulty.mjs) combines the `BALANCE`
 milestones and [`CHANGES`](../web/js/changes.mjs), sorts by configured level,
 and supplies phase selection, banner text and the Help table. `LEVEL_FEATURES`
@@ -286,3 +286,25 @@ Mobile beta introduces no level-dependent rule changes. `mobile_mode` selects
 extra thumb areas. Both are saved and listed in `viewconfig`. Touch sensitivity
 and drawing resolution have session console settings documented in
 [WEB_PORT.md](../WEB_PORT.md#mobile-touch-beta-web-0240).
+
+## Continue checkpoints and the final white exit (0.27.0)
+
+Continue restores the saved level's entrance, score, run statistics and exact
+level-entry cell IDs. Its white splash says "Continuing from level X ...", then
+fades in "Welcome back." Normal milestone cards follow when applicable.
+From the body carried out of 44 into 45 onward, an incomplete saved body uses
+the partial LOSS assembly and that level's grey colour; returning cannot refill
+pieces missing before the saved level. The more forgiving level-only/full-body
+alternative remains considered in [ROADMAP.md](../ROADMAP.md).
+
+Pending bonuses keep the normal survivor body separate. Completed bonus rewards
+save the next normal checkpoint once. Clearing level 50 saves the ending until
+the player finishes the statistics and returns to the menu; reloading the ending
+does not award its score again. Saves use this browser/device only.
+
+At the final level, `end_portal` (saved visual boolean, default true) makes the
+exit frame three times its normal size, pure white, with an oversized white glow.
+`portal_white_light` controls its halo; physics and the final ending threshold
+are unchanged. `test end_portal` starts on LEG 50/50 before the last gate, with
+normal hazards and ten seconds. It runs through the actual portal into the full
+ending, awards no records or points and cannot overwrite the saved campaign.

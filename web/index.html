@@ -7,7 +7,7 @@
   <meta name="description" content="Cube Libre web version by FlyingFathead. A rotating 3D survival puzzle. Reach the portal with your remaining pieces.">
   <title>Cube Libre · FlyingFathead</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=0.26.0">
+  <link rel="stylesheet" href="./style.css?v=0.27.0">
 </head>
 <body>
   <main id="game" tabindex="-1" aria-label="Cube Libre game">
@@ -15,7 +15,11 @@
     <canvas id="fx" aria-hidden="true"></canvas>
     <div id="boot" role="status"><strong>CUBE LIBRE</strong><p id="boot-text">Loading the cube universe…</p><button id="reload" hidden>Reload</button></div>
     <div id="title" hidden>
-      <button id="start" aria-label="Start a new run"><canvas id="start-dots" aria-hidden="true"></canvas><span class="sr-only">Space / Enter = New run</span></button>
+      <div id="title-actions">
+        <button id="start" aria-label="Start a new run"><canvas id="start-dots" aria-hidden="true"></canvas><span id="start-label" class="sr-only">Start a new run</span></button>
+        <button id="new-run" hidden>New run</button>
+        <p id="save-note"></p>
+      </div>
       <div class="title-info">
         <p class="title-keyboard-tip"><b>A / D</b> move X <span>·</span> <b>W / S</b> move Y <span>·</span> <b>Q / E</b> move Z</p>
         <p class="title-keyboard-tip"><b>Shift</b> rush <span>·</span> <b>C</b> re-couple <span>·</span> <b>H</b> help</p>
@@ -90,30 +94,31 @@
     </dialog>
     <noscript>Cube Libre requires JavaScript and WebGL 2. Enable JavaScript to play.</noscript>
   </main>
-  <script id="release-data" type="application/json">{"name":"Cube Libre","edition":"web","version":"0.26.0","repository":"https://github.com/FlyingFathead/cube-libre","upstream":{"edition":"pygame","version":"0.15.79","repository":"https://github.com/FlyingFathead/cube-libre-pygame","commit":"ecf8f0148713e5606e64624464eecc4545c71047"}}</script>
+  <script id="release-data" type="application/json">{"name":"Cube Libre","edition":"web","version":"0.27.0","repository":"https://github.com/FlyingFathead/cube-libre","upstream":{"edition":"pygame","version":"0.15.79","repository":"https://github.com/FlyingFathead/cube-libre-pygame","commit":"ecf8f0148713e5606e64624464eecc4545c71047"}}</script>
   <script id="release-imports" type="importmap">{
   "imports": {
-    "./js/app.mjs": "./js/app.mjs?v=0.26.0",
-    "./js/audio.mjs": "./js/audio.mjs?v=0.26.0",
-    "./js/bonus.mjs": "./js/bonus.mjs?v=0.26.0",
-    "./js/changes.mjs": "./js/changes.mjs?v=0.26.0",
-    "./js/config.mjs": "./js/config.mjs?v=0.26.0",
-    "./js/console-config.mjs": "./js/console-config.mjs?v=0.26.0",
-    "./js/core.mjs": "./js/core.mjs?v=0.26.0",
-    "./js/difficulty.mjs": "./js/difficulty.mjs?v=0.26.0",
-    "./js/ending.mjs": "./js/ending.mjs?v=0.26.0",
-    "./js/gamepad.mjs": "./js/gamepad.mjs?v=0.26.0",
-    "./js/help-tabs.mjs": "./js/help-tabs.mjs?v=0.26.0",
-    "./js/loss.mjs": "./js/loss.mjs?v=0.26.0",
-    "./js/mobile.mjs": "./js/mobile.mjs?v=0.26.0",
-    "./js/orientation.mjs": "./js/orientation.mjs?v=0.26.0",
-    "./js/portal-light.mjs": "./js/portal-light.mjs?v=0.26.0",
-    "./js/render.mjs": "./js/render.mjs?v=0.26.0",
-    "./js/space-view.mjs": "./js/space-view.mjs?v=0.26.0",
-    "./js/title-layout.mjs": "./js/title-layout.mjs?v=0.26.0",
-    "./js/updates.mjs": "./js/updates.mjs?v=0.26.0",
-    "./vendor/three.core.min.js": "./vendor/three.core.min.js?v=0.26.0",
-    "./vendor/three.module.min.js": "./vendor/three.module.min.js?v=0.26.0"
+    "./js/app.mjs": "./js/app.mjs?v=0.27.0",
+    "./js/audio.mjs": "./js/audio.mjs?v=0.27.0",
+    "./js/bonus.mjs": "./js/bonus.mjs?v=0.27.0",
+    "./js/changes.mjs": "./js/changes.mjs?v=0.27.0",
+    "./js/config.mjs": "./js/config.mjs?v=0.27.0",
+    "./js/console-config.mjs": "./js/console-config.mjs?v=0.27.0",
+    "./js/core.mjs": "./js/core.mjs?v=0.27.0",
+    "./js/difficulty.mjs": "./js/difficulty.mjs?v=0.27.0",
+    "./js/ending.mjs": "./js/ending.mjs?v=0.27.0",
+    "./js/gamepad.mjs": "./js/gamepad.mjs?v=0.27.0",
+    "./js/help-tabs.mjs": "./js/help-tabs.mjs?v=0.27.0",
+    "./js/loss.mjs": "./js/loss.mjs?v=0.27.0",
+    "./js/mobile.mjs": "./js/mobile.mjs?v=0.27.0",
+    "./js/orientation.mjs": "./js/orientation.mjs?v=0.27.0",
+    "./js/portal-light.mjs": "./js/portal-light.mjs?v=0.27.0",
+    "./js/render.mjs": "./js/render.mjs?v=0.27.0",
+    "./js/save-game.mjs": "./js/save-game.mjs?v=0.27.0",
+    "./js/space-view.mjs": "./js/space-view.mjs?v=0.27.0",
+    "./js/title-layout.mjs": "./js/title-layout.mjs?v=0.27.0",
+    "./js/updates.mjs": "./js/updates.mjs?v=0.27.0",
+    "./vendor/three.core.min.js": "./vendor/three.core.min.js?v=0.27.0",
+    "./vendor/three.module.min.js": "./vendor/three.module.min.js?v=0.27.0"
   }
 }</script>
   <script>

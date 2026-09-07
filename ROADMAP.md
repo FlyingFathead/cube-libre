@@ -71,6 +71,30 @@ consideration stage at the author's request.
 Late-game balance and the emotional timing need human playtesting. The jail-node
 return mechanic above remains considered, **not implemented**.
 
+## Returning players: strict LOSS or a merciful fresh body?
+
+**Status: alternative considered, not implemented.** The v0.27.0 Continue
+feature saves the exact level-entry body, including its missing pieces, score
+and run progress. Returning during LOSS currently follows the same rules as
+retrying that level; closing the browser does not refill the body to 125.
+
+The author also sees value in a more forgiving alternative: save the reached
+level but let a returning player rebuild a full body. This would offer a brief
+respite during the nerve-wracking final levels. Deliberately revisiting the game
+could then bypass permanent loss, so the same behavior can be read as either
+an exploit or an intentional act of mercy.
+
+Consider after playtesting:
+
+- Keep exact-body Continue as the default, or intentionally allow the reprieve?
+- If offered separately, should it be an explicit mercy option or a different run mode?
+- How should the game explain its effect on LOSS and any score comparisons?
+- Would that breathing room help people finish without weakening the meaning of
+  the incomplete reassembly and the ending?
+
+No full-body Continue override or public difficulty checkbox is included now.
+The earlier jail-node rescue proposal is also still unimplemented.
+
 ## Playtest evidence and remaining questions
 
 - The author reports playable Android touch controls up to about level 6.

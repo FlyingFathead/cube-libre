@@ -1,3 +1,4 @@
+import {CheckpointStore,RESUME_TIMING} from './save-game.mjs';
 import {MobileControls,detectMobile,MOBILE_NOTICE,createTouchHelp,createMobileOptions} from './mobile.mjs';
 import {createHelpTabs,createVisualOptions} from './help-tabs.mjs';
 import {GamepadInput,emptyMovement,mergeMovement,navigateControllerMenu} from './gamepad.mjs';
@@ -30,7 +31,8 @@ async function main() {
   const raw=read('cube-libre-scores-v1',{}),stats={
     best_escape:clamp(Math.trunc(Number(raw?.best_escape)||0),0,125),highest_level:clamp(Math.trunc(Number(raw?.highest_level)||1),1,1000000),
     best_score:clamp(Math.trunc(Number(raw?.best_score)||0),0,Number.MAX_SAFE_INTEGER)};
-  const game=new Game({stats,save:s=>write('cube-libre-scores-v1',s)});
+  const campaignStore=new CheckpointStore(()=>localStorage);
+  const game=new Game({stats,save:s=>write('cube-libre-scores-v1',s),saveCheckpoint:data=>campaignStore.save(data)});
   game.flags.shake=read('cube-libre-shake-v1',game.flags.shake)!==false;
   game.flags.spin=read('cube-libre-spin-v1',game.flags.spin)!==false;
   game.flags.portal_white_light=read('cube-libre-portal-white-light-v1',game.flags.portal_white_light)!==false;
@@ -41,7 +43,7 @@ async function main() {
   game.flags.change_1=read('cube-libre-change-1-v1',game.flags.change_1)!==false;
   game.flags.change_1_random_per_leg=read('cube-libre-change-1-random-per-leg-v1',game.flags.change_1_random_per_leg)!==false;
   game.flags.change_1_no_repeat_leg=read('cube-libre-change-1-no-repeat-leg-v1',game.flags.change_1_no_repeat_leg)!==false;
-  for(const key of ['change_2','change_3','change_4','change_4_pattern','loss','loss_grey','route_outline'])game.flags[key]=read(`cube-libre-${key.replaceAll('_','-')}-v1`,game.flags[key])!==false;
+  for(const key of ['change_2','change_3','change_4','change_4_pattern','loss','loss_grey','route_outline','end_portal'])game.flags[key]=read(`cube-libre-${key.replaceAll('_','-')}-v1`,game.flags[key])!==false;
   game.flags.preview_outline=read('cube-libre-preview-outline-v1',game.flags.preview_outline)!==false;
   const savedStarPattern=read('cube-libre-star-pattern-v1',game.starPattern);
   if(Number.isInteger(savedStarPattern)&&savedStarPattern>=0&&savedStarPattern<=2)game.starPattern=savedStarPattern;
@@ -80,7 +82,18 @@ async function main() {
       try {await audio.unlock();if(audio.failed.length)audioWarning=`${audio.failed.length} sound(s) unavailable; play continues.`;}
       catch {audioWarning='Audio unavailable. The game will play silently.';audio.mute(true);}
     }
-    loadingStart=false;$('start').disabled=false;audioProgress='';clearInput();game.newRun();focusGame();syncAudio();
+    loadingStart=false;$('start').disabled=false;audioProgress='';clearInput();
+    if(options.resume===true)game.resumeCheckpoint(campaignStore.value);else game.newRun();
+    focusGame();syncAudio();
+  }
+  function startOrContinue(options={}) {
+    return start({...options,resume:!!campaignStore.value});
+  }
+  function requestNewRun() {
+    if(!campaignStore.value){void start();return;}
+    modal('new-run','START A NEW RUN?',`Your saved journey at level ${campaignStore.value.level} will be replaced.`,[
+      ['Keep saved run',closeModal],['Start new run',()=>{closeModal();void start();}]
+    ]);
   }
   function unlockControllerAudio() {
     if(!controllerAudioPending)return;
@@ -159,7 +172,7 @@ async function main() {
       ['Touch loose pieces','Collect and rebuild automatically'],['Space / Enter','Continue after the result'],
       ['P / H','Pause / help'],['M','Mute / unmute'],['Esc','Main menu'],['` / Ctrl+Shift+F1','Debug console']
     ]:[
-      ['Space / Enter','New run / next level'],['A / D or ← / →','Move along world X'],['W / S or ↑ / ↓','Move along world Y'],
+      ['Space / Enter','Continue saved run / new run / next level'],['A / D or ← / →','Move along world X'],['W / S or ↑ / ↓','Move along world Y'],
       ['Q / E','Move along world Z (Q = +Z)'],['Ctrl + A / D','Alternate Z movement'],['Shift','Rush (2.6× speed)'],
       ['C','Re-couple: 5 requests per 10 seconds; loose cubes expire after 8 seconds'],['P / H','Pause / help'],['L',`Locate camera; auto-location ${game.autoLocateMinLevel===0?'active from the start':`from level ${game.autoLocateMinLevel}`}`],
       ['M','Mute / unmute'],['Alt+F / Alt+Enter / F11','Fullscreen (or use the button)'],['Esc','Main menu confirmation'],
@@ -242,7 +255,7 @@ async function main() {
     if(['clear','cls'].includes(value.toLowerCase())) {log.length=0;$('console-log').textContent='';return;}
     consoleLog(`> ${value}`);
     try {
-      const previousStages=Object.fromEntries(['change_2','change_3','change_4','change_4_pattern','loss','loss_grey','route_outline'].map(key=>[key,game.flags[key]]));
+      const previousStages=Object.fromEntries(['change_2','change_3','change_4','change_4_pattern','loss','loss_grey','route_outline','end_portal'].map(key=>[key,game.flags[key]]));
       const previousShake=game.flags.shake,previousSpin=game.flags.spin,previousLight=game.flags.portal_white_light,previousCulling=game.flags.culling,previousShocks=game.flags.rotation_shocks,previousGravity=game.flags.microgravity,previousHeatLock=game.flags.overheat_blocks_recoupling,previousChange=game.flags.change_1,previousRandom=game.flags.change_1_random_per_leg,previousStars=game.starPattern,previousPreview=game.flags.preview_outline,previousNoRepeat=game.flags.change_1_no_repeat_leg;
       consoleLog(game.command(value));
       if(game.flags.shake!==previousShake)write('cube-libre-shake-v1',game.flags.shake);
@@ -258,7 +271,7 @@ async function main() {
       if(game.starPattern!==previousStars)write('cube-libre-star-pattern-v1',game.starPattern);
       if(game.flags.change_1_no_repeat_leg!==previousNoRepeat)write('cube-libre-change-1-no-repeat-leg-v1',game.flags.change_1_no_repeat_leg);
       for(const [key,previous] of Object.entries(previousStages))if(game.flags[key]!==previous)write(`cube-libre-${key.replaceAll('_','-')}-v1`,game.flags[key]);
-      if(/^(thank_you_note|view_end_anim_v1|view_bonus_001|test\s+(ending_1|bonus_round_1|change_\d+|loss|thank_you_note)|bonus(?:\s+\S+)?)$/i.test(value)) { closeConsole();game.paused=false;game.help=false;syncAudio();focusGame();if(!audio.muted)audio.unlock().then(syncAudio,()=>{});return; }
+      if(/^(thank_you_note|view_end_anim_v1|view_bonus_001|test\s+(end_portal|ending_1|bonus_round_1|change_\d+|loss|thank_you_note)|bonus(?:\s+\S+)?)$/i.test(value)) { closeConsole();game.paused=false;game.help=false;syncAudio();focusGame();if(!audio.muted)audio.unlock().then(syncAudio,()=>{});return; }
     }catch(err){consoleLog(`ERROR: ${err.message}`);}
     // Commands that change state must still respect the open console's pause.
     game.paused=true;syncAudio();
@@ -271,7 +284,7 @@ async function main() {
   $('console-close').onclick=closeConsole;
   $('console').addEventListener('cancel',e=>{e.preventDefault();closeConsole();});
   $('modal').addEventListener('cancel',e=>{e.preventDefault();closeModal();});
-  $('start').onclick=start;$('next').onclick=()=>{clearInput();if(game.state==='ended')start();else game.continue();};
+  $('start').onclick=()=>startOrContinue();$('new-run').onclick=requestNewRun;$('next').onclick=()=>{clearInput();if(game.state==='ended')start();else game.continue();};
   $('settings').onclick=()=>help('options');
   $('pause').onclick=pause;$('help').onclick=help;$('mute').onclick=mute;$('fullscreen').onclick=fullscreen;$('menu').onclick=menu;
   $('locate').onclick=()=>{game.locate=!game.locate;game.messageSet(`LOCATE ${game.locate?'ON':'OFF'}${game.autoLocate?' · AUTO TRACKING ACTIVE':''}`);};
@@ -298,7 +311,7 @@ async function main() {
     if(e.repeat)return;
     if(['Space','Enter'].includes(code)) {
       if(e.target instanceof HTMLButtonElement) return;
-      e.preventDefault();if(game.state==='title')start();else if(game.state==='ended'){game.title();start();}else {clearInput();game.continue();}
+      e.preventDefault();if(game.state==='title')startOrContinue();else if(game.state==='ended'){game.title();start();}else {clearInput();game.continue();}
     } else if(code==='KeyC') {e.preventDefault();game.requestRecouple();}
     else if(code==='KeyP')pause();else if(code==='KeyH')help();else if(code==='KeyM')mute();
     else if(code==='KeyL')$('locate').click();else if(code==='Escape'){e.preventDefault();menu();}
@@ -312,7 +325,7 @@ async function main() {
     clearInput();game.continue();focusGame();syncAudio();
   });
   $('scene').addEventListener('webglcontextlost',e=>{e.preventDefault();game.paused=true;syncAudio();cancelAnimationFrame(raf);fail(Error('The graphics context was lost. Reload to restart'));});
-  const titleLayout=observeTitleLayout(renderer,{canvas:$('scene'),start:$('start'),info:document.querySelector('.title-info'),title:$('title')});
+  const titleLayout=observeTitleLayout(renderer,{canvas:$('scene'),start:$('title-actions'),info:document.querySelector('.title-info'),title:$('title')});
   let portrait=renderer.height>=renderer.width;
   window.addEventListener('resize',()=>{
     renderer.resize();mobile.resize();titleLayout.invalidate();
@@ -351,7 +364,7 @@ async function main() {
       if(action.back){menu();return;}
       if(game.state==='title') {
         const focused=document.activeElement;
-        if(action.confirm&&(focused===$('start')||!focused?.matches('button, a[href], input'))){void start({controller:true});return;}
+        if(action.confirm&&(focused===$('start')||!focused?.matches('button, a[href], input'))){void startOrContinue({controller:true});return;}
         navigateControllerMenu($('game'),frame,document,dt);return;
       }
       if(action.confirm) {
@@ -426,6 +439,7 @@ async function main() {
         ['Cubes at the final portal',`${r.finalCubes} / 125`],['Best escape',`${r.bestEscape} / 125`],
         ['Time in play',duration],['Deaths / reassemblies',r.deaths],['Pieces re-coupled',r.recoupledCubes],
         ['Bonus rounds played',r.bonusRounds],['Bonus pieces banked',r.bonusPieces],['Bonus points',r.bonusScore.toLocaleString()]];
+      if(r.endPortalPreview)rows.unshift(['Preview','END PORTAL · no points or records awarded']);
       $('summary-values').replaceChildren(...rows.flatMap(([label,value])=>{
         const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=String(value);return [dt,dd];
       }));
@@ -465,7 +479,12 @@ async function main() {
       const connected=controller.enabled&&controller.connected;
       const status=controller.status==='disabled'?'Controller input disabled · H for Help':controller.status==='unavailable'?'Controller input unavailable in this browser':controller.status==='unmapped'?'Controller detected; Xbox-style button mapping unavailable. Try reconnecting by USB.':connected?'CONTROLLER: A start · LB / X re-couple · RB rush · View help':'Keyboard or controller · Press and release a controller button to connect';
       if($('controller-status').textContent!==status)$('controller-status').textContent=status;
-      dots(loadingStart?'LOADING AUDIO - PLEASE WAIT':mobile.enabled?'TAP = NEW RUN':connected?'A / SPACE / ENTER = NEW RUN':'SPACE / ENTER = NEW RUN',game.t);
+      const resume=!!campaignStore.value,action=resume?'CONTINUE':'NEW RUN';
+      const label=resume?`Continue from level ${campaignStore.value.level}`:'Start a new run';
+      $('start').setAttribute('aria-label',label);$('start-label').textContent=label;
+      $('new-run').hidden=!resume;$('new-run').disabled=loadingStart;
+      $('save-note').textContent=campaignStore.note;
+      dots(loadingStart?'LOADING AUDIO - PLEASE WAIT':`${mobile.enabled?'TAP':connected?'A / SPACE / ENTER':'SPACE / ENTER'} = ${action}`,game.t);
       $('title-stats').textContent=`Score ${game.score} · Best escape ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${BALANCE.levelCap}`;
     }
     const phase=s.endsWith('_intro')&&!opening&&!bonusIntro,ready=s==='level_ready',result=s==='result_overlay',rebuild=['reassembly','loss_assembly'].includes(s),ended=s==='ended';
@@ -487,6 +506,12 @@ async function main() {
       $('card-detail').textContent=game.bonusPreview?`TEST ROUND · ${escaped?b.potentialScore:0} POINTS (NOT AWARDED)\nNEXT: LEVEL ${game.previewReturn.nextLevel}`:`BONUS +${escaped?b.potentialScore:0} · TOTAL ${game.score}\n${escaped?'YOU KEPT WHAT YOU COULD.':'YOUR JOURNEY CONTINUES.'}`;
       $('next').textContent=game.bonusPreview?`A / Space / Enter / click for level ${game.previewReturn.nextLevel}`:'A / Space / Enter / click for the next level';
       $('next').hidden=game.stateTime<.4;
+    } else if(s==='resume_intro') {
+      const t=game.stateTime;
+      $('card-title').textContent=`Continuing from level ${game.level} ...`;
+      $('card-subtitle').textContent='Welcome back.';$('card-detail').textContent='';
+      $('card').style.opacity=String(smooth(t/RESUME_TIMING.lineFade)*(1-smooth((t-RESUME_TIMING.fadeOutStarts)/RESUME_TIMING.fadeOutSeconds)));
+      $('card-subtitle').style.opacity=String(smooth((t-RESUME_TIMING.welcomeStarts)/RESUME_TIMING.welcomeFade));
     } else if(phase) {
       const card=introductionCard(s,game.level,game.flags,game.changeSettings,game.lossMinLevel);
       $('card-title').textContent=card.title;$('card-subtitle').textContent=card.subtitle;$('card-detail').textContent=card.detail;
@@ -527,7 +552,7 @@ async function main() {
     $('timer').textContent=`${clock.toFixed(1)}s\n${bonus?'BONUS':`LEG ${game.timedModule+1}/${game.course.modules.length}`}`;
     const timeUrgency=1-clamp(clock/10);
     $('timer').style.color=`hsl(${48*(1-timeUrgency)}, 100%, ${85-30*timeUrgency}%)`;
-    $('notice').textContent=playing&&game.messageTime>0?game.message:preview?'COURSE MATERIALIZING':'';
+    $('notice').textContent=playing?(game.messageTime>0?game.message:game.endPortalPreview?'END PORTAL TEST · no records or points awarded':''):preview?'COURSE MATERIALIZING':'';
     const fragments=game.player.fragments,remaining=fragments.length?Math.min(...fragments.map(f=>8-f.age)):0;
     const recovering=game.recoupling.length>0;
     $('recovery').hidden=!(playing&&(fragments.length||recovering||game.cooldown>0));

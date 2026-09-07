@@ -1,5 +1,10 @@
 import * as T from '../vendor/three.module.min.js';
-import {C,V,smooth} from './core.mjs';
+import {BALANCE,C,V,smooth} from './core.mjs';
+import {END_PORTAL} from './config.mjs';
+
+export function isEndPortal(g) {
+  return g.flags.end_portal&&g.level===BALANCE.levelCap&&!g.state.startsWith('bonus_');
+}
 
 export function portalWhiteLightPose(g) {
   if(!g.flags.portal_white_light)return null;
@@ -10,6 +15,14 @@ export function portalWhiteLightPose(g) {
   } else if(['playing','course_materialize','reassembly_flash','portal_warp'].includes(g.state)) {
     position=g.course.portal.world(20);distance=g.player.origin.sub(position).length();width=C.PORTAL_SIZE*2;
   } else return null;
+  if(isEndPortal(g)) {
+    // A broad steady halo is already visible on approach, with a brilliant core.
+    // Both use the existing small texture; no bloom pass or additional lights.
+    const approach=smooth(1-distance/END_PORTAL.glowDistance);
+    if(!approach)return null;
+    const strength=smooth(approach/.2)*(.55+.45*approach);
+    return {position,strength,size:END_PORTAL.haloSize*(.85+.15*approach),coreSize:END_PORTAL.coreSize};
+  }
   const strength=smooth(1-distance/22);
   return strength>0?{position,strength,size:width*(.65+.5*strength)}:null;
 }
@@ -36,10 +49,18 @@ export function createPortalWhiteLight(parent) {
 export function updatePortalWhiteLight(renderer,g) {
   const pose=portalWhiteLightPose(g);
   if(pose&&!renderer.portalWhiteLight)renderer.portalWhiteLight=createPortalWhiteLight(renderer.world);
+  if(pose?.coreSize&&!renderer.endPortalCore)renderer.endPortalCore=createPortalWhiteLight(renderer.world);
+  if(renderer.endPortalCore) {
+    const core=renderer.endPortalCore;core.visible=!!pose?.coreSize;
+    if(core.visible) {
+      core.position.set(...pose.position.array());core.scale.set(pose.coreSize,pose.coreSize,1);
+      core.material.opacity=pose.strength;
+    }
+  }
   const light=renderer.portalWhiteLight;if(!light)return;
   light.visible=!!pose;
   if(pose) {
     light.position.set(...pose.position.array());light.scale.set(pose.size,pose.size,1);
-    light.material.opacity=pose.strength*.85;
+    light.material.opacity=pose.strength*(pose.coreSize?1:.85);
   }
 }

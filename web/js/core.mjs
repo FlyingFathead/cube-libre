@@ -1,11 +1,12 @@
 // Cube Libre: browser-independent simulation, ported from cube_libre_pygame.py.
 // Rendering, audio, persistence and input are injected by the browser adapter.
-import { C,VISUAL_EFFECTS,PLAYER_ROTATION,PLAYER_PROPULSION,CAMERA_RULES,PREVIEW_NUMBERS,ROUTE_OUTLINE_NUMBERS } from './config.mjs';
+import {C,END_PORTAL,VISUAL_EFFECTS,PLAYER_ROTATION,PLAYER_PROPULSION,CAMERA_RULES,PREVIEW_NUMBERS,ROUTE_OUTLINE_NUMBERS } from './config.mjs';
 import {BONUS_SCHEDULE,createBonus,scheduledBonus,recoveredShape,rotateQ} from './bonus.mjs';
 import { BALANCE,difficultyForLevel,introductionsForLevel,recouplingHeatBlocked,lossLevelReached } from './difficulty.mjs';
 import {CHANGES,CHANGE_NUMBERS,createChangeSettings,setChangeNumber,Shutters,shutterEnabled,shutterLoss} from './changes.mjs';
 import {CONFIG_COMMANDS,describeConsoleConfig} from './console-config.mjs';
 import {LOSS_ASSEMBLY} from './loss.mjs';
+import {validateCheckpoint,RESUME_TIMING} from './save-game.mjs';
 export { BALANCE } from './difficulty.mjs';
 export { C };
 export const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
@@ -318,9 +319,10 @@ export function beginRecouple(player,level) {
 }
 
 export class Game {
-  constructor({rng=Math.random,stats={},save=()=>{}}={}) {
+  constructor({rng=Math.random,stats={},save=()=>{},saveCheckpoint=()=>{}}={}) {
+    this.saveCheckpoint=saveCheckpoint;this.campaignSaving=false;this.pendingResume=null;
     this.rng=rng; this.save=save; this.stats={best_escape:0,highest_level:1,best_score:0,...stats};
-    this.flags={...C.DEBUG_FLAGS,shake:VISUAL_EFFECTS.shakingEnabled,spin:PLAYER_ROTATION.enabled,portal_white_light:VISUAL_EFFECTS.portalWhiteLight,culling:VISUAL_EFFECTS.courseCulling,preview_outline:VISUAL_EFFECTS.previewOutline,rotation_shocks:VISUAL_EFFECTS.rotationShocks,microgravity:PLAYER_PROPULSION.enabled,overheat_blocks_recoupling:BALANCE.overheatBlocksRecoupling}; this.player=new Player(rng); this.t=0; this.angles=[0,0,0];
+    this.flags={...C.DEBUG_FLAGS,shake:VISUAL_EFFECTS.shakingEnabled,spin:PLAYER_ROTATION.enabled,portal_white_light:VISUAL_EFFECTS.portalWhiteLight,end_portal:END_PORTAL.enabled,culling:VISUAL_EFFECTS.courseCulling,preview_outline:VISUAL_EFFECTS.previewOutline,rotation_shocks:VISUAL_EFFECTS.rotationShocks,microgravity:PLAYER_PROPULSION.enabled,overheat_blocks_recoupling:BALANCE.overheatBlocksRecoupling}; this.player=new Player(rng); this.t=0; this.angles=[0,0,0];
     for(const [id,change] of Object.entries(CHANGES))this.flags[id]=change.enabled;this.flags.change_4_pattern=true;this.flags.change_1_random_per_leg=CHANGES.change_1.randomPerLeg;this.flags.change_1_no_repeat_leg=CHANGES.change_1.noRepeatLeg;
     this.changeSettings=createChangeSettings();
     this.flags.loss=BALANCE.lossEnabled;this.lossMinLevel=BALANCE.lossMinLevel;
@@ -331,7 +333,7 @@ export class Game {
     this.autoLocateMinLevel=CAMERA_RULES.autoLocateMinLevel;
     this.previewSettings=Object.fromEntries(Object.entries(PREVIEW_NUMBERS).map(([k,r])=>[k,r.value]));
     this.starPattern=VISUAL_EFFECTS.starPattern;
-    this.level=1; this.score=0; this.locate=false; this.paused=false; this.help=false; this.events=[]; this.pendingIntroductions=[];
+    this.endPortalPreview=false;this.level=1; this.score=0; this.locate=false; this.paused=false; this.help=false; this.events=[]; this.pendingIntroductions=[];
     this.consoleSettings={};this.consoleNumbers={}; // Browser-owned controls join the same command interface.
     this.runStats={playSeconds:0,deaths:0,recoupledCubes:0,levelsCleared:0,bonusRounds:0,bonusPieces:0,bonusScore:0}; this.runSummary=null;
     this.bonusesPlayedAfter=new Set();this.bonus=null;this.previewReturn=null;
@@ -339,10 +341,45 @@ export class Game {
   }
   emit(name,pos,semitones) { this.events.push({name,pos,...(semitones===undefined?{}:{semitones})}); }
   persist() { this.save({...this.stats}); }
+  checkpoint({level=this.level,survivors=this.entryCells,stage='level'}={}) {
+    if(!this.campaignSaving||this.endPortalPreview)return;
+    const data=validateCheckpoint({schema:1,stage,level,cells:[...survivors],score:this.score,
+      completedLevel:this.completedLevel||0,lastEscape:this.lastEscape||0,
+      bonusesPlayedAfter:[...this.bonusesPlayedAfter],runStats:{...this.runStats}});
+    if(data)this.saveCheckpoint(data);
+  }
+  checkpointNextLevel() {
+    const stage=this.level>=BALANCE.levelCap?'ending':scheduledBonus(this.level,BALANCE.levelCap)&&!this.bonusesPlayedAfter.has(this.level)?'bonus':'level';
+    this.checkpoint({level:Math.min(BALANCE.levelCap,this.level+1),stage,
+      survivors:stage==='ending'?[...this.player.alive]:this.portalCarry?.cells||cells.map((_,i)=>i)});
+  }
+  resumeCheckpoint(data) {
+    const saved=validateCheckpoint(data);if(!saved)return false;
+    this.campaignSaving=false;this.endPortalPreview=false;this.pendingResume=saved;
+    this.level=saved.level;this.help=false;this.paused=false;this.emit('stop');this.setState('resume_intro');return true;
+  }
+  restoreCheckpoint() {
+    const saved=this.pendingResume;if(!saved)return;this.pendingResume=null;
+    this.score=saved.score;this.runStats={...saved.runStats};this.runSummary=null;
+    this.completedLevel=saved.completedLevel;this.lastEscape=saved.lastEscape;
+    this.bonusesPlayedAfter=new Set(saved.bonusesPlayedAfter);
+    this.ready(saved.stage==='bonus'?saved.level-1:saved.level,{survivors:saved.cells});
+    this.campaignSaving=true;
+    if(saved.stage==='bonus') {
+      const type=scheduledBonus(this.level,BALANCE.levelCap);
+      if(type) {
+        this.portalCarry={fromLevel:this.level,cells:Object.freeze([...saved.cells])};
+        this.bonusesPlayedAfter.add(this.level);this.startBonus(type);return;
+      }
+      // A changed bonus schedule must still preserve the normal survivor body.
+      this.introduceLevel(saved.level,{survivors:saved.cells});
+    } else if(saved.stage==='ending')this.beginAscension();
+    else this.introduceLevel(saved.level,{survivors:saved.cells});
+  }
   messageSet(text,time=1.6) { this.message=text; this.messageTime=time; }
   setState(s) { this.state=s; this.stateTime=0; }
   get difficulty() { return difficultyForLevel(this.level); }
-  get autoLocate() { return this.autoLocateMinLevel===0||this.level>=this.autoLocateMinLevel; }
+  get autoLocate() { return this.endPortalPreview||this.autoLocateMinLevel===0||this.level>=this.autoLocateMinLevel; }
   get lossActive() { return this.flags.loss&&lossLevelReached(this.level,this.lossMinLevel); }
   get recouplingBlockedByHeat() { return recouplingHeatBlocked(this.level,this.heat>0,this.flags.overheat_blocks_recoupling); }
   resetLegClock() {
@@ -358,28 +395,42 @@ export class Game {
     this.recoupling=[]; this.recoupleTime=0; this.requests=[]; this.cooldown=0;
     this.particles=[]; this.impacts=[]; this.shake=0; this.outside=false;
     this.rotationShock={angle:new V(),velocity:new V(),hits:0};
+    if(this.endPortalPreview) {
+      // A safe gap before the last gate: enough room to see and approach the exit.
+      this.player.origin=this.course.portal.world(10.8);
+      this.timedModule=this.course.portal.index;
+      for(const m of this.course.modules) {
+        this.course.revealed.set(m.index,this.t-10);
+        if(m!==this.course.portal)this.course.collapsed.set(m.index,this.t-10);
+      }
+      this.resetLegClock();
+    }
   }
-  ready(level,{survivors=null}={}) {
+  ready(level,{survivors=null,endPortalPreview=false}={}) {
+    this.endPortalPreview=endPortalPreview;
     this.entryCells=Object.freeze(survivors?[...survivors]:cells.map((_,i)=>i));
     const present=new Set(this.entryCells);this.missingEntryCells=Object.freeze(cells.map((_,i)=>i).filter(i=>!present.has(i)));
     this.portalCarry=null;this.pendingLevelCells=null;
     this.bonus=null;this.previewReturn=null;
     this.pendingIntroductions=[];
     this.level=clamp(Math.trunc(level),1,BALANCE.levelCap); this.paused=false; this.openingTransition=false; this.resetAttempt();
-    this.stats.highest_level=Math.max(this.stats.highest_level,this.level); this.persist();
-    this.setState('level_ready');
+    if(!this.endPortalPreview) {this.stats.highest_level=Math.max(this.stats.highest_level,this.level); this.persist();}
+    this.setState('level_ready');this.checkpoint();
   }
   retry() {
+    if(this.pendingResume){this.restoreCheckpoint();return;}
     const introducing=this.state.endsWith('_intro')&&!['opening_intro','bonus_intro'].includes(this.state);
+    if(this.endPortalPreview) {this.startEndPortalPreview();return;}
     this.ready(this.level,{survivors:introducing?this.pendingLevelCells:this.entryCells});
   }
   newRun() {
+    this.campaignSaving=true;this.pendingResume=null;
     this.score=0; this.completedLevel=0; this.lastEscape=0; this.help=false;
     this.runStats={playSeconds:0,deaths:0,recoupledCubes:0,levelsCleared:0,bonusRounds:0,bonusPieces:0,bonusScore:0}; this.runSummary=null;
     this.bonusesPlayedAfter=new Set();this.bonus=null;this.previewReturn=null;
     this.ready(1); this.setState('opening_intro');
   }
-  title() { this.bonus=null;this.previewReturn=null;this.portalCarry=null;this.pendingLevelCells=null;this.paused=false; this.help=false; this.pendingIntroductions=[]; this.setState('title'); this.recoupling=[]; this.emit('stop'); }
+  title() { this.campaignSaving=false;this.pendingResume=null;this.endPortalPreview=false;this.bonus=null;this.previewReturn=null;this.portalCarry=null;this.pendingLevelCells=null;this.paused=false; this.help=false; this.pendingIntroductions=[]; this.setState('title'); this.recoupling=[]; this.emit('stop'); }
   advance() {
     const target=Math.max(this.level+1,(this.completedLevel||0)+1,2);
     if(target>BALANCE.levelCap) { this.beginAscension(); return; }
@@ -390,6 +441,7 @@ export class Game {
     this.introduceLevel(target,{survivors:this.portalCarry?.fromLevel===target-1?this.portalCarry.cells:null});
   }
   introduceLevel(target,{survivors=null}={}) {
+    this.checkpoint({level:target,survivors:survivors||cells.map((_,i)=>i)});
     this.portalCarry=null;this.pendingLevelCells=survivors?[...survivors]:null;
     const phases=introductionsForLevel(target,this.flags.route3d,this.changeSettings,this.flags,this.lossMinLevel);
     if(phases.length) {
@@ -408,10 +460,13 @@ export class Game {
       else {this.bonus=null;this.advance();}
     }
     else if(this.state==='thank_you_note'&&this.stateTime>=THANK_YOU_TIMING.continueAfter) this.setState('run_summary');
-    else if(this.state==='run_summary'&&this.stateTime>=ASCENSION_TIMING.summaryInputDelay) this.title();
+    else if(this.state==='run_summary'&&this.stateTime>=ASCENSION_TIMING.summaryInputDelay) {
+      if(this.campaignSaving)this.saveCheckpoint(null);this.title();
+    }
   }
   startBonus(id,{preview=false}={}) {
     const bonus=createBonus(id,{rng:this.rng}); // Validate before changing the current run.
+    if(preview){this.campaignSaving=false;this.pendingResume=null;}
     if(preview&&!this.previewReturn) {
       const noActiveLevel=['title','quit_confirm','ended','ascension','ascension_white','ascension_title','thank_you_note','run_summary'].includes(this.state);
       const hasCurrentLevel=Number.isInteger(this.level)&&this.level>=1;
@@ -438,6 +493,7 @@ export class Game {
             this.stats.best_score=Math.max(this.stats.best_score,this.score);this.persist();
           }
         }
+        if(!this.bonusPreview)this.checkpointNextLevel();
         if(b.result==='timeout')this.explodeBonus();
         this.setState('bonus_escape');this.emit(b.result==='escaped'?'portal':'time_buzzer');
       }
@@ -623,25 +679,30 @@ export class Game {
     });
   }
   die() {
-    this.runStats.deaths++;
+    if(!this.endPortalPreview)this.runStats.deaths++;
     this.recoupling=[]; this.makeReassembly(); this.setState('death_dissolve'); this.damageTimer=999;
     this.emit('death'); this.messageSet('CUBICALLY DECOMMISSIONED',1.1);
   }
   win() {
     if(this.state!=='playing') return;
+    if(this.endPortalPreview) {
+      this.recoupling=[];this.beginAscension(true);this.emit('portal');return;
+    }
     this.recoupling=[]; this.completedLevel=this.level; this.lastEscape=this.player.alive.size;
     this.portalCarry=this.lossActive?{fromLevel:this.level,cells:Object.freeze([...this.player.alive])}:null;
     this.runStats.levelsCleared++;
     this.stats.best_escape=Math.max(this.stats.best_escape,this.lastEscape);
     this.score+=this.lastEscape*100; this.stats.best_score=Math.max(this.stats.best_score,this.score); this.persist();
+    this.checkpointNextLevel();
     if(this.level>=BALANCE.levelCap) this.beginAscension(); else this.setState('portal_warp');
     this.emit('portal');
   }
   beginAscension(preview=false) {
+    if(preview){this.campaignSaving=false;this.pendingResume=null;}
     if(!preview&&['ascension','ascension_white','ascension_title','thank_you_note','run_summary'].includes(this.state)) return;
     this.pendingIntroductions=[];
-    this.runSummary=Object.freeze({...this.runStats,score:this.score,finalLevel:this.completedLevel||this.level,
-      finalCubes:this.lastEscape||0,bestScore:this.stats.best_score,bestEscape:this.stats.best_escape});
+    this.runSummary=Object.freeze({...this.runStats,endPortalPreview:this.endPortalPreview,score:this.score,finalLevel:this.endPortalPreview?this.level:this.completedLevel||this.level,
+      finalCubes:this.endPortalPreview?this.player.alive.size:this.lastEscape||0,bestScore:this.stats.best_score,bestEscape:this.stats.best_escape});
     this.setState('ascension');
   }
   tick(dt,input={}) {
@@ -661,6 +722,8 @@ export class Game {
     for(const p of this.impacts) p.age+=dt;
     this.impacts=this.impacts.filter(p=>p.age<.22).slice(-80);
     switch(this.state) {
+      case 'resume_intro':
+        if(this.stateTime>=RESUME_TIMING.seconds)this.restoreCheckpoint();break;
       case 'opening_intro':
         if(this.stateTime>=OPENING_DURATION) {
           const phases=introductionsForLevel(this.level,this.flags.route3d,this.changeSettings,this.flags,this.lossMinLevel);
@@ -683,13 +746,13 @@ export class Game {
       case 'course_materialize':
         if(this.stateTime>=7) { this.resetLegClock(); this.setState('playing'); this.damageTimer=.45; } break;
       case 'playing': {
-        this.runStats.playSeconds+=dt;
+        if(!this.endPortalPreview)this.runStats.playSeconds+=dt;
         if(this.recoupling.length) {
           this.recoupleTime+=dt;
           if(this.recoupleTime>=1.18) {
             const before=this.player.alive.size;
             for(const p of this.recoupling) this.player.alive.add(p.target);
-            this.runStats.recoupledCubes+=this.player.alive.size-before;
+            if(!this.endPortalPreview)this.runStats.recoupledCubes+=this.player.alive.size-before;
             this.messageSet(`RE-COUPLED +${this.player.alive.size-before} CUBES`,.85); this.recoupling=[];
           }
         }
@@ -722,7 +785,7 @@ export class Game {
         if(this.stateTime>=.48) { this.player.alive.clear(); this.player.fragments=[]; this.setState('reassembly'); this.emit('reassembly'); } break;
       case 'reassembly':
         if(this.lossActive&&this.missingEntryCells.length&&this.stateTime>=LOSS_ASSEMBLY.scatterAt&&this.stateTime-dt<LOSS_ASSEMBLY.scatterAt)this.emit('loss_weep');
-        if(this.stateTime>=3.75) { this.resetAttempt(); this.setState('reassembly_flash'); this.damageTimer=.7; } break;
+        if(this.stateTime>=3.75) { this.resetAttempt(); this.checkpoint();this.setState('reassembly_flash'); this.damageTimer=.7; } break;
       case 'reassembly_flash':
         if(this.stateTime>=1.1) { this.resetLegClock(); this.setState('playing'); this.damageTimer=.4; this.reassembly=[]; } break;
       case 'portal_warp':
@@ -737,12 +800,22 @@ export class Game {
         if(this.stateTime>=ASCENSION_TIMING.whiteHoldSeconds) this.setState('ascension_title'); break;
     }
   }
+  startEndPortalPreview() {
+    this.campaignSaving=false;this.pendingResume=null;
+    this.ready(BALANCE.levelCap,{endPortalPreview:true});
+    this.help=false;this.angles=[18,145,0];this.setState('playing');this.events=[];this.emit('stop');
+    this.messageSet('END PORTAL TEST · final leg · no records or points awarded',4);
+  }
   command(text) {
     const parts=text.trim().toLowerCase().split(/\s+/),[cmd,arg,value]=parts;
     const topLevelCommand=['toplevel','top_level'].includes(cmd);
     if(topLevelCommand) {
       if(parts.length===1)return `TOP LEVEL: ${this.stats.highest_level}/${BALANCE.levelCap}`;
       if(parts.length!==2||arg!=='reset')throw Error(`Usage: ${cmd} [reset]`);
+    }
+    if(cmd==='test'&&arg==='end_portal') {
+      if(parts.length!==2)throw Error('Usage: test end_portal');
+      this.startEndPortalPreview();return `End portal test · level ${this.level} · LEG ${this.course.modules.length}/${this.course.modules.length} · approach the exit for the full ending`;
     }
     if(cmd==='thank_you_note'||cmd==='test'&&arg==='thank_you_note') {
       this.beginAscension(true);this.setState('thank_you_note');this.emit('stop');return 'Thank-you segment preview';
@@ -752,16 +825,18 @@ export class Game {
       this.startBonus(cmd==='bonus'?(arg||'001'):'001',{preview:true});return `Bonus round 001 test · exit to level ${this.previewReturn.nextLevel}`;
     }
     if(cmd==='test'&&Object.hasOwn(CHANGES,arg)) {
+      this.campaignSaving=false;this.pendingResume=null;
       this.flags.change_1=true;this.flags[arg]=true;this.flags.lasers=true;
       this.ready(Math.max(1,this.changeSettings.change_1_min_level,this.changeSettings[`${arg}_min_level`]));
       this.setState(CHANGES[arg].state);return `${arg.replace('_',' ').toUpperCase()} test · level ${this.level}`;
     }
     if(cmd==='test'&&arg==='loss') {
+      this.campaignSaving=false;this.pendingResume=null;
       this.flags.loss=true;this.ready(Math.max(1,this.lossMinLevel));
       this.pendingLevelCells=cells.map((_,i)=>i).filter(i=>i%3===0);this.setState('loss_intro');
       return `LOSS test · level ${this.level} · demonstration body: ${this.pendingLevelCells.length}/125 cubes`;
     }
-    if(cmd==='test')throw Error('Available previews: test ending_1, test bonus_round_1, test change_1, test change_2, test change_3, test change_4, test loss, thank_you_note');
+    if(cmd==='test')throw Error('Available previews: test end_portal, test ending_1, test bonus_round_1, test change_1, test change_2, test change_3, test change_4, test loss, thank_you_note');
     if(cmd==='reset'||topLevelCommand) {
       if(cmd==='reset'&&!['top level','top_level','toplevel','highest_level'].includes(parts.slice(1).join(' ')))
         throw Error('Usage: reset top level (aliases: reset top_level, reset toplevel, reset highest_level)');
@@ -822,7 +897,7 @@ export class Game {
       return `Status for ${key} is: ${requireSetting(key).get()?'Enabled':'Disabled'}`;
     };
     const setFlag=(key,v)=>{requireSetting(key).set(v);return `${key} set to ${v}`;};
-    if(cmd==='help'||cmd==='?') return 'viewconfig / showconfig / showvars / viewvars / listvars / listconfig: list all settings\nhelp, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light culling microgravity overheat_blocks_recoupling change_1 change_2 change_3 change_4 change_4_pattern change_1_random_per_leg change_1_no_repeat_leg loss loss_grey route_outline preview_outline locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nNumbers: '+[...numeric.keys()].join(' ')+'\nRecords: toplevel / top_level (query); toplevel reset / top_level reset / reset top level (reset); keeps other records\nPreviews: test ending_1, test bonus_round_1, test change_1, test change_2, test change_3, test change_4, test loss, thank_you_note, bonus <type>';
+    if(cmd==='help'||cmd==='?') return 'viewconfig / showconfig / showvars / viewvars / listvars / listconfig: list all settings\nhelp, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light end_portal culling microgravity overheat_blocks_recoupling change_1 change_2 change_3 change_4 change_4_pattern change_1_random_per_leg change_1_no_repeat_leg loss loss_grey route_outline preview_outline locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nNumbers: '+[...numeric.keys()].join(' ')+'\nRecords: toplevel / top_level (query); toplevel reset / top_level reset / reset top level (reset); keeps other records\nPreviews: test end_portal, test ending_1, test bonus_round_1, test change_1, test change_2, test change_3, test change_4, test loss, thank_you_note, bonus <type>';
     if(cmd==='flags')return [...settings.keys()].map(status).join('\n');
     if(['get','view','status'].includes(cmd)||['set','flag'].includes(cmd)&&value===undefined)return status(arg==='toplevel'?'top_level':arg);
     const numericKey=['set','flag'].includes(cmd)?arg:cmd;
@@ -837,7 +912,7 @@ export class Game {
       const target=cmd==='level'?arg:value;
       if([...trueValues,...falseValues].includes(target)&&!['0','1'].includes(target))throw Error('level cannot be toggled with on/off!');
       const level=clamp(number(target,1,1000000),1,BALANCE.levelCap);
-      this.ready(level);this.introduceLevel(level);return `Starting level ${this.level}`;
+      this.campaignSaving=false;this.pendingResume=null;this.ready(level);this.introduceLevel(level);return `Starting level ${this.level}`;
     }
     if(['set','flag','toggle'].includes(cmd)) {
       const setting=requireSetting(arg);
@@ -850,11 +925,11 @@ export class Game {
     if(['newrun','new','run'].includes(cmd)) {this.newRun(); return 'New run';}
     if(cmd==='title') {this.title(); return 'Title screen';}
     if(cmd==='kill') {this.player.alive.clear(); this.player.fragments=[]; return 'Cube killed';}
-    if(cmd==='heal'||cmd==='cubes') {this.player.setCount(cmd==='heal'?125:number(arg,0,125)); return `Cubes: ${this.player.alive.size}`;}
-    if(cmd==='portal') {this.player.origin=this.course.portal.world(15);this.driftVelocity=new V(); return 'Moved near portal';}
+    if(cmd==='heal'||cmd==='cubes') {const n=cmd==='heal'?125:number(arg,0,125);this.campaignSaving=false;this.player.setCount(n); return `Cubes: ${this.player.alive.size}`;}
+    if(cmd==='portal') {this.campaignSaving=false;this.player.origin=this.course.portal.world(15);this.driftVelocity=new V(); return 'Moved near portal';}
     if(cmd==='pos'||cmd==='where') return `Position ${this.player.origin.array().map(n=>n.toFixed(2)).join(', ')}\nLeg ${this.course.location(this.player.origin).index+1}/${this.course.modules.length}`;
     if(cmd==='route') return this.course.modules.map(m=>m.bx.array().join(',')).join(' → ');
-    if(cmd==='score') {if(arg!==undefined) this.score=number(arg,0,Number.MAX_SAFE_INTEGER); return `Score: ${this.score}`;}
+    if(cmd==='score') {if(arg!==undefined) {const n=number(arg,0,Number.MAX_SAFE_INTEGER);this.campaignSaving=false;this.score=n;} return `Score: ${this.score}`;}
     throw Error('Unknown command. Type help.');
   }
 }

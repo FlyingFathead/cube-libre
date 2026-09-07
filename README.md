@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.26.0
+# Cube Libre — Web v0.27.0
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,7 +23,54 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.26.0 · What remains
+## Web release 0.27.0 · Welcome back
+
+**Continue your journey.** Your browser now saves a checkpoint at each level
+entrance. On returning, choose **Continue** or **New run**. Continue opens on
+white: **Continuing from level X ...**, then **Welcome back.** fades in beneath
+it. New run asks before replacing an existing saved journey.
+
+The checkpoint restores the level from its entrance, your score and run progress,
+and the **exact surviving pieces and holes**. During LOSS, beginning with the
+body carried out of level 44 into 45, Continue plays the partial reassembly when
+pieces are missing: grey forms tremble and scatter, the engine winds down, and
+**ONLY PARTIAL REASSEMBLY SUCCEEDED** appears. The surviving body retains the
+resumed level's greyness. Like an ordinary retry, this restores the level-entry
+body; it does not restore pieces lost before that level.
+
+Pending bonus rounds can be resumed, and completed bonus rewards are saved once.
+A completed final level can resume its ending without awarding its points again.
+After the ending and statistics are finished, the completed checkpoint is cleared.
+
+Saves stay in **this browser on this device**, using local browser storage. There
+is no account, cloud upload or cross-device sync. Clearing site data removes the
+save; private browsing and blocked storage may prevent it surviving a visit.
+The title reports when persistent saving is unavailable. Saves begin with this
+release; an older TOP LEVEL record cannot reconstruct an earlier run.
+
+**The final exit is pure white.** Level 50's portal has a frame three times the
+normal size, with a broad white halo and bright core extending beyond the
+corridor. Earlier portals retain their colours. The light does not enlarge the
+physical capture area or change the ending after clearing 50.
+
+Open the debug console with backtick or Ctrl+Shift+F1:
+
+```text
+test end_portal
+```
+
+This starts a playable preview on **LEG 50/50**, in the gap before the last gate,
+with the camera located on the body and the normal ten-second leg clock.
+Approach the exit to see the full ascension and thank-you sequence. Retry returns
+to that final-leg gap. The test awards no points or records and never replaces
+your saved campaign. `end_portal true` / `end_portal false` switches the special
+presentation; `portal_white_light` also controls its halo. Both are saved visual
+preferences. The preview respects your current console switches.
+
+The full-body Continue reprieve discussed for late LOSS is recorded in
+[ROADMAP.md](ROADMAP.md) as **considered, not implemented**.
+
+## What remains · Introduced in 0.26.0
 
 **LOSS ...** arrives at level **44**: **PORTALS NO LONGER RESTORE LOST PIECES**.
 Level 44 still starts with the usual full body. From its exit onward, each new

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import {CheckpointStore} from '../../web/js/save-game.mjs';
 import {Game,V} from '../../web/js/core.mjs';
 import {CHANGE_NUMBERS} from '../../web/js/changes.mjs';
 
@@ -11,7 +12,7 @@ test('top-level reset persists through the browser adapter and preserves all oth
   const storage=new Map([['cube-libre-scores-v1',JSON.stringify({highest_level:50,best_escape:117,best_score:23000})],['cube-libre-star-pattern-v1','1']]);
   const writes=[];
   const load=()=>{
-    const context=vm.createContext({Game,clamp:(n,min,max)=>Math.min(max,Math.max(min,n)),localStorage:{
+    const context=vm.createContext({Game,CheckpointStore,clamp:(n,min,max)=>Math.min(max,Math.max(min,n)),localStorage:{
       getItem:key=>storage.get(key)??null,setItem:(key,value)=>{writes.push(key);storage.set(key,value);}
     }});
     vm.runInContext(source.slice(start,end),context);return vm.runInContext('game',context);
