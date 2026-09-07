@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.28.1
+# Cube Libre — Web v0.28.2
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,7 +23,7 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.28.1 · Silent arrival
+## Web release 0.28.2 · White tide
 
 **Twenty levels. One more leg each time.** The default journey now reaches
 ascension after level 20, with the difficulty curves compressed to reach the
@@ -46,9 +46,11 @@ movement speeds, collision rules and controller/touch controls. The final laser
 spin multiplier is also unchanged. Shortening the journey does not remove the
 late-game pressure.
 
-**A moment before ascension.** The final portal leads into a completely blank
-white screen in silence for 3.3 seconds, replacing the outlined cube from v0.28.0.
-The blue-grid/starfield scene then appears over 0.12 seconds. The cube rises as before;
+**A moment before ascension.** The final portal opens onto white. A faint
+monochrome ocean horizon widens and a wave sweeps past the view, accompanied
+by a soft surf-like noise wash. Both dissolve, leaving roughly half a second
+of blank white before the blue-grid/starfield scene appears. This arrival still
+lasts 3.3 seconds, followed by the existing 0.12-second scene reveal. The cube rises as before;
 once it becomes a star, the stars and horizon linger for 5.7 seconds,
 2.5 seconds longer than v0.28.0,
 then fades to white. The existing **YOU'VE ASCENDED / ... FOR NOW.**, slow
@@ -452,7 +454,7 @@ return at 10, 15 and 20; the curves tighten continuously between them. LOSS
 starts at the exit of 16, with partial bodies carried into 17 and onward.
 Colour fades quadratically from barely perceptible at 10 to completely grey at 20.
 
-Clear the **20-level cap** to see the silent blank white hold,
+Clear the **20-level cap** to see the faint ocean wave on white,
 starfield ascension, slow thank-you fade and statistics. The original 50-level
 variant retains its own difficulty curves, LOSS at 44 and colour fading from
 44 to 50, followed by the same expanded ending.
@@ -516,7 +518,7 @@ python -m http.server 8000 --directory web
 
 Open http://localhost:8000/ (on Windows, `py` can replace `python`).
 The complete static game lives in `web/`, including its renderer, font and
-21 sounds in Ogg and MP3 (18 originals, two shutter effects and the LOSS engine wind-down). No backend or npm installation is required.
+22 sounds in Ogg and MP3 (18 originals, two shutter effects, the LOSS engine wind-down and the arrival water sweep). No backend or npm installation is required.
 
 ## GitHub Pages
 
@@ -541,10 +543,10 @@ node --test tests/web/*.test.mjs
 
 See [WEB_PORT.md](WEB_PORT.md) for gameplay details, browser differences,
 source layout, and optional regeneration using a separate PyGame checkout.
-Web 0.28.0 (`8839995`) is the published baseline. This release passes 188
+Web 0.28.1 (`2a4970b`) is the published baseline. This release passes 189
 automated test groups and static checks on Node.js 18.19.1, including both
 campaigns, legacy save migration, independent records, LOSS body carry, ending
-silence and render data, controller/touch dispatch and simulated final routes.
+wave/audio timing and render data, controller/touch dispatch and simulated final routes.
 The baseline tests explicitly select mode 50; additional mode tests exercise the
 default 20-level campaign. The shorter campaign's human balance and new ending's
 visual/audio pacing still need device playtesting. Automated traversal does not

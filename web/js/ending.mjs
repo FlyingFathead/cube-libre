@@ -3,6 +3,29 @@ import * as T from '../vendor/three.module.min.js';
 import {ASCENSION_TIMING as timing,V,smooth,mix} from './core.mjs';
 
 export const ASCENSION_STAGE=Object.freeze({floorY:-8,starCount:900});
+export function drawArrivalWaves(ctx,width,height,time) {
+  if(width<=0||height<=0||time<=0||time>=timing.arrivalSeconds)return;
+  const q=time/timing.arrivalSeconds,swell=Math.sin(Math.PI*q)**1.25,travel=smooth((q-.12)/.76);
+  const fade=smooth(time/.45)*(1-smooth((time-1.8)/1));
+  if(fade<.001)return;
+  // A horizon and three water contours open, approach and recede on white.
+  // Four short canvas paths only; no texture, mesh or postprocessing pass.
+  ctx.save();ctx.lineWidth=1.15;ctx.lineCap='round';
+  for(let wave=0;wave<4;wave++) {
+    const span=width*(.14+.82*swell)*(1+wave*.32*travel),left=(width-span)/2;
+    const y=height*.43+height*wave*.36*travel;
+    const amplitude=wave===0?height*.002:Math.min(14,height*.018)*swell*(.7+.2*wave);
+    ctx.strokeStyle=`rgba(0,0,0,${fade*(.14-wave*.023)})`;
+    ctx.beginPath();
+    for(let i=0;i<=64;i++) {
+      const u=i/64,x=left+span*u;
+      const surface=y+amplitude*Math.sin(Math.PI*u)*(Math.sin(u*Math.PI*3-time*1.6+wave*.5)+.25*Math.sin(u*Math.PI*6+time*.8));
+      if(i===0)ctx.moveTo(x,surface);else ctx.lineTo(x,surface);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
 export function ascensionPose(time,aspect=16/9) {
   const rise=smooth((time-timing.riseStarts)/timing.riseSeconds);
   const merge=smooth((time-timing.starStarts)/timing.starSeconds);

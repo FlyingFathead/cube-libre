@@ -2,7 +2,7 @@ import {releaseAssetURL} from './updates.mjs';
 import {clamp,smooth,portalMetrics,ASCENSION_TIMING} from './core.mjs';
 const root=new URL('../assets/audio/',import.meta.url);
 const volumes={crash:.70,structure_alert:.48,portal:.88,laser_reveal:.64,laser_dissipate:.62,
-  materialize:.62,death:.74,reassembly:.60,recouple:.62,collapse:.82,time_buzzer:.78,shutter_close:.54,shutter_open:.48,loss_weep:.60};
+  materialize:.62,death:.74,reassembly:.60,recouple:.62,collapse:.82,time_buzzer:.78,shutter_close:.54,shutter_open:.48,loss_weep:.60,arrival_water:.38};
 const cooldowns={recouple:.18,crash:.075,structure_alert:.65,laser_reveal:.35,laser_dissipate:.28,collapse:.12,time_buzzer:.82,shutter_close:.12,shutter_open:.12};
 
 export class GameAudio {
@@ -72,8 +72,9 @@ export class GameAudio {
     try {item.source.stop(now+fade);} catch {}
   }
   stopAll(fade=.15) {for(const channel of [...this.channels.keys()]) this.stop(channel,fade);}
-  sound(name,volume=volumes[name]??.6,channel=name,loop=false,semitones=0) {
+  sound(name,volume=volumes[name]??.6,channel=name,loop=false,semitones=0,offset=0) {
     if(!this.ready||!this.buffers.has(name)) return;
+    if(offset>=this.buffers.get(name).duration)return;
     const now=this.ctx.currentTime,existing=this.channels.get(channel);
     if(loop&&existing?.name===name) {existing.gain.gain.setTargetAtTime(volume,now,.1); return;}
     if(!loop&&now-(this.last.get(name)??-999)<(cooldowns[name]||0)) return;
@@ -87,14 +88,21 @@ export class GameAudio {
     if(loop) gain.gain.setTargetAtTime(volume,now,.2);
     const item={source,gain,name}; this.channels.set(channel,item);
     source.onended=()=>{if(this.channels.get(channel)===item)this.channels.delete(channel);source.disconnect();gain.disconnect();};
-    source.start();
+    source.start(0,Math.max(0,offset));
   }
   update(g) {
     if(g.state==='ascension'&&g.stateTime<ASCENSION_TIMING.arrivalSeconds) {
-      // The silent white hold is intentional, including the final portal tail
-      // and any event queued by the simulation before this browser audio frame.
-      g.events.length=0;this.stopAll(0);return;
+      // Replace gameplay/portal tails with one wash, aligned with the visual.
+      // Do not restart each frame or replay it after a late audio unlock.
+      const entering=this.arrivalGame!==g||g.stateTime<this.arrivalTime||g.events.some(e=>e.name==='stop');
+      if(entering) {
+        this.stopAll(0);
+        this.sound('arrival_water',undefined,'arrival_water',false,0,g.stateTime);
+      }
+      this.arrivalGame=g;this.arrivalTime=g.stateTime;
+      g.events.length=0;return;
     }
+    if(this.arrivalGame) {this.stop('arrival_water',0);this.arrivalGame=null;this.arrivalTime=null;}
     for(const event of g.events.splice(0)) {
       if(event.name==='stop') this.stopAll(); else this.sound(event.name,undefined,event.name,false,event.semitones??0);
     }

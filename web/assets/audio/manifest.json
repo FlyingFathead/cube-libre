@@ -151,5 +151,14 @@
     "source_sha256": "d17172ea6b0cac8e7ff7a0b549140c16a784b7358d126cfdfdd140279d2b2fd1",
     "generator": "tools/build_loss_audio.py",
     "edition": "web"
+  },
+  "arrival_water": {
+    "duration": 3.3,
+    "ogg": "arrival_water.ogg",
+    "mp3": "arrival_water.mp3",
+    "source_wav": "arrival_water.wav",
+    "source_sha256": "22ca201153e1cd3d3253e4508b61d14852380815ee421abca314eb938bbce088",
+    "generator": "tools/build_arrival_audio.py",
+    "edition": "web"
   }
 }

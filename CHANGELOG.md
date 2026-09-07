@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.28.2 — White tide
+
+Based on published web v0.28.1 (`2a4970b`).
+
+- Add a faint monochrome ocean horizon and three water contours to the final
+  portal's white arrival. The horizon opens, the wave sweeps past the view, and
+  its outlines dissolve back to white. Keep half a second of blank white before
+  the existing ascension scene, within the same 3.3-second arrival.
+- Synthesize a soft sea-like filtered-noise wash in Ogg and MP3. Play it once
+  instead of gameplay/portal tails, respect mute and pause, align delayed first
+  frames with an audio offset, and avoid replay after late loading or unlock.
+- Keep the 5.7-second star/horizon hold, full ending and thank-you segment in
+  both modes and their previews. Use four bounded canvas paths and one decoded
+  sound buffer; no new WebGL geometry, textures or runtime dependencies.
+
+Validation: all 189 automated test groups and static checks pass on Node.js
+18.19.1. Ending checks cover wave motion and disappearance, portrait/landscape,
+pause, both modes, scene transition, one-shot audio, mute, preview restarts and
+late loading. Generated contour previews were inspected and both audio codecs
+were decoded and checked for clipping. Real-device visual/audio playtesting
+remains needed.
+
 ## 0.28.1 — Silent arrival
 
 Based on published web v0.28.0 (`8839995`).

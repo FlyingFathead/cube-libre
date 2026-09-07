@@ -2,7 +2,7 @@ import * as T from '../vendor/three.module.min.js';
 import {VISUAL_EFFECTS,END_PORTAL} from './config.mjs';
 import {lossGreyAmount,lossBodyColor,lossGhostPose} from './loss.mjs';
 import {PIECES_RULES,recoveredShape,rotateQ,multiplyQ,bonusHeat} from './bonus.mjs';
-import {AscensionScene,ascensionPose} from './ending.mjs';
+import {AscensionScene,ascensionPose,drawArrivalWaves} from './ending.mjs';
 import {titleBounds,frameTitle} from './title-layout.mjs';
 import {updatePortalWhiteLight,isEndPortal} from './portal-light.mjs';
 import {RouteGuide,detailWindow,overviewZoom,createInfiniteStarfield,positionInfiniteStarfield,setStarPattern} from './space-view.mjs';
@@ -445,6 +445,7 @@ export class Renderer {
   }
   effects(g) {
     const ctx=this.ctx,w=this.width,h=this.height; ctx.clearRect(0,0,w,h);
+    if(g.state==='ascension'&&g.stateTime<ASCENSION_TIMING.arrivalSeconds)drawArrivalWaves(ctx,w,h,g.stateTime);
     if(g.state==='bonus_smash') {
       const t=g.stateTime-g.bonus.rules.impactAt;
       if(t>=0&&t<.35){ctx.fillStyle=`rgba(255,255,255,${.65*(1-t/.35)})`;ctx.fillRect(0,0,w,h);}
@@ -509,7 +510,7 @@ export class Renderer {
     } else if(bonusScene) {
       this.bonus(g);
     } else if(arrival) {
-      // Silent blank white hold before the starfield scene. Draw no geometry.
+      // White arrival with faint ocean contours on the effects canvas; no cube.
       this.camera.position.set(0,0,18*Math.max(1,.8/this.camera.aspect));
     } else if(ascending) {
       const pose=ascensionPose(g.stateTime,this.camera.aspect);this.ascensionScene.update(pose);

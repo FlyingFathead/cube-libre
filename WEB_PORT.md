@@ -94,7 +94,7 @@ remain active. Regression coverage is in `tests/web/collapse-contact.test.mjs`.
 | Persistence | Level-entry campaign checkpoints, best escape, best score and highest level in localStorage, plus mute, shaking, player rotation, hit rotation shocks, portal light, culling, microgravity, heat restriction, shutter booleans and sky preferences |
 | UI | Original cube-letter title and dot-matrix prompt; help, pause, menu/reset confirmations, fullscreen |
 | Console | Flags, level/restart/newrun, heal/kill/cubes, portal teleport, position/route, score, locate, and a scrollable live parameter listing |
-| Audio | 21 sounds in two codecs: 18 originals, shutter buzz/whoosh and a generated LOSS engine wind-down |
+| Audio | 22 sounds in two codecs: 18 originals, shutter buzz/whoosh, LOSS engine wind-down and the final arrival water sweep |
 
 The route, collision, scoring and portal rules are ported from the source. Web
 0.17.0 deliberately extends timing, re-coupling, heat and end-of-run progression.
@@ -531,7 +531,7 @@ edited in the file; the console flag changes the restriction's enabled state.
 ## Ascension and run statistics
 
 Clearing the current level cap awards the final portal score once, then replaces
-normal level advancement with a silent blank white hold and starfield ascension scene. The scene
+normal level advancement with the white ocean-wave arrival and starfield ascension scene. The scene
 fades completely white, holds white for two seconds, and fades in:
 
 > YOU'VE ASCENDED
@@ -786,11 +786,19 @@ settings. Browser settings join the same registry through `game.consoleSettings`
 
 ## Ascending into the stars (web 0.20.0)
 
-As of web 0.28.1, Ending 001 opens with a completely blank white screen for
-3.3 seconds, replacing the earlier outlined cube without shortening the arrival.
-No cube, lines, route or stars are drawn during this hold. The blue-grid/starfield
-scene is then revealed over the existing 0.12 seconds. The final portal tail and all channels stop immediately; queued
-sounds are dropped throughout this silent arrival. The live body/save is unchanged.
+As of web 0.28.2, Ending 001 opens on white with a faint black-and-white ocean
+horizon and three moving water contours. The horizon opens across the view and
+the contours sweep past its lower edge, then fade completely by 2.8 seconds.
+Blank white remains for the final half-second of the existing 3.3-second arrival;
+the starfield is then revealed over the existing 0.12 seconds. Four canvas paths
+use at most 65 points each, without new WebGL meshes, textures or postprocessing.
+
+The generated `arrival_water` wash uses filtered white noise, a soft swell and
+a diffuse receding tail. It replaces gameplay and portal tails once on entry,
+uses the same sound buffer throughout the hold, and stops before the starfield.
+Mute and paused AudioContext behavior are retained. A delayed first audio frame
+uses the matching playback offset; late loading never restarts the wash.
+The live body/save is unchanged.
 
 The original scene then shows one white cube above the blue grid. After its
 0.6-second rest, the cube levitates and the camera follows. It becomes a star
@@ -1021,14 +1029,14 @@ unimplemented panic/return proposal arising from this Android feedback.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.28.1**, continuing from published **0.28.0** (`8839995`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.28.2**, continuing from published **0.28.1** (`2a4970b`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.28.2`, `0.28.3`, etc. for fixes, and `0.29.0` for the
+For future releases, use `0.28.3`, `0.28.4`, etc. for fixes, and `0.29.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.28.1.zip` and `v0.28.1`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.28.2.zip` and `v0.28.2`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior
@@ -1098,11 +1106,12 @@ immunity, warning/closed rendering, local audio events, movable introductions,
 camera centering, legacy and irregular skies, saved pattern switching and full
 configuration listings. Web 0.23.0 adds controller axes/buttons and browser-dispatch
 checks, record resets, globally capped alternating shutters, preview limits/fade
-uniforms, startup cache replacement and live leg totals. The suite now has 188 passing test groups. Existing regression fixtures select
+uniforms, startup cache replacement and live leg totals. The suite now has 189 passing test groups. Existing regression fixtures select
 mode 50 explicitly; `game-modes.test.mjs` exercises the default 20-level variant,
 both caps, curve endpoints, legacy checkpoint migration, mode-isolated records,
-LOSS carry and final traversal. Ending tests inspect the blank white hold for its full 3.3 seconds,
-scene reveal, longer star hold, actual audio adapter and pause/input guards. The shorter
+LOSS carry and final traversal. Ending tests inspect monochrome wave motion, the final blank white pause,
+scene reveal, longer star hold, one-shot wash, late audio loading, mute and
+pause/input guards through the actual renderer and audio adapter. The shorter
 campaign's human balance and new visual/audio timing still need device playtesting.
 The fifty-leg simulated pilot accounts for closed shutters.
 
@@ -1116,6 +1125,7 @@ To regenerate sounds, install FFmpeg with libvorbis and libmp3lame, then run:
 python tools/build_web_audio.py --source ../cube-libre-pygame/cube_libre_pygame.py
 python tools/build_shutter_audio.py
 python tools/build_loss_audio.py
+python tools/build_arrival_audio.py
 ```
 
 The script uses the original synthesizer functions directly and reuses an existing
@@ -1128,6 +1138,9 @@ entries. The LOSS generator makes a 0.14-second fault stutter followed by a fall
 (3.2 seconds total)
 using standard-library oscillators and a diffuse tail, then encodes both formats.
 It contains no sampled voice. Temporary source WAV files are not included in the published game.
+The arrival generator combines filtered noise bands into a soft swell and
+receding tail, followed by silence, in a 3.3-second clip. It uses the shutter
+generator's bandpass helper, with no PyGame checkout or external recording.
 
 ## Source layout
 
@@ -1143,7 +1156,8 @@ It contains no sampled voice. Temporary source WAV files are not included in the
 | `docs/GITHUB_METADATA.md` | Repository description, homepage and topic command |
 | `web/js/loss.mjs` | Nonlinear colour fading and visual-only missing assembly forms |
 | `tools/build_loss_audio.py` | Reproducible electronic engine wind-down synthesis and encoding |
-| `web/js/ending.mjs` | Blue-grid and starfield ascension scene and motion |
+| `tools/build_arrival_audio.py` | Reproducible surf-like noise wash synthesis and encoding |
+| `web/js/ending.mjs` | White ocean-wave contours, blue-grid and starfield ascension scene and motion |
 | `web/js/portal-light.mjs` | Proximity-based portal halo and reusable glow sprite |
 | `web/js/space-view.mjs` | Cached ghost route, overview framing, detail window and selectable infinite starfields |
 | `web/js/render.mjs` | Batched cube/line rendering, title, field and transition effects |

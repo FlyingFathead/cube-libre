@@ -109,6 +109,9 @@ the rotating outline with a completely blank white hold of the same 3.3-second
 duration after playtesting, and added 2.5 seconds to the view of the stars and
 horizon after the cube departs, bringing that hold to 5.7 seconds. Physical and
 saved pieces remain unchanged.
+In v0.28.2, the author added a metaphysical ocean wave to that white arrival:
+faint monochrome contours and a soft surf-like noise sweep wash past the view,
+then dissolve back to white before ascension. No cube outline returns.
 These presentation choices preserve the complete ascension arc.
 
 ## Playtest evidence and remaining questions

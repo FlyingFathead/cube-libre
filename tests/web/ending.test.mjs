@@ -88,22 +88,38 @@ test('ending_1 renders one white cube, then just its star, freezes on pause, and
   }
 });
 
-test('the silent arrival stays blank white for 3.3 seconds, reveals the scene and leaves the saved survivor body untouched',()=>{
+test('the white arrival carries faint monochrome ocean contours, clears before the scene and leaves the saved survivor body untouched',()=>{
   for(const gameMode of [20,50])for(const aspect of [9/16,16/9]) {
     const g=new Game({gameMode}),drawn=[],lines=[],r=Object.create(Renderer.prototype),noop=()=>{};let clear;
-    const effects={clearRect:noop,fillRect(){effects.fills.push(effects.fillStyle);},fills:[]};
-    Object.assign(r,{width:900,height:600,ctx:effects,world:new T.Group(),rotator:new T.Group(),camera:new T.PerspectiveCamera(45,aspect,.1,1500),
+    const effects={clearRect(){this.fills=[];this.paths=[];},fillRect(){this.fills.push(this.fillStyle);},fills:[],paths:[],save:noop,restore:noop,
+      beginPath(){this.points=[];},moveTo(x,y){this.points.push([x,y]);},lineTo(x,y){this.points.push([x,y]);},stroke(){this.paths.push({points:this.points,color:this.strokeStyle,width:this.lineWidth});}};
+    Object.assign(r,{width:600*aspect,height:600,ctx:effects,world:new T.Group(),rotator:new T.Group(),camera:new T.PerspectiveCamera(45,aspect,.1,1500),
       stars:{material:{color:{setHex:noop}}},lines:{reset(){lines.length=0;},finish:noop,line(a,b,color,alpha){lines.push({a:a.array(),b:b.array(),color,alpha});}},
       cubes:{reset(){drawn.length=0;},cube(pos,color,scale){drawn.push({pos:pos.array(),color,scale});},finish:noop},
       gl:{setClearColor:c=>{clear=c;},render:noop}});
     g.ready(g.levelCap,{survivors:[0,62,124]});g.setState('playing');g.win();const survivors=[...g.player.alive],score=g.score;
     assert.equal(ASCENSION_TIMING.arrivalSeconds,3.3,'Keep the previous arrival duration');
-    const blank=()=>{r.render(g);assert.equal(clear,0xffffff);assert.equal(drawn.length,0);assert.equal(lines.length,0);assert.equal(r.ascensionScene.group.visible,false);assert.equal(r.stars.visible,false);assert.equal(effects.fills.length,0);};
-    for(const time of [0,.1,1,2,3,3.09,3.2,3.299]) {g.stateTime=time;blank();}
-    for(const flag of ['paused','help']) {g[flag]=true;g.tick(10);assert.equal(g.stateTime,3.299);blank();g[flag]=false;}
+    const arrival=()=>{r.render(g);assert.equal(clear,0xffffff);assert.equal(drawn.length,0);assert.equal(lines.length,0);assert.equal(r.ascensionScene.group.visible,false);assert.equal(r.stars.visible,false);assert.equal(effects.fills.length,0);};
+    let early,peak;
+    for(const time of [0,.1,1.5,2.6,2.8,3,3.2,3.299]) {
+      g.stateTime=time;arrival();
+      assert.equal(effects.paths.length,time>0&&time<2.8?4:0);
+      for(const path of effects.paths) {
+        assert.match(path.color,/^rgba\(0,0,0,/);assert.ok(Number(path.color.slice(11,-1))<=.14);
+        assert.ok(path.width<=1.5);assert.ok(path.points.length<=65);assert.ok(path.points.flat().every(Number.isFinite));
+      }
+      if(time===.1)early=structuredClone(effects.paths);
+      if(time===1.5)peak=structuredClone(effects.paths);
+      if(time===2.6)assert.ok(effects.paths.at(-1).points.every(p=>p[1]>r.height),'The wave sweeps past the bottom of the view');
+    }
+    assert.ok(peak[0].points.at(-1)[0]-peak[0].points[0][0]>early[0].points.at(-1)[0]-early[0].points[0][0],'The horizon opens across the view');
+    g.stateTime=1.5;arrival();const frozen=structuredClone(effects.paths);
+    for(const flag of ['paused','help']) {g[flag]=true;g.tick(10);arrival();assert.equal(g.stateTime,1.5);assert.deepEqual(effects.paths,frozen);g[flag]=false;}
+    g.stateTime=3.299;arrival();
     g.continue();assert.equal(g.stateTime,3.299);assert.equal(g.state,'ascension');
     g.stateTime=ASCENSION_TIMING.arrivalSeconds+.06;r.render(g);assert.equal(r.ascensionScene.group.visible,true);assert.equal(drawn.length,1);assert.ok(Math.abs(ascensionPose(g.stateTime).white-.5)<1e-8);
     g.stateTime=ASCENSION_TIMING.sceneStarts;r.render(g);assert.equal(ascensionPose(g.stateTime).white,0);assert.equal(drawn.length,1);
+    assert.equal(effects.paths.length,0,'No ocean contours remain over the ascension scene');
     const starAt=ASCENSION_TIMING.starStarts+ASCENSION_TIMING.starSeconds;
     assert.ok(Math.abs(ASCENSION_TIMING.fadeStarts-starAt-5.7)<1e-8);
     for(const extra of [.1,1.2,2.5,3.19,4,5.69]) {g.stateTime=starAt+extra;r.render(g);assert.equal(drawn.length,0);assert.equal(r.ascensionScene.spark.visible,true);assert.equal(r.ascensionScene.group.visible,true);assert.ok(r.ascensionScene.grid.material.uniforms.opacity.value>0);assert.equal(ascensionPose(g.stateTime).white,0);}
@@ -112,16 +128,46 @@ test('the silent arrival stays blank white for 3.3 seconds, reveals the scene an
   }
 });
 
-test('arrival immediately silences live audio and drops queued portal sounds, including previews and late audio unlocks',async()=>{
+function audioFixture(GameAudio,ready=true) {
+  const audio=Object.create(GameAudio.prototype),sources=[],masterValues=[];
+  const parameter=()=>({value:1,cancelScheduledValues(){},setTargetAtTime(){},setValueAtTime(){}});
+  Object.assign(audio,{ready,muted:false,channels:new Map(),last:new Map(),buffers:new Map([['arrival_water',{duration:3.3}]]),
+    manifest:{arrival_water:{duration:3.3}},master:{gain:{setTargetAtTime(value){masterValues.push(value);}}},
+    ctx:{currentTime:25,state:'running',suspend(){this.state='suspended';return Promise.resolve();},resume(){this.state='running';return Promise.resolve();},
+      createGain(){return {gain:parameter(),connect(){},disconnect(){}};},
+      createBufferSource(){const source={playbackRate:parameter(),connect(){},disconnect(){},start(...args){this.started=args;},stop(time){this.stopped=time;}};sources.push(source);return source;}}});
+  return {audio,sources,masterValues};
+}
+
+test('arrival replaces gameplay tails with one water sweep, keeps it through pause and ends it before the starfield',async()=>{
   const {GameAudio}=await import('../../web/js/audio.mjs');
   for(const gameMode of [20,50]) {
     const g=new Game({gameMode});g.command('test end_portal');g.emit('shutter_close');g.win();assert.deepEqual(g.events.map(e=>e.name),['stop']);
-    const stopped=[],played=[],audio=Object.create(GameAudio.prototype);
-    audio.channels=new Map(['portal_wou','ambient','gamelan','portal'].map(name=>[name,{source:{stop(t){stopped.push([name,t]);}},gain:{gain:{cancelScheduledValues(){},setTargetAtTime(){}}}}]));
-    audio.ctx={currentTime:25};audio.ready=true;audio.sound=(...args)=>played.push(args);
-    g.emit('portal');g.emit('shutter_open');audio.update(g);assert.deepEqual(stopped.map(x=>x[1]),[25,25,25,25]);assert.equal(audio.channels.size,0);assert.equal(played.length,0);assert.equal(g.events.length,0);
-    g.tick(2);audio.update(g);assert.equal(played.length,0);assert.equal(stopped.length,4);
-    g.stateTime=ASCENSION_TIMING.arrivalSeconds;audio.update(g);assert.equal(played.length,0,'Dropped arrival sounds are never replayed');
-    g.command('test ending_1');g.emit('portal');audio.update(g);assert.equal(played.length,0);
+    const {audio,sources}=audioFixture(GameAudio),stopped=[];
+    for(const name of ['portal_wou','ambient','gamelan','portal'])audio.channels.set(name,{source:{stop(t){stopped.push([name,t]);}},gain:{gain:{cancelScheduledValues(){},setTargetAtTime(){}}}});
+    g.stateTime=.05;g.emit('portal');g.emit('shutter_open');audio.update(g);
+    assert.deepEqual(stopped.map(x=>x[1]),[25,25,25,25]);assert.equal(sources.length,1);assert.deepEqual(sources[0].started,[0,.05]);
+    assert.deepEqual([...audio.channels.keys()],['arrival_water']);assert.equal(g.events.length,0);assert.equal(sources[0].loop,false);
+    const cue=sources[0];g.tick(1);audio.update(g);assert.equal(sources.length,1);assert.equal(cue.stopped,undefined);
+    for(const flag of ['paused','help']) {
+      const time=g.stateTime;g[flag]=true;audio.pause(true);g.tick(5);audio.update(g);
+      assert.equal(g.stateTime,time);assert.equal(audio.ctx.state,'suspended');assert.equal(sources.length,1);
+      g[flag]=false;audio.pause(false);assert.equal(audio.ctx.state,'running');
+    }
+    g.stateTime=ASCENSION_TIMING.arrivalSeconds;audio.update(g);assert.equal(cue.stopped,25);assert.equal(audio.channels.size,0);
+    g.command('test ending_1');audio.update(g);assert.equal(sources.length,2,'The next preview gets its own wash');
+    g.command('test ending_1');audio.update(g);assert.equal(sources.length,3,'Restarting the same preview is a fresh arrival');assert.equal(sources[1].stopped,25);
+    g.title();audio.update(g);assert.equal(sources[2].stopped,25);assert.equal(audio.channels.size,0);
   }
+});
+
+test('arrival wash respects mute and never replays after late loading or audio unlock',async()=>{
+  const {GameAudio}=await import('../../web/js/audio.mjs');
+  const g=new Game();g.command('test ending_1');const {audio,sources,masterValues}=audioFixture(GameAudio,false);
+  audio.update(g);assert.equal(sources.length,0);audio.ready=true;g.tick(1);audio.update(g);assert.equal(sources.length,0);
+  g.stateTime=ASCENSION_TIMING.arrivalSeconds;audio.update(g);assert.equal(sources.length,0);
+  audio.mute(true);g.command('test ending_1');audio.update(g);assert.deepEqual(masterValues,[0]);assert.equal(audio.muted,true);
+  g.tick(1);audio.update(g);assert.deepEqual(masterValues,[0],'The arrival never overrides the mute setting');
+  audio.mute(false);assert.deepEqual(masterValues,[0,.85]);
+  g.command('test ending_1');g.stateTime=1.25;audio.update(g);assert.deepEqual(sources.at(-1).started,[0,1.25],'A delayed first frame starts at the matching audio offset');
 });

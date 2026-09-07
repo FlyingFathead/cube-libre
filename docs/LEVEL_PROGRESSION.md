@@ -1,6 +1,6 @@
 # Cube Libre web progression
 
-Default schedule for web **0.28.1**, based on published v0.28.0 (`8839995`).
+Default schedule for web **0.28.2**, based on published v0.28.1 (`2a4970b`).
 `DEFAULT_GAME_MODE = 20` and the immutable `GAME_MODES` registry live in
 [`web/js/difficulty.mjs`](../web/js/difficulty.mjs). Each `Game` owns its active
 balance; `featuresForSettings(settings, flags, lossMinLevel, game.balance)` drives
@@ -25,7 +25,7 @@ Runtime gameplay always supplies its selected mode explicitly.
 | 16 | LOSS ... | PORTALS NO LONGER RESTORE LOST PIECES. Exit 16 carries survivors into 17. Retries restore the entry body. |
 | 20 | TIME ... | Ten seconds per leg, 1% recovery, twenty legs and full greyness. The exit is oversized and pure white. |
 | After 5, 10, 15 | PICKING UP THE PIECES / BONUS ROUND | 45-second floor bonus with separate body and score. No bonus after the final level. |
-| After clearing 20 | Silent white hold → ascension | Blank white holds for 3.3 seconds, then the blue-grid/starfield scene appears and the cube ascends. Ending words, thank-you fades, statistics and menu follow. |
+| After clearing 20 | White tide → ascension | A faint ocean wave sweeps across white with a soft noise wash. Both fade; blank white lingers before the starfield and ascension. Ending words, thank-you fades, statistics and menu follow. |
 
 Phase cards hold for five seconds each, queued in the order shown. They and the
 preview do not consume the leg clock. TIME warnings describe the continuous
@@ -352,13 +352,14 @@ normal hazards and ten seconds. It runs through the actual portal into the full
 ending, awards no records or points and cannot overwrite the saved campaign.
 
 
-## Expanded ending (updated in 0.28.1)
+## Expanded ending (updated in 0.28.2)
 
-The final exit begins with a completely blank white screen for 3.3 seconds
-in silence. This replaces the outlined cube from v0.28.0 while retaining the
-full arrival duration. The blue-grid/starfield scene is then revealed over the
-existing 0.12 seconds. Gameplay audio and the portal tail stop at entry; no
-queued sound is replayed afterward. The physical and saved survivor body is untouched.
+The final exit begins on white. A faint monochrome ocean horizon opens and
+water contours sweep past the view, with one soft sea-like noise wash. The wave
+fades by 2.8 seconds, leaving half a second of blank white within the existing
+3.3-second arrival. The blue-grid/starfield scene then appears over 0.12 seconds.
+Gameplay audio and portal tails stop at entry; the wash respects mute and pause
+and never replays after late loading. Physical and saved survivor bodies are unchanged.
 
 The existing rise begins after the scene's original 0.6-second rest. The cube
 still becomes a star over 1.2 seconds at the end of its rise, but the completed
