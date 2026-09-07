@@ -5,6 +5,26 @@ Unimplemented proposals are marked explicitly; they are not promised releases. T
 is to sustain interest through new rules, rhythms and decisions as the journey
 gets harder, while preserving the feeling that arriving in one piece is unlikely.
 
+## Adopted for web 0.30.0: quiet critical grace and readable sealed deaths
+
+**Status: implemented.** Rapid disintegration could leave too little time to
+react. Two real damaging hits within 0.5 seconds that leave at most 20 cubes
+now grant 1.5 seconds of protection from ordinary hazards, followed by a
+15-second cooldown. The feature is on by default, has no public control or
+announcement, and uses the existing CRITICAL warnings. Its boolean, duration,
+threshold, burst window and cooldown are session console settings. Test the
+feel on devices before changing these defaults.
+
+Being small does not grant permanent immunity. A qualifying otherwise-lethal
+hit preserves the final existing cube, with no regeneration. Blocked hits do
+not queue damage, contribute to another burst or extend protection. Pause,
+Help and Panic freeze the clocks; a new level or retry resets them.
+
+Sealed backtracking remains lethal and now shows a bright blue crossed grid,
+a sustained electric buzz and a brief cause label before reassembly. Returning
+from space into an uncollapsed corridor does not trigger this effect. Timer
+expiry retains its separate behavior. The Recouple batch fix remains intact.
+
 ## Corrected in web 0.29.3: Recouple batch loss
 
 One Recouple press handles all currently recoverable blocks at the existing

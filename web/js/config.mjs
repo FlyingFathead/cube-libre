@@ -17,6 +17,9 @@ export const VISUAL_EFFECTS=Object.freeze({
 // Final exit presentation. Its glow is visual; capture/suction keep their normal size.
 export const END_PORTAL=Object.freeze({enabled:true,frameScale:3,haloSize:80,coreSize:24,glowDistance:85});
 
+// Give sealed-corridor contact time to show its lethal blue grid before whiteout.
+export const SEALED_ZAP_SECONDS=.75;
+
 // Rotation moves the actual player cells as well as their rendered geometry.
 export const PLAYER_ROTATION=Object.freeze({
   enabled:true,

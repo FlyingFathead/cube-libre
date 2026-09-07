@@ -1,12 +1,13 @@
 // Cube Libre: browser-independent simulation, ported from cube_libre_pygame.py.
 // Rendering, audio, persistence and input are injected by the browser adapter.
-import {C,END_PORTAL,VISUAL_EFFECTS,PLAYER_ROTATION,PLAYER_PROPULSION,CAMERA_RULES,PREVIEW_NUMBERS,ROUTE_OUTLINE_NUMBERS } from './config.mjs';
+import {C,END_PORTAL,VISUAL_EFFECTS,PLAYER_ROTATION,PLAYER_PROPULSION,CAMERA_RULES,PREVIEW_NUMBERS,ROUTE_OUTLINE_NUMBERS,SEALED_ZAP_SECONDS } from './config.mjs';
 import {BONUS_SCHEDULE,createBonus,scheduledBonus,recoveredShape,rotateQ} from './bonus.mjs';
 import { BALANCE,DEFAULT_GAME_MODE,balanceForMode,difficultyForLevel,introductionsForLevel,recouplingHeatBlocked,lossLevelReached } from './difficulty.mjs';
 import {CHANGES,CHANGE_NUMBERS,createChangeSettings,setChangeNumber,Shutters,shutterEnabled,shutterLoss} from './changes.mjs';
 import {CONFIG_COMMANDS,describeConsoleConfig} from './console-config.mjs';
 import {PANIC,panicStatus,reachedLeg} from './panic.mjs';
 import {RECOUPLING,recoverableFragments,recentRequests,cooldownRemaining,selectRecovery} from './recoupling.mjs';
+import {Mercy,MERCY_ENABLED,MERCY_NUMBERS} from './mercy.mjs';
 import {LOSS_ASSEMBLY} from './loss.mjs';
 import {validateCheckpoint,RESUME_TIMING} from './save-game.mjs';
 export { BALANCE } from './difficulty.mjs';
@@ -338,6 +339,8 @@ export class Game {
     this.flags.loss_grey=true;this.flags.panic=true;this.flags.panic_show_inactive=true;this.flags.panic_penalty=false;
     this.panicOutsideSeconds=PANIC.outsideSeconds;this.panicCooldownSeconds=PANIC.cooldownSeconds;
     this.panicScorePenaltyPercent=PANIC.scorePenaltyPercent;
+    this.flags.mercy_mode=MERCY_ENABLED;
+    this.mercySettings=Object.fromEntries(Object.entries(MERCY_NUMBERS).map(([key,rule])=>[key,rule.value]));
     this.flags.route_outline=VISUAL_EFFECTS.routeOutline;
     this.routeOutlineSettings=Object.fromEntries(Object.entries(ROUTE_OUTLINE_NUMBERS).map(([k,r])=>[k,r.value]));
     this.entryCells=Object.freeze(cells.map((_,i)=>i));this.missingEntryCells=[];this.portalCarry=null;this.pendingLevelCells=null;
@@ -404,6 +407,7 @@ export class Game {
   messageSet(text,time=1.6) { this.message=text; this.messageTime=time; }
   setState(s) {
     if(s!=='playing'){this.panic=null;if(this.course){this.course.rescueJoint=-1;this.course.rescueChamber=null;}}
+    if(!['death_dissolve','reassembly'].includes(s))this.sealedZap=null;
     this.state=s;this.stateTime=0;
   }
   get difficulty() { return difficultyForLevel(this.level,this.balance); }
@@ -412,6 +416,8 @@ export class Game {
   get recouplingBlockedByHeat() { return recouplingHeatBlocked(this.level,this.heat>0,this.flags.overheat_blocks_recoupling,this.balance.heatMinLevel); }
   get recoverableFragments() { return recoverableFragments(this.player); }
   get recoupleWait() { return cooldownRemaining(this); }
+  get mercyActive() { return this.flags.mercy_mode&&this.mercy.active; }
+  get deathDissolveSeconds() { return this.sealedZap?SEALED_ZAP_SECONDS:.48; }
   resetLegClock() {
     this.legTime=this.difficulty.secondsPerLeg;
     this.timeResetNotice=this.difficulty.timed?1.6:0;
@@ -420,6 +426,8 @@ export class Game {
     this.player.reset(); this.player.alive=new Set(this.entryCells);this.course=new Course(this.level,this.flags.route3d,{balance:this.balance}); this.geometryVersion=(this.geometryVersion||0)+1;
     this.driftVelocity=new V();
     this.panic=null;this.panicLeg=0;this.panicCooldown=0;
+    this.mercy=new Mercy();
+    this.sealedZap=null;
     this.shutters=new Shutters(this.rng);
     this.damageTimer=.45; this.legTime=this.difficulty.secondsPerLeg; this.timedModule=0; this.timeResetNotice=0;
     this.outsideTime=0; this.heat=0; this.lastHeat=0; this.coolTime=0; this.cool=0;
@@ -702,8 +710,9 @@ export class Game {
       if(contact===undefined)continue;
       // Consume this closure contact even during immunity: no delayed repeat bite.
       this.shutters.contacts.set(l,phase.cycle);
-      if(!this.flags.damage||this.shutters.immunity>0)continue;
-      const loss=shutterLoss(this.player.alive.size,this.changeSettings.change_1_damage_fraction);
+      if(!this.flags.damage||this.shutters.immunity>0||this.mercyActive)continue;
+      const count=this.player.alive.size;
+      const loss=this.mercy.limitLoss(count,shutterLoss(count,this.changeSettings.change_1_damage_fraction),this.flags.mercy_mode,this.mercySettings);
       if(!loss)continue;
       const hit=this.player.pos(contact),nearest=[...this.player.alive].sort((a,b)=>
         Math.abs(l.local(this.player.pos(a),this.t).x)-Math.abs(l.local(this.player.pos(b),this.t).x));
@@ -716,7 +725,7 @@ export class Game {
     }
   }
   damage() {
-    if(!this.flags.damage) return null;
+    if(!this.flags.damage||this.mercyActive) return null;
     const p=this.player,candidates=[];
     if(this.flags.lasers&&this.shutters.immunity<=0) {
       const active=this.course.activeLasers(p.origin,this.t).filter(l=>!this.shutterState(l)?.closed);
@@ -728,8 +737,9 @@ export class Game {
     if(!candidates.length&&this.flags.bounds&&!this.flags.noclip) {
       type='bounds'; for(const i of p.alive) if(!this.course.inside(p.pos(i),.25)) candidates.push({i,l:null});
     }
+    const loss=this.mercy.limitLoss(p.alive.size,Math.min(2,candidates.length),this.flags.mercy_mode,this.mercySettings);
     let destroyed=0,shockImpact;
-    for(const {i,l} of candidates.slice(0,2)) {
+    for(const {i,l} of candidates.slice(0,loss)) {
       const pos=p.pos(i);
       if(p.destroy(i,l?l.center:p.origin,this.heat)) {
         shockImpact??={pos,normal:l?.module.bx};
@@ -758,7 +768,8 @@ export class Game {
   die() {
     if(!this.endPortalPreview)this.runStats.deaths++;
     this.recoupling=[]; this.makeReassembly(); this.setState('death_dissolve'); this.damageTimer=999;
-    this.emit('death'); this.messageSet('CUBICALLY DECOMMISSIONED',1.1);
+    this.emit(this.sealedZap?'sealed_zap':'death');
+    this.messageSet(this.sealedZap?'SEALED CORRIDOR · LETHAL GRID':'CUBICALLY DECOMMISSIONED',this.sealedZap?1.6:1.1);
   }
   win() {
     if(this.state!=='playing') return;
@@ -845,6 +856,7 @@ export class Game {
         if(this.stateTime>=7) { this.resetLegClock(); this.setState('playing'); this.damageTimer=.45; } break;
       case 'playing': {
         if(!this.endPortalPreview)this.runStats.playSeconds+=dt;
+        this.mercy.tick(dt);
         this.tickRecouple(dt);
         this.move(dt,input);
         this.trackPanicLeg();
@@ -859,8 +871,12 @@ export class Game {
           const loc=this.course.location(this.player.origin);
           if(loc.index>this.timedModule) { this.timedModule=loc.index; this.resetLegClock(); }
           else this.legTime=Math.max(0,this.legTime-dt);
-          if(this.legTime<=0||this.course.collapsedSectionAt(this.player.origin)>=0) {
+          const sealed=this.course.collapsedSectionAt(this.player.origin);
+          if(this.legTime<=0) {
             this.player.alive.clear(); this.emit('collapse',this.player.origin); this.emit('laser_dissipate');
+          } else if(sealed>=0&&this.player.alive.size) {
+            this.sealedZap={center:this.player.origin,module:this.course.modules[sealed]};
+            this.player.alive.clear();this.shake=.45;
           }
         }
         this.damageTimer-=dt;
@@ -873,7 +889,7 @@ export class Game {
         break;
       }
       case 'death_dissolve':
-        if(this.stateTime>=.48) { this.player.alive.clear(); this.player.fragments=[]; this.setState('reassembly'); this.emit('reassembly'); } break;
+        if(this.stateTime>=this.deathDissolveSeconds) { this.player.alive.clear(); this.player.fragments=[]; this.setState('reassembly'); this.emit('reassembly'); } break;
       case 'reassembly':
         if(this.lossActive&&this.missingEntryCells.length&&this.stateTime>=LOSS_ASSEMBLY.scatterAt&&this.stateTime-dt<LOSS_ASSEMBLY.scatterAt)this.emit('loss_weep');
         if(this.stateTime>=3.75) { this.resetAttempt(); this.checkpoint();this.setState('reassembly_flash'); this.damageTimer=.7; } break;
@@ -944,6 +960,7 @@ export class Game {
         this.flags[key]=v;
         if(key==='spin'&&!v)this.player.setSpinAngles(0,0,0);
         if(key==='microgravity')this.driftVelocity=new V();
+        if(key==='mercy_mode'&&!v)this.mercy.cancel();
         if(key==='rotation_shocks'&&!v) {this.rotationShock.angle=new V();this.rotationShock.velocity=new V();}
         if(key.startsWith('change_'))this.shutters.restart();
         if(key==='route3d') {this.panic=null;this.panicLeg=0;this.course=new Course(this.level,v,{balance:this.balance});this.geometryVersion++;this.shutters.restart();}
@@ -973,7 +990,7 @@ export class Game {
       const n=Number(value);if(value===undefined||String(value).trim()===''||!Number.isInteger(n)||n<0||n>this.levelCap)throw Error(`loss_grey_min_level expects an integer from 0 to ${this.levelCap}`);
       this.lossGreyMinLevel=n;return n;
     }});
-    for(const [rules,values] of [[PREVIEW_NUMBERS,this.previewSettings],[ROUTE_OUTLINE_NUMBERS,this.routeOutlineSettings]])for(const [key,rule] of Object.entries(rules))numeric.set(key,{get:()=>values[key],set:value=>{
+    for(const [rules,values] of [[PREVIEW_NUMBERS,this.previewSettings],[ROUTE_OUTLINE_NUMBERS,this.routeOutlineSettings],[MERCY_NUMBERS,this.mercySettings]])for(const [key,rule] of Object.entries(rules))numeric.set(key,{get:()=>values[key],set:value=>{
       const n=Number(value);if(value===undefined||String(value).trim()===''||!Number.isFinite(n)||n<rule.min||n>rule.max||rule.integer&&!Number.isInteger(n))throw Error(`${key} expects ${rule.integer?'an integer':'a number'} from ${rule.min} to ${rule.max}`);
       values[key]=n;return n;
     }});
@@ -1000,7 +1017,7 @@ export class Game {
       return `Status for ${key} is: ${requireSetting(key).get()?'Enabled':'Disabled'}`;
     };
     const setFlag=(key,v)=>{requireSetting(key).set(v);return `${key} set to ${v}`;};
-    if(cmd==='help'||cmd==='?') return 'viewconfig / showconfig / showvars / viewvars / listvars / listconfig: list all settings\nhelp, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: panic panic_show_inactive damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light end_portal culling microgravity overheat_blocks_recoupling change_1 change_2 change_3 change_4 change_4_pattern change_1_random_per_leg change_1_no_repeat_leg loss loss_grey route_outline preview_outline locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nNumbers: '+[...numeric.keys()].join(' ')+'\nRecords: toplevel / top_level (query); toplevel reset / top_level reset / reset top level (reset); keeps other records\nPreviews: test end_portal, test ending_1, test bonus_round_1, test change_1, test change_2, test change_3, test change_4, test loss, thank_you_note, bonus <type>';
+    if(cmd==='help'||cmd==='?') return 'viewconfig / showconfig / showvars / viewvars / listvars / listconfig: list all settings\nhelp, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: panic panic_show_inactive mercy_mode damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light end_portal culling microgravity overheat_blocks_recoupling change_1 change_2 change_3 change_4 change_4_pattern change_1_random_per_leg change_1_no_repeat_leg loss loss_grey route_outline preview_outline locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nNumbers: '+[...numeric.keys()].join(' ')+'\nRecords: toplevel / top_level (query); toplevel reset / top_level reset / reset top level (reset); keeps other records\nPreviews: test end_portal, test ending_1, test bonus_round_1, test change_1, test change_2, test change_3, test change_4, test loss, thank_you_note, bonus <type>';
     if(cmd==='flags')return [...settings.keys()].map(status).join('\n');
     if(['get','view','status'].includes(cmd)||['set','flag'].includes(cmd)&&value===undefined)return status(arg==='toplevel'?'top_level':arg);
     const numericKey=['set','flag'].includes(cmd)?arg:cmd;

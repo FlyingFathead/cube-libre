@@ -77,7 +77,7 @@ export class GameAudio {
     if(offset>=this.buffers.get(name).duration)return;
     const now=this.ctx.currentTime,existing=this.channels.get(channel);
     if(loop&&existing?.name===name) {existing.gain.gain.setTargetAtTime(volume,now,.1); return;}
-    const cooldownKey=channel==='recouple_denied'?channel:name;
+    const cooldownKey=channel==='recouple_denied'||channel==='sealed_zap'?channel:name;
     if(!loop&&now-(this.last.get(cooldownKey)??-999)<(cooldowns[cooldownKey]||0)) return;
     this.last.set(cooldownKey,now); this.stop(channel,.025);
     const source=this.ctx.createBufferSource(),gain=this.ctx.createGain();
@@ -107,6 +107,7 @@ export class GameAudio {
     for(const event of g.events.splice(0)) {
       if(event.name==='stop') this.stopAll();
       else if(event.name==='recouple_denied')this.sound('time_buzzer',.32,'recouple_denied',false,-5);
+      else if(event.name==='sealed_zap') {this.stopAll(.015);this.sound('shutter_close',.9,'sealed_zap',false,-5);}
       else this.sound(event.name,undefined,event.name,false,event.semitones??0);
     }
     if(!this.ready) return;

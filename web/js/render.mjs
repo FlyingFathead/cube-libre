@@ -63,7 +63,7 @@ class Lines {
 
 // All nearby electric sheets share one small reusable geometry and draw call.
 class ShutterPanels {
-  constructor(parent,capacity=30) {
+  constructor(parent,capacity=120) {
     this.count=0;this.capacity=capacity;this.positions=new Float32Array(capacity*18);this.colors=new Float32Array(capacity*24);
     this.geo=new T.BufferGeometry();
     this.geo.setAttribute('position',new T.BufferAttribute(this.positions,3).setUsage(T.DynamicDrawUsage));
@@ -435,8 +435,25 @@ export class Renderer {
     }
   }
   lossColor(g,color) {return g.flags.loss_grey?lossBodyColor(color,lossGreyAmount(g.level,Math.max(1,g.lossGreyMinLevel),g.levelCap)):color;}
+  sealedCorridorZap(g) {
+    if(g.state!=='death_dissolve'||!g.sealedZap)return;
+    const {center,module:m}=g.sealedZap,alpha=1-smooth(g.stateTime/g.deathDissolveSeconds),h=7.5;
+    // Three crossed grids stay readable even when the view is edge-on to one.
+    // Broad blue beam strips and white cores share existing reusable buffers.
+    for(const [u,v] of [[m.by,m.bz],[m.bx,m.by],[m.bx,m.bz]]) {
+      const point=(x,y)=>center.add(u.mul(x)).add(v.mul(y));
+      this.shutterPanels?.add([point(-h,-h),point(h,-h),point(h,h),point(-h,h)],[.02,.25,1],alpha*.12);
+      for(let n=-h;n<=h;n+=1.5)for(const [a,b,side] of [
+        [point(n,-h),point(n,h),u.mul(.09)],
+        [point(-h,n),point(h,n),v.mul(.09)],
+      ]) {
+        this.shutterPanels?.add([a.sub(side),b.sub(side),b.add(side),a.add(side)],[.03,.45,1],alpha*.85);
+        this.lines.line(a,b,[.65,.9,1],alpha);
+      }
+    }
+  }
   reassemble(g) {
-    const dissolve=g.state==='death_dissolve',q=clamp(g.stateTime/(dissolve?.48:3.75));
+    const dissolve=g.state==='death_dissolve',q=clamp(g.stateTime/(dissolve?g.deathDissolveSeconds:3.75));
     for(const part of g.reassembly||[]) {
       const phase=smooth((q-part.delay*.35)/.72);
       const pos=dissolve?lerp(part.origin,part.star,smooth(q)):lerp(part.star,part.target,phase);
@@ -486,7 +503,10 @@ export class Renderer {
     if(g.state==='level_ready'&&g.openingTransition&&g.stateTime<.75) {
       ctx.fillStyle=`rgba(255,255,255,${1-smooth(g.stateTime/.75)})`;ctx.fillRect(0,0,w,h);
     }
-    if(g.state==='death_dissolve') { ctx.fillStyle=`rgba(255,255,255,${smooth(g.stateTime/.48)})`; ctx.fillRect(0,0,w,h); }
+    if(g.state==='death_dissolve') {
+      const fade=g.sealedZap?smooth((g.stateTime-.45)/(g.deathDissolveSeconds-.45)):smooth(g.stateTime/g.deathDissolveSeconds);
+      ctx.fillStyle=`rgba(255,255,255,${fade})`;ctx.fillRect(0,0,w,h);
+    }
     if(g.state==='reassembly_flash') {
       const q=g.stateTime/1.1; ctx.fillStyle=`rgba(255,255,255,${(1-q)*(.4+.6*Math.abs(Math.sin(q*34)))})`;ctx.fillRect(0,0,w,h);
     }
@@ -562,6 +582,7 @@ export class Renderer {
         }
       }
       if(rebuilding||g.state==='death_dissolve') this.reassemble(g);
+      this.sealedCorridorZap(g);
     }
     if(!bonusScene&&!ascending)this.camera.lookAt(0,0,0);
     if(rebuilding&&this.width>0&&this.height>0)this.reassemblyLabel=this.reassemblyCaption();

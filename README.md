@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.29.3
+# Cube Libre — Web v0.30.0
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,7 +23,37 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.29.3 · Recouple batch recovery
+## Web release 0.30.0 · Critical grace
+
+A quiet grace period gives you time to react to rapid disintegration. Two hits
+within half a second, leaving **20 cubes or fewer**, grant **1.5 seconds** of
+protection from lasers, shutters and boundary damage. A **15-second cooldown**
+starts after protection ends. Low integrity alone does not trigger it, and
+blocked hits cannot renew the protection or accumulate for later.
+
+The feature defaults on in both campaigns and every input mode. It has no
+button, banner or extra sound; the existing CRITICAL warnings remain. Console
+settings last for the session:
+
+```text
+set mercy_mode true
+set mercy_seconds 1.5
+set mercy_cube_threshold 20
+set mercy_damage_window_seconds 0.5
+set mercy_cooldown_seconds 15
+```
+
+Use `set mercy_mode false` to disable it. A qualifying hit preserves the last
+existing cube if necessary; mercy never restores lost pieces. Pause, Help and
+Panic confinement freeze its clocks. Recouple retains its batch loss and quota.
+
+Entering a corridor or junction that has collapsed behind you now produces a
+bright blue grid and a distinct **BZZZZZZZT**, with **SEALED CORRIDOR · LETHAL
+GRID** shown briefly. This makes sealed backtracking deaths identifiable.
+Returning from space into an open section remains allowed. Mercy protects
+against ordinary damage; leg expiry and sealed-section deaths still apply.
+
+### Retained from 0.29.3 · Recouple batch recovery
 
 **One press handles the whole batch of recoverable loose blocks, with the
 existing amount of loss.** The successful portion returns. Rejected blocks grey
@@ -606,7 +636,7 @@ node --test tests/web/*.test.mjs
 
 See [WEB_PORT.md](WEB_PORT.md) for gameplay details, browser differences,
 source layout, and optional regeneration using a separate PyGame checkout.
-Web 0.29.2 (`5bdd1ce`) is the published baseline. This release passes 211
+Web 0.29.3 (`e0a7e85`) is the published baseline. This release passes 222
 automated test groups and static checks on Node.js 18.19.1, including both
 campaigns, legacy save migration, independent records, LOSS body carry, ending
 wave/audio timing and render data, controller/touch dispatch, simulated final routes,
@@ -617,7 +647,12 @@ Outside-drift checks keep nearby walls drawn on levels 7, 8 and both campaign
 caps, including the touch-input path on both mobile layouts.
 The baseline tests explicitly select mode 50; additional mode tests exercise the
 default 20-level campaign. The shorter campaign's human balance and Panic's
-visual/audio pacing still need device playtesting. Automated traversal does not
+visual/audio pacing still need device playtesting. Mercy checks cover rapid and
+spaced hits, lethal bursts, all ordinary damage sources, expiry, cooldown,
+pause, console tuning and normal recovery. Sealed-contact checks cover the blue
+grid, cause label and buzz. Its projected geometry was inspected in portrait
+and landscape; the new grace timing and death feedback need device playtesting.
+Automated traversal does not
 establish human completion under campaign LOSS.
 
 After changing the version or adding/removing modules, regenerate the committed

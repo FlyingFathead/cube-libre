@@ -566,7 +566,9 @@ async function main() {
     $('timer').textContent=`${clock.toFixed(1)}s\n${bonus?'BONUS':`LEG ${game.timedModule+1}/${game.course.modules.length}`}`;
     const timeUrgency=1-clamp(clock/10);
     $('timer').style.color=`hsl(${48*(1-timeUrgency)}, 100%, ${85-30*timeUrgency}%)`;
-    $('notice').textContent=playing?(game.messageTime>0?game.message:game.endPortalPreview?'END PORTAL TEST · no records or points awarded':''):preview?'COURSE MATERIALIZING':'';
+    const sealedDeath=!!game.sealedZap&&['death_dissolve','reassembly'].includes(s)&&game.messageTime>0;
+    $('notice').classList.toggle('sealed-death',sealedDeath);
+    $('notice').textContent=sealedDeath?game.message:playing?(game.messageTime>0?game.message:game.endPortalPreview?'END PORTAL TEST · no records or points awarded':''):preview?'COURSE MATERIALIZING':'';
     const fragments=game.recoverableFragments,remaining=fragments.length?Math.min(...fragments.map(f=>8-f.age)):0;
     const recoveryWait=game.recoupleWait;
     const recovering=game.recoupling.length>0;

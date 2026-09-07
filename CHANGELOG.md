@@ -1,3 +1,46 @@
+# Changelog
+
+## 0.30.0 — Critical grace
+
+Based on published web v0.29.3 (`e0a7e85`).
+
+- Add a quiet, default-on mercy window for rapid disintegration in normal play.
+  Two damaging hits within 0.5 seconds, leaving 20 cubes or fewer, grant 1.5
+  seconds without laser, shutter or boundary damage, then 15 seconds of
+  cooldown. Low count alone does not activate it. A qualifying otherwise-lethal
+  hit preserves the final existing cube; no replacement cells are created.
+- Keep the mechanic internal: no new button, Options item, banner or sound.
+  Register session-only `mercy_mode`, `mercy_seconds`, `mercy_cube_threshold`,
+  `mercy_damage_window_seconds` and `mercy_cooldown_seconds` in the console.
+  Standard boolean aliases and non-mutating status/configuration queries work.
+- Put trigger history, timing and loss limiting in `web/js/mercy.mjs`. Both
+  ordinary damage and shutters share the guard. Blocked hits do not extend it,
+  contribute to another burst or queue damage for later. Pause, Help, setup,
+  bonus play and Panic confinement freeze the clocks. Attempts reset them;
+  checkpoints do not serialize live protection. Toggling off does not erase
+  an incurred cooldown; numeric tuning applies to the next trigger.
+- Make real sealed-corridor deaths identifiable. A bright blue crossed grid
+  appears at the contact point, accompanied by a sustained electric BZZZZZZZT
+  and `SEALED CORRIDOR · LETHAL GRID`. Show the grid before whiteout within a
+  0.75-second sealed death. Ordinary deaths retain their existing timing.
+  Reuse the electric shutter buffer at a lower pitch on a separate channel,
+  with no new audio download. Mute and pause apply; recent shutter sounds
+  cannot suppress the cue. The label remains briefly into reassembly.
+- Preserve Recouple batch loss, rejected debris, quota and heat restrictions,
+  desktop/mobile action circles, Panic recovery and forced component refresh.
+  Leg expiry and sealed backtracking remain lethal. Re-entry into an open
+  section from outside does not trigger the sealed grid.
+
+Validation: all 222 automated test groups and static checks pass on Node.js
+18.19.1. New coverage includes both campaigns at 30/60/120 FPS, rapid/spaced
+hits, critical thresholds, final-cell preservation, all ordinary damage sources,
+expiry/cooldown, pause, Panic, recovery, console validation and checkpoint
+isolation. Sealed-contact checks cover route axes, single audio dispatch,
+rendered beam geometry, blocked sound cooldowns, pause and the actual browser
+cause-label handler. Portrait and landscape projections of the actual grid
+geometry were inspected. Device playtesting of mercy balance and the new
+visual/audio feedback remains needed.
+
 ## 0.29.3 — Recouple batch recovery
 
 Based on published web v0.29.2 (`5bdd1ce`).
@@ -37,7 +80,6 @@ eligible, rather than relying on repeated recovery of old fragments. Device
 visual/audio checking remains outstanding. Laser, maze, movement, difficulty
 curve and Panic gameplay rules are unchanged.
 
-# Changelog
 
 ## 0.29.2 — Tap the title
 

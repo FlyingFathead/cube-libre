@@ -1,6 +1,6 @@
 # Cube Libre web progression
 
-Default schedule for web **0.29.3**, based on published v0.29.2 (`5bdd1ce`).
+Default schedule for web **0.30.0**, based on published v0.29.3 (`e0a7e85`).
 `DEFAULT_GAME_MODE = 20` and the immutable `GAME_MODES` registry live in
 [`web/js/difficulty.mjs`](../web/js/difficulty.mjs). Each `Game` owns its active
 balance; `featuresForSettings(settings, flags, lossMinLevel, game.balance)` drives
@@ -30,6 +30,22 @@ Runtime gameplay always supplies its selected mode explicitly.
 Phase cards hold for five seconds each, queued in the order shown. They and the
 preview do not consume the leg clock. TIME warnings describe the continuous
 curve. The fading has no separate title card and does not cause damage.
+
+## Quiet grace during critical damage
+
+In both campaigns, default-on `mercy_mode` protects the surviving body for
+`mercy_seconds` (1.5) when two damaging hits within
+`mercy_damage_window_seconds` (0.5) leave at most `mercy_cube_threshold` (20)
+cubes. `mercy_cooldown_seconds` (15) starts after that protection ends.
+These are session-only console settings, with no introduction, menu control or
+new warning. Low count alone does not activate grace. The triggering hit still
+costs cells but preserves the last existing cube if necessary. Lasers, shutters
+and boundaries share the protection. Ignored hits do not build a later burst.
+
+Pause, Help and Panic confinement freeze the protection and cooldown. A new
+attempt resets them. Recouple yield, failed debris, heat restrictions and
+quota still apply. Timer expiry and real sealed-section contact remain lethal;
+sealed contact now has a bright blue grid, electric buzz and cause label.
 
 ## Same end pressure, shorter ramps
 

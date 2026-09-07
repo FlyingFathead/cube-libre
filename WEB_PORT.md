@@ -86,6 +86,7 @@ remain active. Regression coverage is in `tests/web/collapse-contact.test.mjs`.
 | Maze | Modular self-avoiding X/Z/Y route and open turn chambers; one added leg per level through twenty at the default cap; original fifty-leg mode retained |
 | Boundary damage | Cell shaving, delayed overheating, cooling, local impacts and drifting debris |
 | Recovery | Eight-second expiry, warning blinks, compact reconstruction, five requests per ten seconds, active-spam quota |
+| Critical grace | Quiet, configurable 1.5-second protection after rapid damage leaves at most 20 cubes; 15-second cooldown after protection |
 | Difficulty | Space at level 3; timed legs from level 5; shutter changes at levels 4, 6, 7 and 8; entropy from level 10; HEAT at level 15; LOSS from exit 16; timer/yield ramp to 20 (original mode: LOSS 44, endpoint 50) |
 | Collapse | Progressive reveal/arming; the previous leg dissolves after the next turn is cleared, with debris, sound and sealed timed backtracking |
 | Portal | Per-cell slab contact, suction, charge, absorption and 98.5% body commitment |
@@ -1123,20 +1124,64 @@ The existing tests had allowed rejected fragments to be requested again. The
 updated checks enforce batch loss and distinguish fresh damage from spent
 debris, including early levels, ENTROPY, both modes and all input layouts.
 
+## Critical grace and sealed-contact feedback (web 0.30.0)
+
+`web/js/mercy.mjs` owns the rapid-hit history, protection clock, cooldown and
+numeric defaults. `Game.damage()` and `Game.updateShutters()` share its loss
+limiter. Two real damaging contacts no more than 0.5 seconds apart qualify
+when the second hit would leave 20 or fewer cells. The triggering hit is applied,
+preserving the final existing cell if necessary, then ordinary laser, shutter
+and boundary damage is ignored for 1.5 seconds. No lost cells are recreated.
+An isolated hit or a low count without damage does not grant protection.
+
+| Console setting | Default | Range / behavior |
+| --- | --- | --- |
+| `mercy_mode` | `true` | Standard boolean aliases. Off cancels protection but preserves its incurred cooldown. |
+| `mercy_seconds` | `1.5` | 0–10 seconds; 0 prevents new protection windows. |
+| `mercy_cube_threshold` | `20` | Integer 1–125; maximum survivors after the triggering hit. |
+| `mercy_damage_window_seconds` | `0.5` | 0–5 seconds between two real damaging hits. |
+| `mercy_cooldown_seconds` | `15` | 0–300 seconds after protection ends before another burst can qualify. |
+
+All five settings are session-only and listed in `viewconfig`; status queries
+are inert. Numeric changes apply to the next trigger, without shortening or
+refilling protection or cooldown already in progress. The clock advances only
+during normal play: pause, Help, setup, bonus rounds and Panic confinement do
+not consume it. A new attempt or resumed entrance checkpoint starts fresh;
+live mercy state is never saved. Blocked contacts cannot extend protection or
+be applied later. A shutter contact blocked by mercy is consumed for that
+closure, matching existing grid-immunity semantics.
+
+There is no extra HUD element, Options item, sound or announcement for mercy.
+Movement, Recouple batch loss/quota and overheating's restriction on new
+recovery requests remain active. Leg expiry and physical sealed-section
+contact still end the attempt. The latter now captures its contact point and
+route axes before the body is cleared. The renderer draws three crossed blue
+grids with bright cores, using existing line and panel buffers. Panel capacity
+is 120 to accommodate 69 effect strips/sheets plus nearby shutters, with no new
+draw call or texture. The sealed death takes 0.75 seconds, holding off the white
+fade for 0.45 seconds so the grid remains visible. Ordinary deaths keep 0.48
+seconds. The cause label remains briefly into reassembly and clears on retry.
+
+`sealed_zap` plays the existing electric shutter buffer at -5 semitones, a
+roughly 0.75-second buzz, at its own gain and channel. It drops earlier sound
+tails and bypasses the normal shutter sound cooldown, so a recent closure
+cannot swallow the death cue. Mute and pause use the normal audio adapter.
+Returning from outside into an open section never invokes the sealed effect.
+
 ## Versioning
 
 `web/version.json` is the machine-readable source for the **web version** and
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.29.3**, continuing from published **0.29.2** (`5bdd1ce`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.30.0**, continuing from published **0.29.3** (`e0a7e85`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.29.4`, `0.29.5`, etc. for fixes, and `0.30.0` for the
+For future releases, use `0.30.1`, `0.30.2`, etc. for fixes, and `0.31.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.29.3.zip` and `v0.29.3`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.30.0.zip` and `v0.30.0`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 The project-scoped `cube-libre-web-version` cookie records the booted version,
@@ -1217,7 +1262,7 @@ immunity, warning/closed rendering, local audio events, movable introductions,
 camera centering, legacy and irregular skies, saved pattern switching and full
 configuration listings. Web 0.23.0 adds controller axes/buttons and browser-dispatch
 checks, record resets, globally capped alternating shutters, preview limits/fade
-uniforms, startup cache replacement and live leg totals. The suite now has 211 passing test groups, including title text/logo activation and Panic return geometry and safety
+uniforms, startup cache replacement and live leg totals. The suite now has 222 passing test groups, including title text/logo activation and Panic return geometry and safety
 at every leg start, exact-body preservation without debris, normal recovery limits,
 whole-second cooldown, saved preferences and actual keyboard/controller/touch dispatch.
 The action HUD checks cover setup visibility, desktop key labels and urgency only

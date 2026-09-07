@@ -8,6 +8,7 @@ dialog{color:#d2ebf0;background:#030a0f;border:1px solid #39c4cf;border-radius:9
 @media(max-height:560px){.title-info{bottom:55px;padding:.3rem .75rem}.title-info p{margin:.2rem}.title-info .credits{display:none}#start{top:2%;height:34px}#hud{padding:.35rem .55rem}#hud p{margin:.2rem}#notice{top:23%}#recovery{}#audio-status{}.touch-pad button{min-height:36px}#touch-controls{}#card.rebuilding{padding-bottom:12%}}
 
 /* White tracing keeps both reassembly labels legible over the moving pieces. */
+#notice.sealed-death { color: #c5edff; text-shadow: 0 0 8px #0075ff, 0 2px 4px #001433; }
 #card.rebuilding { padding: 0; }
 #card.rebuilding #card-copy {
   position: absolute;
