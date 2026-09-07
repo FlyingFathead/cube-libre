@@ -97,15 +97,76 @@ test('pause, visibility, resize, new levels and input-mode changes clear touch w
 
 test('re-couple button reflects actual loose pieces, heat, quota and active recovery; each press requests only once',()=>{
   const s=setup(),g=s.game;assert.deepEqual(recoupleStatus(g),{enabled:false,text:'NO PIECES'});assert.equal(s.node('touch-c').disabled,true);
-  const origin=g.player.origin;g.player.fragments=[{age:0,pos:origin,color:[1,1,1],axis:{x:1,y:0,z:0},angle:0}];
-  assert.equal(recoupleStatus(g).enabled,true);g.requests=Array(5).fill(g.t);assert.match(recoupleStatus(g).text,/WAIT/);
+  g.player.destroy(0,g.player.origin);
+  assert.equal(recoupleStatus(g).enabled,true);g.requests=Array(5).fill(g.t);assert.match(recoupleStatus(g).text,/COOLDOWN/);
   g.requests=[];g.level=15;g.heat=1;assert.equal(recoupleStatus(g).text,'TOO HOT');g.heat=0;
   g.recoupling=[{}];assert.equal(recoupleStatus(g).text,'COUPLING…');g.recoupling=[];
   g.player.fragments[0].age=7.96;assert.equal(recoupleStatus(g).enabled,false);g.player.fragments[0].age=0;
-  let count=0;g.requestRecouple=()=>count++;s.mobile.sync();assert.equal(s.node('touch-c').disabled,false);
-  s.node('touch-c').fire('pointerdown');s.node('touch-c').fire('pointerdown',{pointerId:2});s.node('touch-c').fire('click');assert.equal(count,1);
+  let count=0;const request=g.requestRecouple.bind(g);g.requestRecouple=()=>{count++;request();};s.mobile.sync();assert.equal(s.node('touch-c').disabled,false);
+  s.node('touch-c').fire('pointerdown');s.node('touch-c').fire('click');assert.equal(count,1);
   s.node('touch-c').fire('pointerup');s.node('touch-c').fire('pointerdown',{pointerId:3});assert.equal(count,2);
+  assert.equal(g.requests.length,2,'A distinct busy press consumes quota, just like the keyboard');
   g.paused=true;s.node('touch-c').fire('click',{detail:0});assert.equal(count,2);
+});
+
+test('Recouple dims as a whole after one batch, excludes rejected debris, and accepts fresh damage without a release latch',()=>{
+  for(const mode of [1,2])for(const helpers of [false,true]) {
+    const {game:g,mobile,node}=setup({mode});mobile.setHelpers(helpers);g.player.rng=()=>.5;
+    const dim=()=>node('touch-recoup-wrap').classList.contains('action-disabled');
+    const step=()=>{for(let i=0;i<144;i++){g.tick(1/120);mobile.sync();}};
+    for(let i=0;i<10;i++)g.player.destroy(i,g.player.origin);
+    mobile.sync();assert.equal(dim(),false);assert.equal(node('touch-recouple-status').textContent,'10 LOOSE');
+    node('touch-c').fire('pointerdown');node('touch-c').fire('click');mobile.sync();
+    assert.equal(g.requests.length,1);assert.equal(g.recoupling.length,9);
+    assert.equal(dim(),true);assert.equal(node('touch-recouple-status').textContent,'COUPLING…');
+    // Some browsers do not deliver the release to a control that changed state.
+    // The next press must still work, without touching the steering capture.
+    step();assert.equal(g.player.alive.size,124);assert.equal(g.player.fragments.length,0);
+    assert.equal(dim(),true);assert.equal(node('touch-recouple-status').textContent,'NO PIECES');
+    node('touch-c').fire('pointerdown',{pointerId:2});assert.equal(g.requests.length,1);
+    g.player.destroy([...g.player.alive][0],g.player.origin);mobile.sync();
+    assert.equal(dim(),false);assert.equal(node('touch-recouple-status').textContent,'1 LOOSE');
+    node('touch-c').fire('pointerdown',{pointerId:2});node('touch-c').fire('click',{pointerId:2});step();
+    assert.equal(g.requests.length,2);assert.equal(g.player.alive.size,124);assert.equal(g.player.fragments.length,0);
+    assert.equal(dim(),true);assert.equal(node('touch-c').disabled,true);assert.equal(node('touch-recouple-status').textContent,'NO PIECES');
+    node('touch-c').fire('pointerdown',{pointerId:3});node('touch-c').fire('click',{detail:0});assert.equal(g.requests.length,2);
+    g.player.destroy([...g.player.alive][0],g.player.origin);g.player.fragments[0].age=7.95;mobile.sync();
+    assert.equal(dim(),true);assert.equal(node('touch-recouple-status').textContent,'NO PIECES');
+    // A full body cannot accept a stray visual fragment, including after debug edits.
+    g.player.fragments[0].age=0;g.player.alive=new Set(Array.from({length:125},(_,i)=>i));mobile.sync();
+    assert.equal(dim(),true);assert.equal(node('touch-c').disabled,true);
+    g.requestRecouple();assert.equal(g.requests.length,2);assert.match(g.message,/NO RECOVERABLE/);
+  }
+});
+
+test('repeated circle presses use the keyboard quota, show cooldown during recovery, and cannot duplicate or extend it',()=>{
+  for(const mode of [1,2])for(const helpers of [false,true]) {
+    const {game:g,mobile,node}=setup({mode});mobile.setHelpers(helpers);g.player.rng=()=>.5;g.t=20;
+    for(let i=0;i<10;i++)g.player.destroy(i,g.player.origin);
+    const keyboard=new Game({gameMode:50,rng:()=>.5});keyboard.ready(7);keyboard.setState('playing');keyboard.t=g.t;
+    for(let i=0;i<10;i++)keyboard.player.destroy(i,keyboard.player.origin);
+    for(let press=0;press<5;press++) {
+      mobile.sync();assert.equal(node('touch-c').disabled,false);
+      node('touch-c').fire('pointerdown',{pointerId:press+1});node('touch-c').fire('click',{pointerId:press+1});
+      keyboard.requestRecouple();mobile.sync();
+      assert.deepEqual(g.requests,keyboard.requests);assert.equal(g.recoupling.length,keyboard.recoupling.length);
+    }
+    assert.equal(g.events.filter(e=>e.name==='recouple').length,1);
+    assert.equal(node('touch-c').attrs['aria-disabled'],'true');assert.equal(node('touch-recouple-status').textContent,'COOLDOWN 10 s');
+    assert.equal(node('touch-recoup-wrap').classList.contains('action-disabled'),true);
+    assert.equal(node('touch-recoup-wrap').classList.contains('action-alert'),false);
+    for(let i=0;i<5;i++){node('touch-c').fire('pointerdown');node('touch-c').fire('click',{detail:0});g.requestRecouple();}
+    assert.equal(g.requests.length,5);assert.equal(g.recoupleWait,10);
+    mobile.sync();assert.equal(node('touch-recoup-wrap').classList.contains('action-rejected'),true);
+    assert.equal(g.events.filter(e=>e.name==='recouple_denied').length,1,'Button mashing gives bounded feedback');
+    for(const flag of ['paused','help']){g[flag]=true;g.tick(15);mobile.sync();assert.equal(g.recoupleWait,10);g[flag]=false;}
+    for(let i=0;i<144;i++)g.tick(1/120);mobile.sync();
+    assert.equal(g.player.alive.size,124);assert.equal(g.recoupling.length,0);
+    assert.equal(node('touch-c').attrs['aria-disabled'],'true');assert.equal(node('touch-recouple-status').textContent,'COOLDOWN 9 s');
+    g.t=30;g.player.destroy(1,g.player.origin);mobile.sync();
+    assert.equal(g.recoupleWait,0);assert.equal(node('touch-c').disabled,false);
+    node('touch-c').fire('pointerdown',{pointerId:9});assert.equal(g.requests.length,1);assert.ok(g.recoupling.length>0);
+  }
 });
 
 test('bonus mode rolls on the floor, hides depth/re-couple and uses the same drag rush threshold',()=>{
@@ -254,7 +315,7 @@ test('action circles and labels pulse for urgent recovery only while usable, on 
     const fragment=game.player.fragments[0];fragment.age=6.25;mobile.sync();assert.equal(warned('touch-recoup-wrap'),false);
     fragment.age=6.26;mobile.sync();assert.equal(warned('touch-recoup-wrap'),true);
     game.heat=1;mobile.sync();assert.equal(warned('touch-recoup-wrap'),false);game.heat=0;
-    game.cooldown=.1;mobile.sync();assert.equal(warned('touch-recoup-wrap'),false);game.cooldown=0;
+    game.requests=Array(5).fill(game.t-9.9);mobile.sync();assert.equal(warned('touch-recoup-wrap'),false);game.requests=[];
     game.requests=Array(5).fill(game.t);mobile.sync();assert.equal(warned('touch-recoup-wrap'),false);game.requests=[];
     for(const field of ['paused','help']){game[field]=true;mobile.sync();assert.equal(warned('touch-recoup-wrap'),false);game[field]=false;}
     fragment.age=7.95;mobile.sync();assert.equal(warned('touch-recoup-wrap'),false);

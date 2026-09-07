@@ -52,8 +52,8 @@ test('startup bypasses a stale entrypoint once and never runs a mixed release or
   const html=readFileSync(new URL('../../web/index.html',import.meta.url),'utf8');
   const script=html.match(/<script>\s*([\s\S]*?)<\/script>/)[1].replace("import('./js/app.mjs')","loadGame()");
   async function run(version,href='https://flyingfathead.github.io/cube-libre/',failure=false) {
-    const nodes={'boot-text':{},reload:{hidden:true},'release-data':{textContent:JSON.stringify({edition:'web',version:'0.23.0'})}},calls=[],redirects=[];
-    const ctx={URL,AbortSignal,Date,console:{error(){}},document:{getElementById:id=>nodes[id]},location:{href,protocol:'https:',replace:url=>redirects.push(url),reload(){}},
+    const nodes={'boot-text':{},reload:{hidden:true},'release-data':{textContent:JSON.stringify({edition:'web',version:'0.23.0'})},'release-components':{textContent:'[]'}},calls=[],redirects=[];
+    const ctx={URL,AbortSignal,Date,console:{error(){}},document:{getElementById:id=>nodes[id],querySelectorAll:()=>[]},location:{href,protocol:'https:',replace:url=>redirects.push(url),reload(){}},
       fetch:async(url,options)=>{calls.push({url,options});if(failure)throw Error('offline');return {ok:true,json:async()=>({edition:'web',version})};},loadGame:async()=>{ctx.loaded=(ctx.loaded||0)+1;}};
     await vm.runInNewContext(script,ctx);return {ctx,nodes,calls,redirects};
   }
@@ -64,6 +64,35 @@ test('startup bypasses a stale entrypoint once and never runs a mixed release or
   for(const [version,failure] of [['0.23.0',false],['0.22.1',false],['broken',false],[null,true]]) {
     r=await run(version,undefined,failure);assert.equal(r.ctx.loaded,1);assert.equal(r.ctx.CUBE_LIBRE_RELEASE.version,'0.23.0');assert.equal(r.redirects.length,0);
   }
+});
+
+test('a stale version cookie refreshes all components before boot, while failed refreshes and blocked cookies cannot cause reload loops',async()=>{
+  const {readFileSync}=await import('node:fs'),{default:vm}=await import('node:vm');
+  const html=readFileSync(new URL('../../web/index.html',import.meta.url),'utf8');
+  const release=JSON.parse(html.match(/<script id="release-data" type="application\/json">([\s\S]*?)<\/script>/)[1]);
+  const components=JSON.parse(html.match(/<script id="release-components" type="application\/json">([\s\S]*?)<\/script>/)[1]);
+  const script=html.match(/<script>\s*([\s\S]*?)<\/script>/)[1].replace("import('./js/app.mjs')","loadGame()");
+  async function run({cookie='other-game=kept; cube-libre-web-version=0.29.2',blocked=false,offline=false,failComponent=false}={}) {
+    const nodes={'boot-text':{},reload:{hidden:true},'release-data':{textContent:JSON.stringify(release)},'release-components':{textContent:JSON.stringify(components)}};
+    const calls=[],writes=[],redirects=[],styles=[{href:'https://flyingfathead.github.io/cube-libre/style.css?v='+release.version}];
+    const document={getElementById:id=>nodes[id],querySelectorAll:()=>styles};
+    Object.defineProperty(document,'cookie',{get(){if(blocked)throw Error('Blocked');return cookie;},set(value){if(blocked)throw Error('Blocked');writes.push(value);}});
+    const ctx={document,URL,AbortSignal,Date,console:{error(){}},location:{href:'https://flyingfathead.github.io/cube-libre/',protocol:'https:',replace:url=>redirects.push(url)},
+      fetch:async(url,options)=>{calls.push({url,options});if(offline)throw Error('Offline');return url.pathname.endsWith('/version.json')?{ok:true,json:async()=>release}:{ok:!failComponent,arrayBuffer:async()=>new ArrayBuffer(0)};},
+      loadGame:async()=>{ctx.loaded=true;assert.equal(calls.filter(c=>c.options.cache==='reload').length,offline||cookie.endsWith(release.version)?0:components.length);}};
+    await vm.runInNewContext(script,ctx);return {ctx,calls,writes,redirects,nodes,styles};
+  }
+  for(const cookie of ['', 'cube-libre-web-version=invalid', 'other-game=kept; cube-libre-web-version=0.29.2']) {
+    const r=await run({cookie});assert.equal(r.ctx.loaded,true);assert.equal(r.redirects.length,0);
+    const refreshed=r.calls.filter(c=>c.options.cache==='reload');assert.equal(refreshed.length,components.length);
+    assert.ok(refreshed.every(c=>c.url.searchParams.get('v')===release.version&&c.url.pathname.startsWith('/cube-libre/')));
+    assert.match(r.writes[0],new RegExp('^cube-libre-web-version='+release.version.replaceAll('.','\\.')+'; Path=/cube-libre/;'));
+    assert.match(r.writes[0],/SameSite=Lax; Secure$/);assert.ok(new URL(r.styles[0].href).searchParams.has('boot'));
+  }
+  let r=await run({cookie:'cube-libre-web-version='+release.version});assert.equal(r.ctx.loaded,true);assert.equal(r.calls.length,1);
+  r=await run({blocked:true});assert.equal(r.ctx.loaded,true);assert.equal(r.redirects.length,0);assert.equal(r.writes.length,0);
+  r=await run({offline:true});assert.equal(r.ctx.loaded,true);assert.equal(r.calls.length,1);assert.equal(r.writes.length,0);
+  r=await run({failComponent:true});assert.equal(r.ctx.loaded,undefined);assert.equal(r.writes.length,0);assert.equal(r.redirects.length,0);assert.equal(r.nodes.reload.hidden,false);
 });
 
 test('release URLs cover transitive modules and assets while retaining the Pages project path',async()=>{

@@ -1,3 +1,42 @@
+## 0.29.3 — Recouple batch recovery
+
+Based on published web v0.29.2 (`5bdd1ce`).
+
+- Fix recovery of the failed fraction of a previous Recouple request. One press
+  handles the entire eligible batch at the existing level-dependent yield.
+  Successful blocks return; rejected blocks immediately become unrecoverable,
+  grey out, turn to dark wireframes, fall away and fade. Further presses cannot
+  recover those rejected blocks. New damage creates a fresh eligible batch.
+- Put batch selection, fragment eligibility, timings and the five-requests-in-ten-
+  seconds limit in `web/js/recoupling.mjs`. Keep the current yield curve, minimum
+  one returned block, compact target selection and active-press quota rule.
+- Grey the entire Recouple control: circle, symbol, name, status and key labels.
+  Exclude rejected/expired debris and full bodies from availability and the HUD
+  counter. Keep urgency orange-red only while recovery is actually available.
+- Make distinct touch/mouse presses during an active recovery consume the same
+  quota as C / LB / X. Holding a pointer does not repeat. Remove the release latch
+  that could obstruct a later press. Show cooldown immediately at the limit,
+  use the same exact expiry for controls and simulation, and count whole seconds.
+- A cooldown attempt gives a brief red flash and a throttled buzz, using the
+  existing audio buffer. It neither starts recovery nor extends the cooldown.
+  Pause, Help and mute remain respected. Panic cannot recover failed leftovers.
+- Store the booted release in a project-scoped version cookie. Check the server
+  version without cache at startup. When the verified release differs from the
+  cookie, refresh every versioned module and asset with `cache: reload` before
+  boot, then record the release. Refresh applied CSS too. Missing files stop boot;
+  unavailable checks and blocked cookies do not create reload loops. Keep the
+  existing saved campaign and update notice; its refresh action bypasses the
+  entrypoint cache.
+
+Validation: 211 automated test groups and static checks pass on Node.js 18.19.1.
+Checks cover early/ENTROPY batch loss in both campaigns, fresh damage during
+recovery, irreversible failed debris, rendered grey/wireframe fade, all input
+layouts, quota parity, rejection feedback, exact expiry, and complete component
+refresh. The level-50 test driver now requests recovery for fresh damage when
+eligible, rather than relying on repeated recovery of old fragments. Device
+visual/audio checking remains outstanding. Laser, maze, movement, difficulty
+curve and Panic gameplay rules are unchanged.
+
 # Changelog
 
 ## 0.29.2 — Tap the title

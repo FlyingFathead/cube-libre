@@ -1,4 +1,5 @@
 import {PANIC} from './panic.mjs';
+import {RECOUPLING} from './recoupling.mjs';
 import * as T from '../vendor/three.module.min.js';
 import {VISUAL_EFFECTS,END_PORTAL} from './config.mjs';
 import {lossGreyAmount,lossBodyColor,lossGhostPose} from './loss.mjs';
@@ -415,10 +416,10 @@ export class Renderer {
       this.cubes.cube(visualPosition(i),color,scale,null,0,1,false,null,bodyOrientation);
     }
     for(const f of p.fragments) {
-      const expiry=8-f.age,alpha=1-f.age/8;
-      const color=colorMix(f.color,[.55,.55,.55],smooth(f.age/8));
-      if(expiry<1.75&&Math.sin(t*(12+20*(1-expiry/1.75)))<0) continue;
-      this.cubes.cube(f.pos,f.heat?colorMix(color,[1,.16,.01],f.heat*alpha):color,1,f.axis,f.angle,alpha);
+      const lost=f.lostAge!==undefined,wire=lost&&f.lostAge>=RECOUPLING.wireframeAfterSeconds,expiry=RECOUPLING.fragmentSeconds-f.age,alpha=(1-f.age/RECOUPLING.fragmentSeconds)*(lost?1-smooth(f.lostAge/RECOUPLING.debrisSeconds):1);
+      const color=lost?colorMix([.55,.55,.55],[.025,.025,.025],smooth(f.lostAge/RECOUPLING.debrisSeconds)):colorMix(f.color,[.55,.55,.55],smooth(f.age/RECOUPLING.fragmentSeconds));
+      if(!lost&&expiry<1.75&&Math.sin(t*(12+20*(1-expiry/1.75)))<0) continue;
+      this.cubes.cube(f.pos,!lost&&f.heat?colorMix(color,[1,.16,.01],f.heat*alpha):color,1,f.axis,f.angle,alpha,wire);
     }
     for(const part of g.recoupling) {
       const q=smooth((g.recoupleTime/1.18-part.delay)/(1-part.delay)),target=visualPosition(part.target);

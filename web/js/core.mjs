@@ -6,6 +6,7 @@ import { BALANCE,DEFAULT_GAME_MODE,balanceForMode,difficultyForLevel,introductio
 import {CHANGES,CHANGE_NUMBERS,createChangeSettings,setChangeNumber,Shutters,shutterEnabled,shutterLoss} from './changes.mjs';
 import {CONFIG_COMMANDS,describeConsoleConfig} from './console-config.mjs';
 import {PANIC,panicStatus,reachedLeg} from './panic.mjs';
+import {RECOUPLING,recoverableFragments,recentRequests,cooldownRemaining,selectRecovery} from './recoupling.mjs';
 import {LOSS_ASSEMBLY} from './loss.mjs';
 import {validateCheckpoint,RESUME_TIMING} from './save-game.mjs';
 export { BALANCE } from './difficulty.mjs';
@@ -109,8 +110,9 @@ export class Player {
   update(dt) {
     for(const f of this.fragments) {
       f.age+=dt; f.pos=f.pos.add(f.vel.mul(dt)); f.angle+=f.spin*dt; f.vel=f.vel.mul(Math.max(0,1-.18*dt));
+      if(f.lostAge!==undefined){f.lostAge+=dt;f.vel.y-=4*dt;}
     }
-    this.fragments=this.fragments.filter(f=>f.age<8);
+    this.fragments=this.fragments.filter(f=>f.age<RECOUPLING.fragmentSeconds&&(f.lostAge===undefined||f.lostAge<RECOUPLING.debrisSeconds));
   }
   setCount(count) {
     this.alive=new Set(cells.map((_,i)=>i).sort(compactOrder).slice(0,clamp(count,0,125)));
@@ -316,14 +318,7 @@ export function recoupleTargets(player,count) {
   return cells.map((_,i)=>i).filter(i=>!player.alive.has(i)).sort((a,b)=>neighbors(b)-neighbors(a)||compactOrder(a,b)).slice(0,count);
 }
 export function beginRecouple(player,level,balance=BALANCE) {
-  const usable=player.fragments.filter(f=>f.age<7.95).sort((a,b)=>a.age-b.age||a.pos.sub(player.origin).length()-b.pos.sub(player.origin).length());
-  const maximum=Math.min(125-player.alive.size,usable.length);
-  if(maximum<=0) return [];
-  const desired=maximum*difficultyForLevel(level,balance).recouplingRate;
-  const count=clamp(Math.floor(desired)+(player.rng()<desired%1?1:0),1,maximum);
-  const targets=recoupleTargets(player,count),selected=usable.slice(0,targets.length);
-  player.fragments=player.fragments.filter(f=>!selected.includes(f));
-  return selected.map((f,i)=>({...f,start:f.pos,target:targets[i],delay:rand(player.rng,0,.2),scale:rand(player.rng,.8,1.08)}));
+  return selectRecovery(player,difficultyForLevel(level,balance).recouplingRate,recoupleTargets);
 }
 
 export class Game {
@@ -415,6 +410,8 @@ export class Game {
   get autoLocate() { return this.endPortalPreview||this.autoLocateMinLevel===0||this.level>=this.autoLocateMinLevel; }
   get lossActive() { return this.flags.loss&&lossLevelReached(this.level,this.lossMinLevel); }
   get recouplingBlockedByHeat() { return recouplingHeatBlocked(this.level,this.heat>0,this.flags.overheat_blocks_recoupling,this.balance.heatMinLevel); }
+  get recoverableFragments() { return recoverableFragments(this.player); }
+  get recoupleWait() { return cooldownRemaining(this); }
   resetLegClock() {
     this.legTime=this.difficulty.secondsPerLeg;
     this.timeResetNotice=this.difficulty.timed?1.6:0;
@@ -426,7 +423,7 @@ export class Game {
     this.shutters=new Shutters(this.rng);
     this.damageTimer=.45; this.legTime=this.difficulty.secondsPerLeg; this.timedModule=0; this.timeResetNotice=0;
     this.outsideTime=0; this.heat=0; this.lastHeat=0; this.coolTime=0; this.cool=0;
-    this.recoupling=[]; this.recoupleTime=0; this.requests=[]; this.cooldown=0;
+    this.recoupling=[]; this.recoupleTime=0; this.requests=[]; this.cooldown=0;this.recoupleDeniedTime=0;
     this.particles=[]; this.impacts=[]; this.shake=0; this.outside=false;
     this.rotationShock={angle:new V(),velocity:new V(),hits:0};
     if(this.endPortalPreview) {
@@ -582,10 +579,15 @@ export class Game {
   requestRecouple(fromRescue=false) {
     if(this.state!=='playing'||this.paused||this.help||(this.panic&&!(fromRescue&&this.panic.arrived))) return;
     if(this.recouplingBlockedByHeat) { this.messageSet('TOO HOT TO RE-COUPLE · RETURN INSIDE',1.45); return; }
-    if(!this.recoupling.length&&!this.player.fragments.some(f=>f.age<7.95)) { this.messageSet('NO RECOVERABLE LOOSE CELLS',.75); return; }
-    this.requests=this.requests.filter(t=>t>=this.t-10);
-    if(this.requests.length>=5) { this.cooldown=Math.max(0,this.requests[0]+10-this.t); this.messageSet('RE-COUPLING ON COOLDOWN',1.45); return; }
+    this.requests=recentRequests(this);
+    if(this.recoupleWait>0) {
+      this.cooldown=this.recoupleWait;this.messageSet('RE-COUPLING ON COOLDOWN',1.45);
+      if(!fromRescue&&this.recoupleDeniedTime<=0){this.recoupleDeniedTime=RECOUPLING.deniedSeconds;this.emit('recouple_denied');}
+      return;
+    }
+    if(!this.recoupling.length&&!this.recoverableFragments.length) { this.messageSet('NO RECOVERABLE LOOSE CELLS',.75); return; }
     this.requests.push(this.t);
+    this.cooldown=this.recoupleWait;
     if(this.recoupling.length) { this.messageSet('RE-COUPLING ALREADY ACTIVE',.55); return; }
     this.recoupling=beginRecouple(this.player,this.level,this.balance); this.recoupleTime=0;
     if(this.recoupling.length) { this.emit('recouple'); this.messageSet(`RE-COUPLING REQUESTED: ${this.recoupling.length} CELLS`); }
@@ -593,7 +595,7 @@ export class Game {
   tickRecouple(dt) {
     if(!this.recoupling.length)return;
     this.recoupleTime+=dt;
-    if(this.recoupleTime>=1.18) {
+    if(this.recoupleTime>=RECOUPLING.travelSeconds) {
       const before=this.player.alive.size;
       for(const p of this.recoupling)this.player.alive.add(p.target);
       if(!this.endPortalPreview)this.runStats.recoupledCubes+=this.player.alive.size-before;
@@ -793,7 +795,7 @@ export class Game {
       if(rescue.time>=PANIC.pullSeconds) {
         if(!rescue.arrived) {
           rescue.arrived=true;
-          if(!this.recoupling.length&&this.player.fragments.some(f=>f.age<7.95))this.requestRecouple(true);
+          if(!this.recoupling.length&&this.recoverableFragments.length)this.requestRecouple(true);
           this.messageSet('PANIC RECOVERY REQUESTED'+(rescue.scorePenaltyPercent>0?`\nSCORE -${rescue.scoreCost} (${rescue.scorePenaltyPercent}%)`:''),PANIC.holdSeconds+PANIC.openSeconds);
         }
         this.tickRecouple(Math.min(dt,rescue.time-PANIC.pullSeconds));
@@ -809,6 +811,7 @@ export class Game {
     this.messageTime=Math.max(0,this.messageTime-dt); this.shake=Math.max(0,this.shake-dt);
     this.timeResetNotice=Math.max(0,this.timeResetNotice-dt);
     this.hitTime=Math.max(0,(this.hitTime||0)-dt); this.cooldown=Math.max(0,this.cooldown-dt);
+    this.recoupleDeniedTime=Math.max(0,this.recoupleDeniedTime-dt);
     if(this.state.startsWith('bonus_')) {this.tickBonus(dt,input);return;}
     if(['course_materialize','playing','reassembly_flash'].includes(this.state)) {this.updatePlayerSpin(dt);this.updateRotationShock(dt);}
     this.player.update(dt);

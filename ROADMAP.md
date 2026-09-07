@@ -5,6 +5,14 @@ Unimplemented proposals are marked explicitly; they are not promised releases. T
 is to sustain interest through new rules, rhythms and decisions as the journey
 gets harder, while preserving the feeling that arriving in one piece is unlikely.
 
+## Corrected in web 0.29.3: Recouple batch loss
+
+One Recouple press handles all currently recoverable blocks at the existing
+loss rate. Rejected blocks grey out, become dark wireframes, fall and fade;
+they must not remain eligible for another attempt. Fresh damage is eligible.
+Recovery rules now live in `web/js/recoupling.mjs`, with regression checks for
+the batch result, availability, all input methods and the existing cooldown.
+
 ## Adopted for web 0.29.0: Panic recovery
 
 **Status: implemented.** The original Android disorientation report led to this

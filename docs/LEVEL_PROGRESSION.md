@@ -1,6 +1,6 @@
 # Cube Libre web progression
 
-Default schedule for web **0.29.2**, based on published v0.29.1 (`1b2b3e3`).
+Default schedule for web **0.29.3**, based on published v0.29.2 (`5bdd1ce`).
 `DEFAULT_GAME_MODE = 20` and the immutable `GAME_MODES` registry live in
 [`web/js/difficulty.mjs`](../web/js/difficulty.mjs). Each `Game` owns its active
 balance; `featuresForSettings(settings, flags, lossMinLevel, game.balance)` drives
@@ -48,7 +48,9 @@ Time uses smoothstep from level 5 to the active endpoint; entropy from 10 to
 that endpoint. Seconds round to tenths, recovery to whole percentages. Both
 variants finish at the same 10 seconds / 1% / 1.4-second heat grace. Recovery
 still guarantees at least one available piece per accepted request, with the
-existing quota and expiry. Shutter windows, immunity, damage, movement speeds
+existing quota and expiry. One press handles the entire eligible batch. The
+failed fraction becomes unrecoverable grey/wireframe debris and fades; repeated
+presses cannot reclaim it. Fresh damage supplies a new batch. Shutter windows, immunity, damage, movement speeds
 and the laser-spin cap remain unchanged; spin reaches its 1.45× ceiling by 14.
 
 ## Preserved original: game_mode 50

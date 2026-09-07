@@ -1,4 +1,5 @@
 import {panicStatus} from './panic.mjs';
+import {RECOUPLING} from './recoupling.mjs';
 // Touch movement and shared action circles. Movement uses the ordinary simulation.
 import {emptyMovement} from './gamepad.mjs';
 import {MobileOrientation,createOrientationOptions} from './orientation.mjs';
@@ -70,14 +71,17 @@ export function selectPull(view,x,y,grabRadius=TOUCH_RULES.grabRadius){
 
 export function recoupleStatus(game){
   if(game.state!=='playing'||game.paused||game.help||game.panic)return {enabled:false,text:'UNAVAILABLE'};
-  if(game.recoupling.length)return {enabled:false,text:'COUPLING…'};
   if(game.recouplingBlockedByHeat)return {enabled:false,text:'TOO HOT'};
-  const requests=game.requests.filter(t=>t>=game.t-10);
-  const wait=requests.length>=5?Math.max(0,requests[0]+10-game.t):0;
-  if(wait>0||game.cooldown>0)return {enabled:false,text:`WAIT ${Math.max(wait,game.cooldown).toFixed(1)}s`};
-  const count=game.player.fragments.filter(f=>f.age<7.95).length;
+  const wait=game.recoupleWait;
+  if(wait>0)return {enabled:false,text:`COOLDOWN ${Math.ceil(wait)} s`};
+  if(game.recoupling.length)return {enabled:false,text:'COUPLING…'};
+  const count=Math.min(RECOUPLING.capacity-game.player.alive.size,game.recoverableFragments.length);
   return {enabled:count>0,text:count?`${count} LOOSE`:'NO PIECES'};
 }
+
+// Busy presses retain the same quota cost as C / LB / X. Cooldown presses
+// only give rejection feedback. Both states look dim, with no urgency pulse.
+const acceptsRecouplePress=game=>{const status=recoupleStatus(game);return status.enabled||status.text==='COUPLING…'||status.text.startsWith('COOLDOWN ');};
 
 export function createTouchHelp(document,inBonus,diagramURL){
   const section=document.createElement('div'),heading=document.createElement('h3');heading.textContent='TOUCH CONTROLS · BETA';section.append(heading);
@@ -117,7 +121,7 @@ export class MobileControls {
     Object.assign(this,{document,game,renderer,detected,write,focus});this.$=id=>document.getElementById(id);
     this.rules={...TOUCH_RULES};this.mode=read('cube-libre-input-mode-v1',0);if(![0,1,2].includes(this.mode))this.mode=0;
     this.helpers=read('cube-libre-touch-helpers-v1',false)===true;this.pullAxis=null;
-    this.move=new DragStick(this.rules);this.depth=new DragStick(this.rules);this.captures=new Map();this.recoupleId=null;
+    this.move=new DragStick(this.rules);this.depth=new DragStick(this.rules);this.captures=new Map();
     this.view=null;this.active=false;this.lastState=null;this.bonus=false;
     this.orientation=new MobileOrientation({document});
     this.install();this.applyMode();this.resize();
@@ -138,7 +142,7 @@ export class MobileControls {
     this.$('scene').setAttribute('aria-label',this.enabled?'Cube Libre. Grab a labelled side of the orb and pull along its axis. Drag beyond the grey ring to rush. Settings opens touch help.':'Cube Libre. A/D move X, W/S move Y, Q/E move Z. Press H for help.');
   }
   reset(){
-    this.move.reset();this.depth.reset();this.recoupleId=null;this.pullAxis=null;
+    this.move.reset();this.depth.reset();this.pullAxis=null;
     for(const [id,element] of this.captures){try{if(element.hasPointerCapture(id))element.releasePointerCapture(id);}catch{}}
     this.captures.clear();this.$('touch-guide').hidden=true;
     for(const id of ['touch-steer','touch-depth','touch-c'])this.$(id).classList.remove('held');
@@ -170,11 +174,10 @@ export class MobileControls {
     }
     const button=this.$('touch-c');
     button.addEventListener('pointerdown',e=>{
-      if(e.button>0||!this.canAct()||this.recoupleId!==null||!recoupleStatus(this.game).enabled)return;
-      e.preventDefault();this.recoupleId=e.pointerId;this.capture(button,e);this.game.requestRecouple();
+      if(e.button>0||!this.canAct()||!acceptsRecouplePress(this.game))return;
+      e.preventDefault();this.game.requestRecouple();
     });
-    for(const event of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(event,e=>{if(e.pointerId===this.recoupleId)this.recoupleId=null;this.captures.delete(e.pointerId);});
-    button.addEventListener('click',e=>{e.preventDefault();if(e.detail===0&&this.canAct()&&recoupleStatus(this.game).enabled)this.game.requestRecouple();});
+    button.addEventListener('click',e=>{e.preventDefault();if(e.detail===0&&this.canAct()&&acceptsRecouplePress(this.game))this.game.requestRecouple();});
     const panic=this.$('panic-button');
     panic.addEventListener('pointerdown',e=>{
       if(e.button>0||!this.canAct()||!panicStatus(this.game).enabled)return;
@@ -213,10 +216,14 @@ export class MobileControls {
     panicButton.setAttribute('aria-label',`Panic: ${panic.text||'emergency return to leg '+(this.game.panicLeg+1)}`);
     this.$('panic-status').textContent=panic.text;
     {const status=recoupleStatus(this.game),button=this.$('touch-c');
-      const lastChance=status.enabled&&this.game.player.fragments.some(f=>f.age<7.95&&8-f.age<1.75);
-      button.disabled=!status.enabled;button.setAttribute('aria-label',`Re-couple: ${status.text.toLowerCase()}`);
+      const lastChance=status.enabled&&this.game.recoverableFragments.some(f=>8-f.age<1.75);
+      button.disabled=!acceptsRecouplePress(this.game);button.setAttribute('aria-label',`Re-couple: ${status.text.toLowerCase()}`);
+      button.setAttribute('aria-disabled',String(!status.enabled));
+      button.setAttribute('aria-busy',String(this.game.recoupling.length>0));
       this.$('touch-recouple-status').textContent=status.text;
+      this.$('touch-recoup-wrap').classList.toggle('action-disabled',!status.enabled);
       this.$('touch-recoup-wrap').classList.toggle('action-alert',lastChance&&pulse);
+      this.$('touch-recoup-wrap').classList.toggle('action-rejected',this.canAct()&&!this.game.panic&&this.game.recoupleWait>0&&this.game.recoupleDeniedTime>0&&Math.cos((RECOUPLING.deniedSeconds-this.game.recoupleDeniedTime)*Math.PI*8)>0);
     }
   }
   draw(){

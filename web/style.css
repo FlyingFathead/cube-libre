@@ -281,9 +281,19 @@ html,body{overscroll-behavior:none}
 .action-key{display:flex;align-items:center;justify-content:center;gap:7px;font-size:12px;color:#b8cdd3;white-space:nowrap}
 .action-key kbd{font:inherit;font-weight:bold;color:#f1ffff;border:1px solid #829ca6;border-radius:4px;padding:2px 7px;background:#17272fe8}
 #game-actions .action-alert button:enabled{background:#682b20;border-color:#ff9569;box-shadow:0 0 18px #ff63366b}
+#game-actions .action-disabled{opacity:.5}
+#game-actions .action-disabled strong,#game-actions .action-disabled small,#game-actions .action-disabled kbd{color:#a0a0a0;text-shadow:none}
+#game-actions .action-disabled kbd{border-color:#777;background:#242424}
+#game-actions .action-disabled button{opacity:1;cursor:default;background:#292929;border-color:#858585;box-shadow:none}
+#game-actions .action-disabled button svg{stroke:#a0a0a0;fill:#88888833}
 #game-actions .action-alert button:enabled svg{stroke:#ffbc91;fill:#ff795244}
 #game-actions .action-alert strong,#game-actions .action-alert small,#game-actions .action-alert kbd{color:#ff9569;text-shadow:0 0 8px #ff65366b}
 #game-actions .action-alert kbd{border-color:#ff9569}
+#game-actions .action-rejected{opacity:1}
+#game-actions .action-rejected button{background:#4d1616;border-color:#ff6860;box-shadow:0 0 14px #ff403055}
+#game-actions .action-rejected button svg{stroke:#ff8d80;fill:#ff514433}
+#game-actions .action-rejected strong,#game-actions .action-rejected small,#game-actions .action-rejected kbd{color:#ff7869}
+#game-actions .action-rejected kbd{border-color:#ff7869}
 #notice{white-space:pre-line}
 #game[data-mobile-mode=false] #game-actions{bottom:max(16px,env(safe-area-inset-bottom))}
 #game[data-mobile-mode=false] #toolbar{max-width:calc(100% - 240px)}

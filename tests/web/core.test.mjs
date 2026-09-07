@@ -141,15 +141,37 @@ test('time and re-coupling yield tighten gradually after their introductions and
   for(const level of [51,100,1000000])assert.deepEqual(difficultyForLevel(level),difficultyForLevel(50));
 });
 
-test('re-coupling uses the level yield per request while keeping remaining pieces and the one-piece minimum',()=>{
+test('re-coupling applies the level yield once per loose piece and preserves the one-piece minimum',()=>{
   for(const [level,expected] of [[9,90],[10,50],[30,26],[50,1],[100,1]]){
     const p=new Player(()=>.5);for(let i=0;i<100;i++)p.destroy(i,p.origin);
     assert.equal(beginRecouple(p,level).length,expected);
     assert.equal(p.fragments.length,100-expected);
-    if(level===50)assert.equal(beginRecouple(p,level).length,1,'Next request gathers about 1% of the remaining 99 pieces');
+    assert.ok(p.fragments.every(f=>f.lostAge===0),'Rejected pieces become unrecoverable debris');
+    assert.equal(beginRecouple(p,level).length,0,'Repeated requests cannot reroll the failed fraction');
   }
   const p=new Player(()=>.99);p.destroy(0,p.origin);
   assert.equal(beginRecouple(p,50).length,1);
+});
+
+test('early and entropy recoveries cannot reclaim failed pieces; new damage during recovery remains eligible',()=>{
+  for(const mode of [20,50])for(const level of [4,10,mode]) {
+    const g=new Game({gameMode:mode,rng:()=>.5});g.ready(level);g.setState('playing');g.flags.damage=false;g.flags.suction=false;
+    for(let i=0;i<100;i++)g.player.destroy(i,g.player.origin);
+    g.requestRecouple();const selected=g.recoupling.length;
+    assert.equal(g.recoverableFragments.length,0);assert.ok(g.player.fragments.length>0);
+    const failed=[...g.player.fragments];
+    g.player.destroy(124,g.player.origin);const fresh=g.recoverableFragments[0];
+    for(let i=0;i<3;i++)g.requestRecouple();
+    assert.equal(g.recoverableFragments.length,1);assert.equal(g.recoverableFragments[0],fresh);
+    assert.ok(failed.every(f=>f.lostAge===0));assert.equal(g.recoupling.length,selected);
+    advance(g,1.2);assert.equal(g.player.alive.size,24+selected);
+    g.requestRecouple();assert.equal(g.recoupling.length,1);
+    advance(g,1.2);assert.equal(g.player.alive.size,25+selected);
+    g.t+=10;g.cooldown=0;
+    for(let i=0;i<10;i++)g.requestRecouple();assert.equal(g.player.alive.size,25+selected);assert.equal(g.recoupling.length,0);
+    assert.equal(g.requestPanic(),true);advance(g,3);
+    assert.equal(g.player.alive.size,25+selected,'Panic cannot recover the failed fraction either');
+  }
 });
 
 test('scaled time allowance survives preview, forward leg resets, death and retry',()=>{
@@ -190,7 +212,9 @@ test('all 50 legs can be traversed with timed shutter windows, rush, lasers and 
       const pulse=g.shutters.pulse,openWindow=!pulse||pulse.leg!==stage.leg||pulse.closesAt-g.shutters.time>2.65;
       if((!stage.wait||openWindow)&&target<targets.length-1)target++;
     }
-    if(frame%252===0)g.requestRecouple(); // One legal C request every 2.1 seconds.
+    // Request only for new damage, as soon as recovery and quota permit.
+    // Failed pieces get no second attempt; the driver cannot rely on rerolls.
+    if(!g.recoupling.length&&g.recoverableFragments.length&&g.recoupleWait===0)g.requestRecouple();
     g.tick(1/120,input);minLeft=Math.min(minLeft,g.legTime);
   }
   assert.equal(g.state,'ascension');assert.equal(g.completedLevel,50);

@@ -3,7 +3,7 @@ import {clamp,smooth,portalMetrics,ASCENSION_TIMING} from './core.mjs';
 const root=new URL('../assets/audio/',import.meta.url);
 const volumes={crash:.70,structure_alert:.48,portal:.88,laser_reveal:.64,laser_dissipate:.62,
   materialize:.62,death:.74,reassembly:.60,recouple:.62,collapse:.82,time_buzzer:.78,shutter_close:.54,shutter_open:.48,loss_weep:.60,arrival_water:.38,panic:.58};
-const cooldowns={recouple:.18,crash:.075,structure_alert:.65,laser_reveal:.35,laser_dissipate:.28,collapse:.12,time_buzzer:.82,shutter_close:.12,shutter_open:.12};
+const cooldowns={recouple:.18,recouple_denied:.6,crash:.075,structure_alert:.65,laser_reveal:.35,laser_dissipate:.28,collapse:.12,time_buzzer:.82,shutter_close:.12,shutter_open:.12};
 
 export class GameAudio {
   constructor(onProgress=()=>{}) {
@@ -77,8 +77,9 @@ export class GameAudio {
     if(offset>=this.buffers.get(name).duration)return;
     const now=this.ctx.currentTime,existing=this.channels.get(channel);
     if(loop&&existing?.name===name) {existing.gain.gain.setTargetAtTime(volume,now,.1); return;}
-    if(!loop&&now-(this.last.get(name)??-999)<(cooldowns[name]||0)) return;
-    this.last.set(name,now); this.stop(channel,.025);
+    const cooldownKey=channel==='recouple_denied'?channel:name;
+    if(!loop&&now-(this.last.get(cooldownKey)??-999)<(cooldowns[cooldownKey]||0)) return;
+    this.last.set(cooldownKey,now); this.stop(channel,.025);
     const source=this.ctx.createBufferSource(),gain=this.ctx.createGain();
     source.buffer=this.buffers.get(name); source.loop=loop;
     source.playbackRate.value=2**(clamp(Number.isFinite(semitones)?semitones:0,-12,12)/12);
@@ -104,7 +105,9 @@ export class GameAudio {
     }
     if(this.arrivalGame) {this.stop('arrival_water',0);this.arrivalGame=null;this.arrivalTime=null;}
     for(const event of g.events.splice(0)) {
-      if(event.name==='stop') this.stopAll(); else this.sound(event.name,undefined,event.name,false,event.semitones??0);
+      if(event.name==='stop') this.stopAll();
+      else if(event.name==='recouple_denied')this.sound('time_buzzer',.32,'recouple_denied',false,-5);
+      else this.sound(event.name,undefined,event.name,false,event.semitones??0);
     }
     if(!this.ready) return;
     const desired=new Map(),s=g.state,title=s==='title',playing=s==='playing'&&!g.panic,construct=s==='course_materialize';

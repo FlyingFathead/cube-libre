@@ -711,7 +711,8 @@ future previews; physical damage, local collision checks, reveal/arming and
 collapse continue to apply. The opening overview always hides cutting grids.
 
 The level-50 traversal test uses ordinary damage, microgravity, spin, shutters,
-rush and one legal re-coupling request every 2.1 seconds. Its controller waits
+rush and recovery for fresh damage whenever the recovery animation and quota
+permit. It never retries rejected debris. Its controller waits
 for an open window before crossing each leg. A deterministic run cleared all
 fifty legs with surviving cubes and more than two seconds left on every leg.
 This verifies a viable route; it is not a browser FPS benchmark or a substitute
@@ -1098,21 +1099,56 @@ PANIC RECOVERY REQUESTED. Save it immediately with the existing level-entry
 cells, so reload and retry keep the cost without saving the rescue pose or
 live hazards. A console preview cannot overwrite a campaign checkpoint.
 
+## Recouple batch recovery (web 0.29.3)
+
+`web/js/recoupling.mjs` owns eligibility, batch selection, recovery/debris timing
+and the request window. `core.mjs` applies those rules; the HUD and controls
+read the resulting eligibility and wait. One press evaluates all currently
+recoverable fragments with the existing yield curve. Rejected fragments have
+`lostAge` set immediately and can never enter another request. They grey out,
+turn to dark wireframes after 0.25 seconds, fall and fade over 0.9 seconds.
+New damage during the 1.18-second animation remains eligible for a future batch.
+Panic uses the same eligibility and cannot restore rejected debris.
+
+The complete Recouple control dims when unavailable. Busy and cooldown states
+use `aria-disabled` and stay receptive to deliberate presses: busy presses
+consume the existing quota, while cooldown presses only provide rejection
+feedback. Empty, hot and otherwise unavailable states also disable the native
+button. The circle and recovery HUD share the simulation's exact ten-second
+window and whole-second countdown. Rejection flashes use simulation time, with
+at most one buzz per 0.6 seconds; a separate audio channel prevents the leg
+buzzer from swallowing that feedback. No urgency pulse appears while blocked.
+
+The existing tests had allowed rejected fragments to be requested again. The
+updated checks enforce batch loss and distinguish fresh damage from spent
+debris, including early levels, ENTROPY, both modes and all input layouts.
+
 ## Versioning
 
 `web/version.json` is the machine-readable source for the **web version** and
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.29.2**, continuing from published **0.29.1** (`1b2b3e3`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.29.3**, continuing from published **0.29.2** (`5bdd1ce`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.29.3`, `0.29.4`, etc. for fixes, and `0.30.0` for the
+For future releases, use `0.29.4`, `0.29.5`, etc. for fixes, and `0.30.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.29.2.zip` and `v0.29.2`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.29.3.zip` and `v0.29.3`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
+
+The project-scoped `cube-libre-web-version` cookie records the booted version,
+with a one-year lifetime, SameSite=Lax and Secure on HTTPS. A successful fresh
+server-version check that matches the embedded release but differs from this
+cookie forces all entries of the generated `release-components` manifest to
+be fetched with `cache: reload`. Six bounded workers refresh the same versioned
+URLs used by modules and runtime assets, including both sound codecs. The
+stylesheet and favicon are reapplied with fresh URLs. The cookie updates only
+after refresh succeeds and the app module loads. Missing components stop boot
+with a reload action; blocked cookies do not loop. If the version check is
+unavailable, cached play remains possible and the marker is not advanced.
 
 ## Browser-specific behavior
 
@@ -1181,7 +1217,7 @@ immunity, warning/closed rendering, local audio events, movable introductions,
 camera centering, legacy and irregular skies, saved pattern switching and full
 configuration listings. Web 0.23.0 adds controller axes/buttons and browser-dispatch
 checks, record resets, globally capped alternating shutters, preview limits/fade
-uniforms, startup cache replacement and live leg totals. The suite now has 205 passing test groups, including title text/logo activation and Panic return geometry and safety
+uniforms, startup cache replacement and live leg totals. The suite now has 211 passing test groups, including title text/logo activation and Panic return geometry and safety
 at every leg start, exact-body preservation without debris, normal recovery limits,
 whole-second cooldown, saved preferences and actual keyboard/controller/touch dispatch.
 The action HUD checks cover setup visibility, desktop key labels and urgency only

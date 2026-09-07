@@ -40,6 +40,9 @@ const imports=JSON.parse(html.match(/<script id="release-imports" type="importma
 const modules=files.filter(p=>/\.(mjs|js)$/.test(p)).map(p=>'./'+relative(web,p).replaceAll('\\','/')).sort();
 assert.deepEqual(Object.keys(imports).sort(),modules,'Regenerate the release import map after adding/removing modules');
 for(const path of modules)assert.equal(imports[path],`${path}?v=${release.version}`,'Every transitive module needs the current release URL');
+const components=JSON.parse(html.match(/<script id="release-components" type="application\/json">([\s\S]*?)<\/script>/)[1]);
+const expectedComponents=files.filter(p=>/\.(?:mjs|js|css|json|svg|ogg|mp3)$/.test(p)&&relative(web,p)!=='version.json').map(p=>'./'+relative(web,p).replaceAll('\\','/')).sort();
+assert.deepEqual(components,expectedComponents,'Every runtime component must be covered by the forced refresh');
 assert.ok(html.includes(`href="./style.css?v=${release.version}"`),'Stylesheet release does not match');
 
 const reference=JSON.parse(readFileSync(resolve(root,'tests/web/python-reference.json')));

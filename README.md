@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.29.2
+# Cube Libre — Web v0.29.3
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,7 +23,23 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.29.2 · Tap the title
+## Web release 0.29.3 · Recouple batch recovery
+
+**One press handles the whole batch of recoverable loose blocks, with the
+existing amount of loss.** The successful portion returns. Rejected blocks grey
+out, become dark wireframes, fall away and fade; they cannot be recovered by
+pressing again. Fresh damage can produce a new batch.
+
+The entire Recouple control greys out when unavailable. Repeated presses during
+recovery use the existing five-in-ten-seconds allowance on every input method.
+Cooldown shows whole seconds; attempting it gives a brief red flash and buzz.
+It does not extend the cooldown or grant more recovery.
+
+Startup checks the server version and a local version cookie. A stale or missing
+cookie triggers a fresh download of that release's modules and assets before
+starting the game. Saved progress stays intact.
+
+### Retained from 0.29.2 · Tap the title
 
 Tap or click either the **Cube Libre logo** or the text above it to start a new
 journey or continue a saved one. Mobile says **TAP TO START** or **TAP TO
@@ -250,7 +266,7 @@ opposite your current movement to brake. Existing acceleration, speed limits,
 collisions, timers, heat, entropy and shutter rules still apply.
 
 The circular **RECOUPLE** button has a whole-cube symbol. It lights up when
-pieces are available and dims when there is nothing to recover. Its small label
+pieces are available; the entire control dims when there is nothing to recover. Its small label
 also explains active recovery, heat restrictions and cooldown. A press requests
 re-coupling once; holding it does not repeatedly spend your quota.
 
@@ -590,7 +606,7 @@ node --test tests/web/*.test.mjs
 
 See [WEB_PORT.md](WEB_PORT.md) for gameplay details, browser differences,
 source layout, and optional regeneration using a separate PyGame checkout.
-Web 0.29.1 (`1b2b3e3`) is the published baseline. This release passes 205
+Web 0.29.2 (`5bdd1ce`) is the published baseline. This release passes 211
 automated test groups and static checks on Node.js 18.19.1, including both
 campaigns, legacy save migration, independent records, LOSS body carry, ending
 wave/audio timing and render data, controller/touch dispatch, simulated final routes,

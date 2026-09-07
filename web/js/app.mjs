@@ -420,7 +420,7 @@ async function main() {
       instructions.className='update-instructions';instructions.textContent='PRESS F5 / REFRESH TO RELOAD\nSPACE BAR TO DISMISS.';
       versions.className='version-note';versions.textContent=`Updated version: ${version}\nThis version: ${release.version}`;
       body.append(instructions,versions);
-      modal('update','THIS GAME HAS BEEN UPDATED',body,[['Dismiss (Space)',closeModal],['Refresh / reload',()=>location.reload()]]);
+      modal('update','THIS GAME HAS BEEN UPDATED',body,[['Dismiss (Space)',closeModal],['Refresh / reload',()=>{const fresh=new URL(location.href);fresh.searchParams.set('release',version);fresh.searchParams.set('boot',String(Date.now()));location.replace(fresh.href);}]]);
     }
     const s=game.state,title=s==='title',playing=s==='playing',preview=s==='course_materialize';
     const bonus=s.startsWith('bonus_'),bonusPlaying=s==='bonus_playing',bonusIntro=s==='bonus_intro',bonusResult=s==='bonus_result';
@@ -567,10 +567,11 @@ async function main() {
     const timeUrgency=1-clamp(clock/10);
     $('timer').style.color=`hsl(${48*(1-timeUrgency)}, 100%, ${85-30*timeUrgency}%)`;
     $('notice').textContent=playing?(game.messageTime>0?game.message:game.endPortalPreview?'END PORTAL TEST · no records or points awarded':''):preview?'COURSE MATERIALIZING':'';
-    const fragments=game.player.fragments,remaining=fragments.length?Math.min(...fragments.map(f=>8-f.age)):0;
+    const fragments=game.recoverableFragments,remaining=fragments.length?Math.min(...fragments.map(f=>8-f.age)):0;
+    const recoveryWait=game.recoupleWait;
     const recovering=game.recoupling.length>0;
-    $('recovery').hidden=!(playing&&(fragments.length||recovering||game.cooldown>0));
-    $('recovery').textContent=game.cooldown>0?`RE-COUPLING ON COOLDOWN · ${game.cooldown.toFixed(1)}s`:recovering?`RE-COUPLING ${game.recoupling.length} CELLS · ${Math.round(clamp(game.recoupleTime/1.18)*100)}%`:
+    $('recovery').hidden=!(playing&&(fragments.length||recovering||recoveryWait>0));
+    $('recovery').textContent=recoveryWait>0?`RE-COUPLING ON COOLDOWN · ${Math.ceil(recoveryWait)} s`:recovering?`RE-COUPLING ${game.recoupling.length} CELLS · ${Math.round(clamp(game.recoupleTime/1.18)*100)}%`:
       game.recouplingBlockedByHeat?`TOO HOT TO RE-COUPLE · RETURN INSIDE\n${fragments.length} LOOSE · EXPIRING IN ${remaining.toFixed(1)}s`:
       `${remaining<1.75?'LAST CHANCE! ':''}${mobile.enabled?'TAP RECOUPLE':'PRESS C / LB / X TO RE-COUPLE'} · ${fragments.length} LOOSE\nCELLS EXPIRING IN ${remaining.toFixed(1)}s`;
     $('danger').hidden=!(playing&&game.outside);$('danger').className=game.heat>0?'hot':'';
