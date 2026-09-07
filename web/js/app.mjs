@@ -34,6 +34,8 @@ async function main() {
   const modeRecords={20:savedRecords?.[20]||{},50:savedRecords?.[50]||raw};
   const campaignStore=new CheckpointStore(()=>localStorage);
   const game=new Game({modeRecords,save:(s,mode)=>{modeRecords[mode]=s;write('cube-libre-mode-scores-v1',modeRecords);},saveCheckpoint:data=>campaignStore.save(data)});
+  game.flags.panic_show_inactive=read('cube-libre-panic-show-inactive-v1',game.flags.panic_show_inactive)!==false;
+  game.flags.panic=read('cube-libre-panic-v1',game.flags.panic)!==false;
   game.flags.shake=read('cube-libre-shake-v1',game.flags.shake)!==false;
   game.flags.spin=read('cube-libre-spin-v1',game.flags.spin)!==false;
   game.flags.portal_white_light=read('cube-libre-portal-white-light-v1',game.flags.portal_white_light)!==false;
@@ -130,18 +132,18 @@ async function main() {
   function controllerHelp(inBonus) {
     const section=document.createElement('section');section.className='controller-help';
     const heading=document.createElement('h3');heading.textContent='XBOX-STYLE CONTROLLER';section.append(heading);
-    const intro=document.createElement('p');intro.textContent=inBonus?'BONUS: left stick or D-pad rolls on the floor; RB rushes. Pieces are collected automatically.':'Left stick or D-pad moves on world X/Y; LT / RT moves on Z. LB re-couples without lifting your movement thumb; X also re-couples. RB rushes.';section.append(intro);
+    const intro=document.createElement('p');intro.textContent=inBonus?'BONUS: left stick or D-pad rolls on the floor; RB rushes. Pieces are collected automatically.':'Left stick or D-pad moves on world X/Y; LT / RT moves on Z. LB re-couples without lifting your movement thumb; X also re-couples. RB rushes. B activates Panic during any normal leg.';section.append(intro);
     const figure=document.createElement('figure');figure.className='keyboard-help';
     const map=document.createElement('div');map.className='keyboard-map-scroll controller-map-scroll';map.tabIndex=0;map.setAttribute('role','region');map.setAttribute('aria-label','Controller map. Scroll sideways on smaller screens.');
     const image=document.createElement('img');image.src=releaseAssetURL('../assets/controller-controls.svg',import.meta.url).href;image.width=1040;image.height=650;
-    image.alt='Xbox-style controller map: left stick moves X/Y or rolls in bonus. LT +Z, RT minus Z in normal levels. LB or X re-couples. RB rushes. A starts or confirms, B backs out or opens the menu, Y locates the camera, View opens Help, Menu pauses. D-pad moves or selects menu items; right stick scrolls menus.';
+    image.alt='Xbox-style controller map: left stick moves X/Y or rolls in bonus. LT +Z, RT minus Z in normal levels. LB or X re-couples. RB rushes. A starts or confirms, B activates Panic during normal play and backs out in menus, Y locates the camera, View opens Help, Menu pauses. D-pad moves or selects menu items; right stick scrolls menus.';
     map.append(image);figure.append(map);section.append(figure);
     const table=document.createElement('table');
     for(const [key,action] of [
       ['Left stick / D-pad',inBonus?'Roll across the floor; up goes toward the ramp':'Move X/Y; up = +Y, right = +X'],
       ['LT / RT',inBonus?'Unused during bonus rolling':'Move +Z / −Z (analog triggers)'],
       ['LB / X',inBonus?'Pieces are collected by contact':'Re-couple on each press'],['RB','Hold to rush'],
-      ['A','Start / confirm / continue'],['B','Back / main menu'],['Y','Locate camera'],
+      ['A','Start / confirm / continue'],['B',inBonus?'Back / main menu':'Panic rescue during play; Back in menus'],['Y','Locate camera'],
       ['Menu / Start','Pause / resume'],['View / Back','Help'],
       ['D-pad / left stick in menus','Select buttons and settings; A activates the selection'],['Right stick in menus','Scroll Help and other dialogs']
     ]) {const row=document.createElement('tr');for(const text of [key,action]){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}table.append(row);}section.append(table);
@@ -163,7 +165,7 @@ async function main() {
     map.setAttribute('role','region');map.setAttribute('aria-label','Keyboard control map. Scroll sideways on smaller screens.');
     const diagram=document.createElement('img');
     diagram.src=(inBonus?releaseAssetURL('../assets/keyboard-bonus-controls.svg',import.meta.url):releaseAssetURL('../assets/keyboard-controls.svg',import.meta.url)).href;
-    diagram.alt=inBonus?'Bonus keyboard map: WASD or arrows roll on the floor, W goes toward the ramp, Shift rushes. Collect pieces by contact. H help, P pause, M mute, Esc menu.':'Keyboard map: A/D move along X; W/S move along Y from SPACE; Q/E move along Z. Hold Shift to rush, C to recover loose cubes, L to locate your cube. Space or Enter starts a run or advances a level. H opens help, P pauses, M mutes, and Esc opens the menu.';
+    diagram.alt=inBonus?'Bonus keyboard map: WASD or arrows roll on the floor, W goes toward the ramp, Shift rushes. Collect pieces by contact. H help, P pause, M mute, Esc menu.':'Keyboard map: A/D move along X; W/S move along Y from SPACE; Q/E move along Z. Hold Shift to rush, C to recover loose cubes, V for Panic, L to locate your cube. Space or Enter starts a run or advances a level. H opens help, P pauses, M mutes, and Esc opens the menu.';
     diagram.width=1040;diagram.height=590;map.append(diagram);figure.append(map);
     const caption=document.createElement('figcaption');caption.textContent=inBonus?'W / ↑ goes toward the ramp. S / ↓ rolls back. A / D or ← / → rolls sideways. Hold Shift to rush. The camera follows you.':'Hold the movement keys to move. Matching colors mark each pair. The view rotates, so these directions rotate on screen too. On small screens, scroll the keyboard sideways.';figure.append(caption);keyboardBody.append(figure);
     const table=document.createElement('table');
@@ -175,7 +177,7 @@ async function main() {
     ]:[
       ['Space / Enter','Continue saved run / new run / next level'],['A / D or ← / →','Move along world X'],['W / S or ↑ / ↓','Move along world Y'],
       ['Q / E','Move along world Z (Q = +Z)'],['Ctrl + A / D','Alternate Z movement'],['Shift','Rush (2.6× speed)'],
-      ['C','Re-couple: 5 requests per 10 seconds; loose cubes expire after 8 seconds'],['P / H','Pause / help'],['L',`Locate camera; auto-location ${game.autoLocateMinLevel===0?'active from the start':`from level ${game.autoLocateMinLevel}`}`],
+      ['V','Panic rescue during a leg; 30-second cooldown'],['C','Re-couple: 5 requests per 10 seconds; loose cubes expire after 8 seconds'],['P / H','Pause / help'],['L',`Locate camera; auto-location ${game.autoLocateMinLevel===0?'active from the start':`from level ${game.autoLocateMinLevel}`}`],
       ['M','Mute / unmute'],['Alt+F / Alt+Enter / F11','Fullscreen (or use the button)'],['Esc','Main menu confirmation'],
       ['Ctrl+Shift+F2','Reset run or retry current level'],['` / Ctrl+Shift+F1','Debug console']
     ])) {const tr=document.createElement('tr');for(const text of [keys,action]){const td=document.createElement('td');td.textContent=text;tr.append(td);}table.append(tr);}
@@ -196,6 +198,7 @@ async function main() {
     const bonusRules=document.createElement('p');bonusRules.textContent=`PICKING UP THE PIECES · Bonus round 001 follows level ${BONUS_SCHEDULE.firstLevel}, then every ${BONUS_SCHEDULE.interval} levels before the final level cap. Roll on a solid floor using WASD / arrow keys; Shift rushes. Collect the scattered pieces and take the ramp to the portal within ${PIECES_RULES.seconds} seconds. Each piece banks ${PIECES_RULES.pointsPerPiece} bonus points only if you escape. Running out of time forfeits this bonus; your existing score is kept and the next level follows. C and the corridor heat/entropy rules do not apply.`;rulesDetails.append(bonusRules);
     const rules=game.difficulty,current=document.createElement('p');
     current.textContent=`Level ${game.level}: ${rules.timed?`${rules.secondsPerLeg.toFixed(1)} seconds per leg`:'no timer'} · ${Math.round(rules.recouplingRate*100)}% re-coupling yield per request · ${rules.overheatGraceSeconds.toFixed(1)} seconds before overheating outside. Heat re-coupling restriction: ${game.flags.overheat_blocks_recoupling?(rules.heat?'active':'not yet active'):'disabled'}.`;rulesDetails.append(current);
+    const rescueHelp=document.createElement('p');rescueHelp.textContent=`PANIC can be used throughout a normal leg. It flashes immediately on overheating. The console setting panic_show_inactive hides it while safe when off: it appears after ${game.panicOutsideSeconds} seconds continuously outside, or immediately on overheating. Keyboard/controller activation still works while hidden. V / Xbox B / the shedding-cube button returns your surviving shape to the start of the furthest leg physically reached. The prison opens toward that leg after a short tractor pull and confinement; its timer restarts. The old corridor stays sealed. The beam requests normal lossy Recouple for still-recoverable fragments; no fresh body or points are granted. Cooldown: ${game.panicCooldownSeconds} seconds during play, paused in Help and menus. Unavailable in bonus rounds. Options → ALLOW PANIC BUTTON is on by default.`;rulesDetails.append(rescueHelp);
     const options=createVisualOptions(document,game,write);options.prepend(createMobileOptions(document,mobile));
     body.append(createHelpTabs(document,[
       {id:'keyboard',label:'KEYBOARD',body:keyboardBody},
@@ -257,8 +260,11 @@ async function main() {
     consoleLog(`> ${value}`);
     try {
       const previousStages=Object.fromEntries(['change_2','change_3','change_4','change_4_pattern','loss','loss_grey','route_outline','end_portal'].map(key=>[key,game.flags[key]]));
+      const previousPanic=game.flags.panic,previousPanicVisible=game.flags.panic_show_inactive;
       const previousShake=game.flags.shake,previousSpin=game.flags.spin,previousLight=game.flags.portal_white_light,previousCulling=game.flags.culling,previousShocks=game.flags.rotation_shocks,previousGravity=game.flags.microgravity,previousHeatLock=game.flags.overheat_blocks_recoupling,previousChange=game.flags.change_1,previousRandom=game.flags.change_1_random_per_leg,previousStars=game.starPattern,previousPreview=game.flags.preview_outline,previousNoRepeat=game.flags.change_1_no_repeat_leg;
       consoleLog(game.command(value));
+      if(game.flags.panic_show_inactive!==previousPanicVisible)write('cube-libre-panic-show-inactive-v1',game.flags.panic_show_inactive);
+      if(game.flags.panic!==previousPanic)write('cube-libre-panic-v1',game.flags.panic);
       if(game.flags.shake!==previousShake)write('cube-libre-shake-v1',game.flags.shake);
       if(game.flags.spin!==previousSpin)write('cube-libre-spin-v1',game.flags.spin);
       if(game.flags.portal_white_light!==previousLight)write('cube-libre-portal-white-light-v1',game.flags.portal_white_light);
@@ -314,6 +320,7 @@ async function main() {
       if(e.target instanceof HTMLButtonElement) return;
       e.preventDefault();if(game.state==='title')startOrContinue();else if(game.state==='ended'){game.title();start();}else {clearInput();game.continue();}
     } else if(code==='KeyC') {e.preventDefault();game.requestRecouple();}
+    else if(code==='KeyV'&&!e.ctrlKey) {e.preventDefault();if(game.requestPanic())clearInput();}
     else if(code==='KeyP')pause();else if(code==='KeyH')help();else if(code==='KeyM')mute();
     else if(code==='KeyL')$('locate').click();else if(code==='Escape'){e.preventDefault();menu();}
   });
@@ -362,7 +369,7 @@ async function main() {
       }
       if(action.pause&&game.state!=='title'){pause();return;}
       if(action.help){help();return;}
-      if(action.back){menu();return;}
+      if(action.back){if(game.state==='playing'){if(game.requestPanic())clearInput();}else menu();return;}
       if(game.state==='title') {
         const focused=document.activeElement;
         if(action.confirm&&(focused===$('start')||!focused?.matches('button, a[href], input'))){void startOrContinue({controller:true});return;}
@@ -478,7 +485,7 @@ async function main() {
     $('audio-status').textContent=loadingStart?audioProgress:audioWarning;
     if(title) {
       const connected=controller.enabled&&controller.connected;
-      const status=controller.status==='disabled'?'Controller input disabled · H for Help':controller.status==='unavailable'?'Controller input unavailable in this browser':controller.status==='unmapped'?'Controller detected; Xbox-style button mapping unavailable. Try reconnecting by USB.':connected?'CONTROLLER: A start · LB / X re-couple · RB rush · View help':'Keyboard or controller · Press and release a controller button to connect';
+      const status=controller.status==='disabled'?'Controller input disabled · H for Help':controller.status==='unavailable'?'Controller input unavailable in this browser':controller.status==='unmapped'?'Controller detected; Xbox-style button mapping unavailable. Try reconnecting by USB.':connected?'CONTROLLER: A start · LB / X re-couple · B panic · RB rush · View help':'Keyboard or controller · Press and release a controller button to connect';
       if($('controller-status').textContent!==status)$('controller-status').textContent=status;
       const resume=!!campaignStore.value,action=resume?'CONTINUE':'NEW RUN';
       const label=resume?`Continue from level ${campaignStore.value.level}`:'Start a new run';
@@ -580,7 +587,7 @@ async function main() {
       const dt=Math.min((now-previous)/1000,.1);previous=now;
       updateController(now,dt);mobile.sync();
       if(game.paused||document.hidden)accumulator=0;
-      else {accumulator+=dt;while(accumulator>=1/120){game.tick(1/120,input());accumulator-=1/120;}}
+      else {accumulator+=dt;while(accumulator>=1/120){const prison=game.panic;game.tick(1/120,input());if(prison&&!game.panic)clearInput();accumulator-=1/120;}}
       audio.update(game);ui();titleLayout.update();renderer.render(game);mobile.sync();mobile.draw();
       if(renderer.reassemblyLabel) {
         $('card').style.setProperty('--reassembly-label-x',`${renderer.reassemblyLabel.x}px`);

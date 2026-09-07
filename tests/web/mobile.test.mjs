@@ -183,3 +183,34 @@ test('mobile console tuning validates values, lists descriptions and keeps statu
   s.game.command('toggle touch_helpers');assert.equal(s.mobile.helpers,false);assert.deepEqual(s.writes.at(-1),['cube-libre-touch-helpers-v1',false]);
   s.game.command('set mobile_mode 2');assert.equal(s.mobile.enabled,false);assert.deepEqual(s.writes.at(-1),['cube-libre-input-mode-v1',2]);
 });
+
+
+test('Panic and Recouple circles work on both touch layouts and desktop with one request per press',()=>{
+  for(const mode of [1,2])for(const helpers of [false,true]) {
+    const {mobile,game,node}=setup({mode});mobile.setHelpers(helpers);mobile.sync();
+    assert.equal(node('touch-controls').hidden,false);assert.equal(node('panic-wrap').hidden,false);
+    assert.equal(node('panic-button').disabled,false);assert.equal(node('touch-c').disabled,true);
+    game.player.destroy(0,game.player.origin);mobile.sync();assert.equal(node('touch-c').disabled,false);
+    node('touch-c').fire('pointerdown');node('touch-c').fire('click');assert.equal(game.requests.length,1);
+    const accepted=game.recoupling;
+    node('panic-button').fire('pointerdown',{pointerId:2});node('panic-button').fire('click',{pointerId:2});
+    assert.ok(game.panic);assert.equal(game.events.filter(e=>e.name==='panic').length,1);assert.equal(game.recoupling,accepted);
+    mobile.sync();assert.equal(node('panic-wrap').hidden,false);assert.equal(node('panic-button').disabled,true);assert.equal(node('touch-c').disabled,true);
+    assert.deepEqual(mobile.movement(),emptyMovement());
+    for(let i=0;i<335;i++)game.tick(1/120);mobile.sync();
+    assert.equal(node('panic-wrap').hidden,false);assert.equal(node('panic-button').disabled,true);
+    assert.match(node('panic-status').textContent,/^COOLDOWN \d+ s$/);
+    node('panic-button').fire('pointerdown',{pointerId:3});assert.equal(game.events.filter(e=>e.name==='panic').length,1);
+    game.command('panic false');mobile.sync();assert.equal(node('panic-wrap').hidden,true);
+  }
+});
+
+test('Panic visibility preference and overheat warning reach the actual shared controls',()=>{
+  const {mobile,game,node}=setup();game.command('panic_show_inactive false');mobile.sync();
+  assert.equal(node('panic-wrap').hidden,true);game.outside=true;game.outsideTime=3;mobile.sync();
+  assert.equal(node('panic-wrap').hidden,false);game.heat=1;game.t=.1;mobile.sync();
+  const warned=node('panic-button').attrs['aria-label'];assert.match(warned,/Panic:/);
+  game.paused=true;mobile.sync();assert.equal(node('touch-controls').hidden,true);
+  game.paused=false;game.outside=false;game.heat=0;game.outsideTime=0;mobile.sync();
+  assert.equal(node('panic-wrap').hidden,true);
+});

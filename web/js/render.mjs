@@ -1,3 +1,4 @@
+import {PANIC} from './panic.mjs';
 import * as T from '../vendor/three.module.min.js';
 import {VISUAL_EFFECTS,END_PORTAL} from './config.mjs';
 import {lossGreyAmount,lossBodyColor,lossGhostPose} from './loss.mjs';
@@ -281,7 +282,7 @@ export class Renderer {
     const joints=last<first?[]:c.joints.slice(Math.max(0,first-1),last+1);
     joints.forEach(j=>{
       const i=j.index;
-      const alpha=(1-(preview?0:c.fade(i,p,t)))*progress;
+      const alpha=(1-(preview||c.rescueJoint===i?0:c.fade(i,p,t)))*progress;
       const map=(x,y,z)=>j.center.add(new V(x,y,z));
       this.box(map,-7,7,-7,7,-7,7,[.3,.65,.85],alpha*.4);
       for(let axis=0;axis<3;axis++) for(const sign of [-1,1]) {
@@ -299,6 +300,7 @@ export class Renderer {
         for(let n=-7;n<=7;n++) this.lines.line(m.world(23,-7,n),m.world(23,7,n),[.6,.92,1],a);
       }
     });
+    if(g.panic||c.rescueChamber)this.panicPrison(g);
     if(preview)return; // The overview introduces the field, never its cutting grids.
     for(const l of c.moduleLasers.slice(first,last+1).flat()) {
       const i=l.module.index;
@@ -308,6 +310,27 @@ export class Renderer {
       if(preview&&rp<=0) continue;
       this.laser(l,t,future,(1-fade)*(future?.22:rp),fade,g.shutterState(l));
     }
+  }
+  panicPrison(g) {
+    const {module,center,time}=g.panic||{...g.course.rescueChamber,time:PANIC.pullSeconds+PANIC.holdSeconds+PANIC.openSeconds},opening=smooth((time-PANIC.pullSeconds-PANIC.holdSeconds)/PANIC.openSeconds);
+    const map=(x,y,z)=>center.add(module.bx.mul(x)).add(module.by.mul(y)).add(module.bz.mul(z));
+    const color=[.65,.86,1];
+    this.box(map,-6,6,-6,6,-6,6,color,.8);
+    if(time<PANIC.pullSeconds) {
+      const body=g.player.origin,alpha=.7*(1-time/PANIC.pullSeconds);
+      this.lines.line(body,center,[1,1,1],alpha);
+      for(let i=0;i<8;i++) {
+        const angle=i*Math.PI/4,offset=module.by.mul(Math.cos(angle)*3.5).add(module.bz.mul(Math.sin(angle)*3.5));
+        this.lines.line(body.add(offset),center,[.9,.97,1],alpha*.6);
+      }
+    }
+    // Five fixed faces; the forward bars retract upward into the frame.
+    for(const x of [-6,6])for(let z=-5;z<=5;z+=2)
+      this.lines.line(map(x,x>0?-6+12*opening:-6,z),map(x,6,z),color,.85);
+    for(const z of [-6,6])for(let x=-5;x<=5;x+=2)
+      this.lines.line(map(x,-6,z),map(x,6,z),color,.65);
+    for(const y of [-6,6])for(let z=-5;z<=5;z+=2)
+      this.lines.line(map(-6,y,z),map(6,y,z),color,.5);
   }
   laser(l,t,future=false,alpha=1,fade=0,shutter=null) {
     const m=l.module,local=(y,z)=>{

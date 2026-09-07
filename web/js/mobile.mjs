@@ -1,4 +1,5 @@
-// Touch input only. All movement still passes through the ordinary simulation.
+import {panicStatus} from './panic.mjs';
+// Touch movement and shared action circles. Movement uses the ordinary simulation.
 import {emptyMovement} from './gamepad.mjs';
 import {MobileOrientation,createOrientationOptions} from './orientation.mjs';
 
@@ -68,7 +69,7 @@ export function selectPull(view,x,y,grabRadius=TOUCH_RULES.grabRadius){
 }
 
 export function recoupleStatus(game){
-  if(game.state!=='playing'||game.paused||game.help)return {enabled:false,text:'UNAVAILABLE'};
+  if(game.state!=='playing'||game.paused||game.help||game.panic)return {enabled:false,text:'UNAVAILABLE'};
   if(game.recoupling.length)return {enabled:false,text:'COUPLING…'};
   if(game.recouplingBlockedByHeat)return {enabled:false,text:'TOO HOT'};
   const requests=game.requests.filter(t=>t>=game.t-10);
@@ -80,12 +81,13 @@ export function recoupleStatus(game){
 
 export function createTouchHelp(document,inBonus,diagramURL){
   const section=document.createElement('div'),heading=document.createElement('h3');heading.textContent='TOUCH CONTROLS · BETA';section.append(heading);
-  const p=document.createElement('p');p.textContent=inBonus?'Drag the cube to roll on the floor. Up goes toward the ramp. Collect pieces by contact; depth and re-coupling controls are hidden.':'Grab a labelled side of the cube’s area and pull along its line. Cyan X, gold Y and pink Z are the three movement axes. The chosen axis lights up and stays selected until you release. The grab points surround your surviving pieces, even a single cube.';section.append(p);
-  const image=document.createElement('img');image.src=diagramURL;image.alt='Touch map: six labelled X/Y/Z grab points surround the cube. Grab a side to pull along that axis. Grab the centre to steer freely on screen. A grey ring marks rush. Tap the circular whole-cube RECOUPLE button to recover pieces.';image.className='touch-help-map';image.width=900;image.height=430;section.append(image);
+  const p=document.createElement('p');p.textContent=inBonus?'Drag the cube to roll on the floor. Up goes toward the ramp. Collect pieces by contact; depth, re-coupling and Panic controls are hidden.':'Grab a labelled side of the cube’s area and pull along its line. Cyan X, gold Y and pink Z are the three movement axes. The chosen axis lights up and stays selected until you release. The grab points surround your surviving pieces, even a single cube.';section.append(p);
+  const image=document.createElement('img');image.src=diagramURL;image.alt='Touch map: six labelled X/Y/Z grab points surround the cube. Grab a side to pull along that axis. Grab the centre to steer freely on screen. A grey ring marks rush. Tap the whole-cube RECOUPLE button on the right to recover pieces, or the shedding-cube PANIC button on the left for recall.';image.className='touch-help-map';image.width=900;image.height=430;section.append(image);
   for(const text of [
     'The grey ring stays where you first touched. Cross it to rush; move back inside to slow down. Release to coast. Drag the opposite way to brake.',
     'Grab the centre for free dragging in the screen plane. Optional extra drag/depth areas are available in Options if you prefer them. DEPTH: up moves away from the camera, down moves toward it.',
     inBonus?'Re-coupling is automatic by contact in this bonus round.':'RECOUPLE lights up when pieces can be recovered. A dim button means no loose pieces, an active recovery, overheating or cooldown; its small status label explains which.',
+    inBonus?'Panic is unavailable in bonus rounds.':`PANIC works throughout a normal leg and flashes immediately on overheating. Tap the shedding-cube icon to return your survivors to the start of the furthest reached leg. A white tractor beam brings you into a laser-bar prison and requests normal Recouple for any recoverable pieces. The bars open forward, then the fresh leg timer runs. Cooldown: 30 seconds of play. Options can disable it.`,
     'Portrait and landscape are both supported. Play whichever way feels right to you. Pause before changing grip. Fullscreen is optional; system navigation gestures can still leave the game.',
     'Options → Lock current orientation keeps your current portrait or landscape view where supported. It starts off each visit. If the browser needs fullscreen, use Fullscreen & lock; otherwise use your device’s rotation lock. Unlocked rotation still pauses play.',
     'Help → Options → Input mode switches between automatic detection, touch and keyboard/controller. Keyboard and controller inputs remain available in touch mode.'
@@ -121,7 +123,8 @@ export class MobileControls {
     this.install();this.applyMode();this.resize();
   }
   get enabled(){return touchEnabled(this.mode,this.detected);}
-  canPlay(){return this.enabled&&['playing','bonus_playing'].includes(this.game.state)&&!this.game.paused&&!this.game.help&&!this.document.hidden;}
+  canAct(){return this.game.state==='playing'&&!this.game.paused&&!this.game.help&&!this.document.hidden;}
+  canPlay(){return !this.game.panic&&this.enabled&&['playing','bonus_playing'].includes(this.game.state)&&!this.game.paused&&!this.game.help&&!this.document.hidden;}
   setMode(value){
     const n=Number(value);if(![0,1,2].includes(n))throw Error('mobile_mode expects 0 (automatic), 1 (touch) or 2 (keyboard/controller)');
     this.mode=n;this.reset();this.write('cube-libre-input-mode-v1',n);this.applyMode();return n;
@@ -167,11 +170,19 @@ export class MobileControls {
     }
     const button=this.$('touch-c');
     button.addEventListener('pointerdown',e=>{
-      if(e.button>0||!this.canPlay()||this.recoupleId!==null||!recoupleStatus(this.game).enabled)return;
+      if(e.button>0||!this.canAct()||this.recoupleId!==null||!recoupleStatus(this.game).enabled)return;
       e.preventDefault();this.recoupleId=e.pointerId;this.capture(button,e);this.game.requestRecouple();
     });
     for(const event of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(event,e=>{if(e.pointerId===this.recoupleId)this.recoupleId=null;this.captures.delete(e.pointerId);});
-    button.addEventListener('click',e=>{e.preventDefault();if(e.detail===0&&this.canPlay()&&recoupleStatus(this.game).enabled)this.game.requestRecouple();});
+    button.addEventListener('click',e=>{e.preventDefault();if(e.detail===0&&this.canAct()&&recoupleStatus(this.game).enabled)this.game.requestRecouple();});
+    const panic=this.$('panic-button');
+    panic.addEventListener('pointerdown',e=>{
+      if(e.button>0||!this.canAct()||!panicStatus(this.game).enabled)return;
+      e.preventDefault();if(this.game.requestPanic()){this.reset();this.focus();}
+    });
+    panic.addEventListener('click',e=>{
+      e.preventDefault();if(e.detail===0&&this.canAct()&&this.game.requestPanic()){this.reset();this.focus();}
+    });
     for(const el of [this.$('scene'),this.$('touch-controls')])el.addEventListener('contextmenu',e=>{if(this.enabled)e.preventDefault();});
   }
   movement(){
@@ -186,8 +197,14 @@ export class MobileControls {
     const active=this.canPlay(),state=this.game.state;
     if(!active||state!==this.lastState)this.reset();
     this.active=active;this.lastState=state;this.bonus=state==='bonus_playing';
-    this.$('touch-controls').hidden=!active;this.$('touch-steer').hidden=!this.helpers;this.$('touch-depth').hidden=this.bonus||!this.helpers;this.$('touch-recoup-wrap').hidden=this.bonus;
-    if(active){const status=recoupleStatus(this.game),button=this.$('touch-c');button.disabled=!status.enabled;button.setAttribute('aria-label',`Re-couple: ${status.text.toLowerCase()}`);this.$('touch-recouple-status').textContent=status.text;}
+    this.$('touch-controls').hidden=!(this.canAct()||active);this.$('touch-steer').hidden=!active||!this.helpers;this.$('touch-depth').hidden=!active||this.bonus||!this.helpers;this.$('touch-recoup-wrap').hidden=this.bonus;
+    const panic=panicStatus(this.game),panicButton=this.$('panic-button');
+    this.$('panic-wrap').hidden=!panic.visible;panicButton.disabled=!panic.enabled;
+    // Drive the warning from simulation time so pause/Help freezes the pulse.
+    panicButton.classList.toggle('panic-flash',panic.warning&&Math.sin(this.game.t*Math.PI*3)>0);
+    panicButton.setAttribute('aria-label',`Panic: ${panic.text||'emergency return to leg '+(this.game.panicLeg+1)}`);
+    this.$('panic-status').textContent=panic.text;
+    if(this.canAct()){const status=recoupleStatus(this.game),button=this.$('touch-c');button.disabled=!status.enabled;button.setAttribute('aria-label',`Re-couple: ${status.text.toLowerCase()}`);this.$('touch-recouple-status').textContent=status.text;}
   }
   draw(){
     if(!this.active)return;

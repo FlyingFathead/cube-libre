@@ -1,6 +1,6 @@
 # Cube Libre web progression
 
-Default schedule for web **0.28.2**, based on published v0.28.1 (`2a4970b`).
+Default schedule for web **0.29.0**, based on published v0.28.2 (`f6a91de`).
 `DEFAULT_GAME_MODE = 20` and the immutable `GAME_MODES` registry live in
 [`web/js/difficulty.mjs`](../web/js/difficulty.mjs). Each `Game` owns its active
 balance; `featuresForSettings(settings, flags, lossMinLevel, game.balance)` drives
@@ -368,3 +368,15 @@ The subsequent 2.4-second white
 fade, two-second white pause, title/subtitle and full thank-you sequence remain.
 Pause and Help freeze every part. These presentation changes apply to both modes
 and the existing `test ending_1` and `test end_portal` previews.
+
+## Optional Panic recovery (0.29.0)
+
+Available throughout normal legs, on by default in Options. V / Xbox B / PANIC
+returns the surviving body to the start of the furthest physically reached leg.
+A white tractor beam brings it into laser prison bars; forward bars open before
+the fresh leg timer starts counting down. One normal lossy Recouple request
+may recover existing loose pieces. The return never rebuilds missing pieces or
+refills the LOSS entry body. Previous pipes stay sealed. Bonus rounds exclude it.
+The cooldown is 30 seconds of play, including recall, frozen during pause/Help.
+This assistance changes practical difficulty; the underlying level curves above
+stay the same. Human playtesting remains needed.

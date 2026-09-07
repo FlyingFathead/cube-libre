@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="590" viewBox="0 0 1040 590" role="img" aria-labelledby="title desc">
 <title id="title">Cube Libre keyboard controls</title>
-<desc id="desc">A and D: minus and plus X. W and S: plus and minus Y. Q and E: plus and minus Z. Hold Shift to rush. C recovers loose cubes. L locates the cube. H help, P pause, M mute, Escape menu, Space or Enter new run or next level.</desc>
+<desc id="desc">A and D: minus and plus X. W and S: plus and minus Y. Q and E: plus and minus Z. Hold Shift to rush. C recovers loose cubes. V activates Panic during normal play. L locates the cube. H help, P pause, M mute, Escape menu, Space or Enter new run or next level.</desc>
 <rect width="1040" height="590" rx="12" fill="#03090e"/>
 <g font-family="DejaVu Sans Mono, Consolas, monospace">
 <rect x="24" y="134" width="992" height="352" rx="12" fill="#050d14" stroke="#263e4b"/>
@@ -184,8 +184,8 @@
 <g><title>C</title><rect x="312.0" y="362" width="58" height="50" rx="5" fill="#172029" stroke="#ffd768" stroke-width="2"/>
 <text x="341.0" y="394.0" text-anchor="middle" fill="#ffd768" font-size="20" font-weight="700">C</text>
 </g>
-<g><title>V</title><rect x="376.0" y="362" width="58" height="50" rx="5" fill="#09131b" stroke="#536b77" stroke-width="1"/>
-<text x="405.0" y="394.0" text-anchor="middle" fill="#536b77" font-size="20" font-weight="400">V</text>
+<g><title>V</title><rect x="376.0" y="362" width="58" height="50" rx="5" fill="#382a20" stroke="#ffb260" stroke-width="1"/>
+<text x="405.0" y="394.0" text-anchor="middle" fill="#ffb260" font-size="20" font-weight="700">V</text>
 </g>
 <g><title>B</title><rect x="440.0" y="362" width="58" height="50" rx="5" fill="#09131b" stroke="#536b77" stroke-width="1"/>
 <text x="469.0" y="394.0" text-anchor="middle" fill="#536b77" font-size="20" font-weight="400">B</text>
@@ -233,6 +233,6 @@
 <circle cx="229.0" cy="246" r="4" fill="#75e8d6"/><rect x="364" y="12" width="312" height="68" rx="7" fill="#0a151d" stroke="#75e8d6"/><text x="380" y="39" fill="#75e8d6" font-size="21" font-weight="700">W / S</text><text x="380" y="65" fill="#dce9ef" font-size="18">Move along Y · level 3+</text>
 <circle cx="309.0" cy="304" r="4" fill="#ffb46f"/><rect x="704" y="12" width="312" height="68" rx="7" fill="#0a151d" stroke="#ffb46f"/><text x="720" y="39" fill="#ffb46f" font-size="21" font-weight="700">A / D</text><text x="720" y="65" fill="#dce9ef" font-size="18">Move along X</text>
 <circle cx="109.0" cy="412" r="4" fill="#ffd768"/><rect x="24" y="510" width="312" height="68" rx="7" fill="#0a151d" stroke="#ffd768"/><text x="40" y="537" fill="#ffd768" font-size="21" font-weight="700">Hold Shift</text><text x="40" y="563" fill="#dce9ef" font-size="18">Move faster (2.6×)</text>
-<circle cx="341.0" cy="412" r="4" fill="#ffd768"/><rect x="364" y="510" width="312" height="68" rx="7" fill="#0a151d" stroke="#ffd768"/><text x="380" y="537" fill="#ffd768" font-size="21" font-weight="700">Press C</text><text x="380" y="563" fill="#dce9ef" font-size="18">Recover loose cubes</text>
+<circle cx="341.0" cy="412" r="4" fill="#ffd768"/><rect x="364" y="510" width="312" height="68" rx="7" fill="#0a151d" stroke="#ffd768"/><text x="380" y="537" fill="#ffd768" font-size="21" font-weight="700">C · Recouple / V · Panic</text><text x="380" y="563" fill="#dce9ef" font-size="18">Recover pieces / recall body</text>
 <circle cx="693.0" cy="354" r="4" fill="#ffd768"/><rect x="704" y="510" width="312" height="68" rx="7" fill="#0a151d" stroke="#ffd768"/><text x="720" y="537" fill="#ffd768" font-size="21" font-weight="700">Press L</text><text x="720" y="563" fill="#dce9ef" font-size="18">Locate your cube</text>
 </g></svg>

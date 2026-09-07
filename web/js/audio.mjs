@@ -2,7 +2,7 @@ import {releaseAssetURL} from './updates.mjs';
 import {clamp,smooth,portalMetrics,ASCENSION_TIMING} from './core.mjs';
 const root=new URL('../assets/audio/',import.meta.url);
 const volumes={crash:.70,structure_alert:.48,portal:.88,laser_reveal:.64,laser_dissipate:.62,
-  materialize:.62,death:.74,reassembly:.60,recouple:.62,collapse:.82,time_buzzer:.78,shutter_close:.54,shutter_open:.48,loss_weep:.60,arrival_water:.38};
+  materialize:.62,death:.74,reassembly:.60,recouple:.62,collapse:.82,time_buzzer:.78,shutter_close:.54,shutter_open:.48,loss_weep:.60,arrival_water:.38,panic:.58};
 const cooldowns={recouple:.18,crash:.075,structure_alert:.65,laser_reveal:.35,laser_dissipate:.28,collapse:.12,time_buzzer:.82,shutter_close:.12,shutter_open:.12};
 
 export class GameAudio {
@@ -107,7 +107,7 @@ export class GameAudio {
       if(event.name==='stop') this.stopAll(); else this.sound(event.name,undefined,event.name,false,event.semitones??0);
     }
     if(!this.ready) return;
-    const desired=new Map(),s=g.state,title=s==='title',playing=s==='playing',construct=s==='course_materialize';
+    const desired=new Map(),s=g.state,title=s==='title',playing=s==='playing'&&!g.panic,construct=s==='course_materialize';
     const bonusPlaying=s==='bonus_playing';
     const clock=bonusPlaying?g.bonus.timeLeft:g.legTime;
     const ambience=s.startsWith('bonus_')||['title','quit_confirm','opening_intro','level_ready','course_materialize','playing','result_overlay','space_intro','time_intro','entropy_intro','heat_intro','loss_intro','change_1_intro','change_2_intro','change_3_intro','change_4_intro'].includes(s);

@@ -51,7 +51,7 @@ function buildHelp({bonus=false,connected=false,paused=false,touch=false,gameMod
   ctx.help();return {document,game,nodes,writes,ctx};
 }
 
-test('actual Help separates keyboard, controller and visual-only options, including bonus-specific maps',()=>{
+test('actual Help separates keyboard, controller and visual and rescue options, including bonus-specific maps',()=>{
   for(const bonus of [false,true])for(const connected of [false,true]) {
     const {nodes,game,writes,ctx}=buildHelp({bonus,connected}),body=nodes['modal-body'];
     const tabs=body.querySelectorAll('[role="tab"]'),panels=body.querySelectorAll('[role="tabpanel"]');
@@ -61,7 +61,7 @@ test('actual Help separates keyboard, controller and visual-only options, includ
     assert.equal(panels[0].querySelectorAll('input').length,0);assert.equal(panels[1].querySelectorAll('input').length,0);
     assert.ok(panels[0].querySelector('img').src.includes(bonus?'keyboard-bonus-controls':'keyboard-controls'));
     assert.ok(panels[1].querySelector('img').src.includes('controller-controls.svg'));
-    assert.deepEqual(panels[3].querySelectorAll('input').map(i=>i.dataset.setting),['shake','rotation_shocks','portal_white_light']);
+    assert.deepEqual(panels[3].querySelectorAll('input').map(i=>i.dataset.setting),['shake','rotation_shocks','portal_white_light','panic']);
     assert.ok(body.textContent.includes('© 2024–2026 FlyingFathead'));assert.ok(body.textContent.includes('Web version · Based on PyGame v0.15.79'));
     assert.ok(!body.textContent.includes('Console: set'));assert.equal(writes.length,0);
     ctx.closeModal();assert.equal(game.paused,false);assert.equal(game.help,false);
@@ -80,13 +80,13 @@ test('tab clicks and arrow/Home/End keys hide inactive panels, move focus and ne
   assert.deepEqual({state:game.state,time:game.t,leg:game.legTime,flags:game.flags},before);assert.equal(game.paused,true);
 });
 
-test('Options writes only visual preferences; gameplay flags remain console-editable and untouched by Help',()=>{
+test('Options saves visual effects and Panic while preserving all other gameplay flags',()=>{
   const {nodes,game,writes,ctx}=buildHelp({paused:true});
   const keys=['spin','microgravity','overheat_blocks_recoupling','change_1','change_1_random_per_leg','change_1_no_repeat_leg','culling'];
   for(const key of keys)game.command(`set ${key} false`);
   const flags={...game.flags},course=game.course,pose=game.player.spinAngles;
   for(const input of nodes['modal-body'].querySelectorAll('input')){input.checked=false;input.events.change();}
-  assert.equal(writes.length,3);assert.deepEqual(writes.map(x=>x[0]),['cube-libre-shake-v1','cube-libre-rotation-shocks-v1','cube-libre-portal-white-light-v1']);
+  assert.equal(writes.length,4);assert.equal(game.flags.panic,false);assert.deepEqual(writes.map(x=>x[0]),['cube-libre-shake-v1','cube-libre-rotation-shocks-v1','cube-libre-portal-white-light-v1','cube-libre-panic-v1']);
   for(const key of keys)assert.equal(game.flags[key],flags[key]);assert.equal(game.course,course);assert.equal(game.player.spinAngles,pose);
   ctx.closeModal();assert.equal(game.paused,true,'Help restores an already paused run');
   for(const key of keys)assert.equal(game.command(`toggle ${key}`),`${key} set to true`);

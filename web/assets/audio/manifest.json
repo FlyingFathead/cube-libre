@@ -160,5 +160,14 @@
     "source_sha256": "22ca201153e1cd3d3253e4508b61d14852380815ee421abca314eb938bbce088",
     "generator": "tools/build_arrival_audio.py",
     "edition": "web"
+  },
+  "panic": {
+    "duration": 2.75,
+    "ogg": "panic.ogg",
+    "mp3": "panic.mp3",
+    "source_wav": "panic.wav",
+    "source_sha256": "40c6c193ff32a978d0a2b2363ca06ce3e047dcd239960b3d836cf5e84c981fe9",
+    "generator": "tools/build_panic_audio.py",
+    "edition": "web"
   }
 }

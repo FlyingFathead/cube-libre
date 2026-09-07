@@ -61,7 +61,7 @@ test('all config listing aliases report live values from every registered settin
   assert.equal(snapshot(),before);assert.equal(g.course,course);
   const rows=output.split('\n').filter(line=>/^[a-z_0-9]+ \|/.test(line));
   const names=rows.map(line=>line.split(' | ')[0]);
-  const expected=[...Object.keys(g.flags),'locate',...Object.keys(g.consoleSettings),'level','score','cubes','top_level',...Object.keys(CHANGE_NUMBERS),...Object.keys(g.previewSettings),...Object.keys(g.routeOutlineSettings),'loss_min_level','loss_grey_min_level','game_mode','star_pattern','auto_locate_min_level'];
+  const expected=[...Object.keys(g.flags),'locate',...Object.keys(g.consoleSettings),'level','score','cubes','top_level',...Object.keys(CHANGE_NUMBERS),...Object.keys(g.previewSettings),...Object.keys(g.routeOutlineSettings),'loss_min_level','loss_grey_min_level','game_mode','star_pattern','auto_locate_min_level','panic_outside_seconds','panic_cooldown_seconds'];
   assert.deepEqual(new Set(names),new Set(expected));assert.equal(names.length,expected.length);
   for(const row of rows)assert.equal(row.split(' | ').length,4);
   assert.match(output,/star_pattern \| 2 \| Background star pattern \| 0: no background stars; 1: original/);

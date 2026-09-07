@@ -5,6 +5,7 @@ import {BONUS_SCHEDULE,createBonus,scheduledBonus,recoveredShape,rotateQ} from '
 import { BALANCE,DEFAULT_GAME_MODE,balanceForMode,difficultyForLevel,introductionsForLevel,recouplingHeatBlocked,lossLevelReached } from './difficulty.mjs';
 import {CHANGES,CHANGE_NUMBERS,createChangeSettings,setChangeNumber,Shutters,shutterEnabled,shutterLoss} from './changes.mjs';
 import {CONFIG_COMMANDS,describeConsoleConfig} from './console-config.mjs';
+import {PANIC,panicStatus,reachedLeg} from './panic.mjs';
 import {LOSS_ASSEMBLY} from './loss.mjs';
 import {validateCheckpoint,RESUME_TIMING} from './save-game.mjs';
 export { BALANCE } from './difficulty.mjs';
@@ -189,7 +190,7 @@ export class Course {
     this.moduleLasers=this.modules.map(m=>laserTemplates.map(t=>new Laser(t,m,level)));
     this.lasers=this.moduleLasers.flat();
     this.revealed=new Map(level<this.balance.spaceStartLevel?this.modules.map(m=>[m.index,-9999]):[[0,-9999]]);
-    this.collapsed=new Map();
+    this.collapsed=new Map();this.rescueJoint=-1;this.rescueChamber=null;
     const pts=[];
     for(const m of this.modules) for(const x of this.span(m)) for(const y of [-7,7]) for(const z of [-7,7]) pts.push(m.world(x,y,z));
     for(const j of this.joints) for(const x of [-7,7]) for(const y of [-7,7]) for(const z of [-7,7]) pts.push(j.center.add(new V(x,y,z)));
@@ -233,7 +234,7 @@ export class Course {
       const l=m.local(p),[a,b]=this.span(m,pad);
       if(l.x>=a&&l.x<=b&&Math.abs(l.y)<=7+pad&&Math.abs(l.z)<=7+pad)return m.index;
     }
-    for(const j of nearby.joints) if(this.collapsed.has(j.index)&&
+    for(const j of nearby.joints) if(j.index!==this.rescueJoint&&this.collapsed.has(j.index)&&
       Math.abs(p.x-j.center.x)<=7+pad&&Math.abs(p.y-j.center.y)<=7+pad&&Math.abs(p.z-j.center.z)<=7+pad)return j.index;
     return -1;
   }
@@ -279,8 +280,8 @@ export class Course {
     for(let i=0;i<=this.revealIndex(p);i++) if(!this.revealed.has(i)) {
       this.revealed.set(i,t); emit('laser_reveal',this.modules[i].start);
     }
-    const {index}=this.location(p);
-    for(let i=0;this.level>=this.balance.spaceStartLevel&&i<=index-1;i++) if(!this.collapsed.has(i)&&this.distanceFade(i,p)>=.04) {
+    const {index}=this.location(p),physical=reachedLeg(this,p);
+    for(let i=0;this.level>=this.balance.spaceStartLevel&&i<=Math.min(index,physical)-1;i++) if(!this.collapsed.has(i)&&this.distanceFade(i,p)>=.04) {
       this.collapsed.set(i,t); emit('collapse',this.modules[i].end()); emit('laser_dissipate');
     }
   }
@@ -339,7 +340,8 @@ export class Game {
     for(const [id,change] of Object.entries(CHANGES))this.flags[id]=change.enabled;this.flags.change_4_pattern=true;this.flags.change_1_random_per_leg=CHANGES.change_1.randomPerLeg;this.flags.change_1_no_repeat_leg=CHANGES.change_1.noRepeatLeg;
     this.changeSettings=createChangeSettings();
     this.flags.loss=this.balance.lossEnabled;this.lossMinLevel=this.balance.lossMinLevel;this.lossGreyMinLevel=this.balance.lossGreyMinLevel;
-    this.flags.loss_grey=true;
+    this.flags.loss_grey=true;this.flags.panic=true;this.flags.panic_show_inactive=true;
+    this.panicOutsideSeconds=PANIC.outsideSeconds;this.panicCooldownSeconds=PANIC.cooldownSeconds;
     this.flags.route_outline=VISUAL_EFFECTS.routeOutline;
     this.routeOutlineSettings=Object.fromEntries(Object.entries(ROUTE_OUTLINE_NUMBERS).map(([k,r])=>[k,r.value]));
     this.entryCells=Object.freeze(cells.map((_,i)=>i));this.missingEntryCells=[];this.portalCarry=null;this.pendingLevelCells=null;
@@ -404,7 +406,10 @@ export class Game {
     else this.introduceLevel(saved.level,{survivors:saved.cells});
   }
   messageSet(text,time=1.6) { this.message=text; this.messageTime=time; }
-  setState(s) { this.state=s; this.stateTime=0; }
+  setState(s) {
+    if(s!=='playing'){this.panic=null;if(this.course){this.course.rescueJoint=-1;this.course.rescueChamber=null;}}
+    this.state=s;this.stateTime=0;
+  }
   get difficulty() { return difficultyForLevel(this.level,this.balance); }
   get autoLocate() { return this.endPortalPreview||this.autoLocateMinLevel===0||this.level>=this.autoLocateMinLevel; }
   get lossActive() { return this.flags.loss&&lossLevelReached(this.level,this.lossMinLevel); }
@@ -416,6 +421,7 @@ export class Game {
   resetAttempt() {
     this.player.reset(); this.player.alive=new Set(this.entryCells);this.course=new Course(this.level,this.flags.route3d,{balance:this.balance}); this.geometryVersion=(this.geometryVersion||0)+1;
     this.driftVelocity=new V();
+    this.panic=null;this.panicLeg=0;this.panicCooldown=0;
     this.shutters=new Shutters(this.rng);
     this.damageTimer=.45; this.legTime=this.difficulty.secondsPerLeg; this.timedModule=0; this.timeResetNotice=0;
     this.outsideTime=0; this.heat=0; this.lastHeat=0; this.coolTime=0; this.cool=0;
@@ -425,7 +431,7 @@ export class Game {
     if(this.endPortalPreview) {
       // A safe gap before the last gate: enough room to see and approach the exit.
       this.player.origin=this.course.portal.world(10.8);
-      this.timedModule=this.course.portal.index;
+      this.timedModule=this.course.portal.index;this.panicLeg=this.course.portal.index;
       for(const m of this.course.modules) {
         this.course.revealed.set(m.index,this.t-10);
         if(m!==this.course.portal)this.course.collapsed.set(m.index,this.t-10);
@@ -542,8 +548,34 @@ export class Game {
     b.pickupFlashes=[];
     this.emit('crash');this.emit('collapse');this.emit('death');
   }
-  requestRecouple() {
-    if(this.state!=='playing'||this.paused||this.help) return;
+  requestPanic() {
+    if(!panicStatus(this).enabled)return false;
+    // Transport the existing body; only a normal, lossy recoupling request
+    // may add still-recoverable fragments. Keep score, collapse history and quota.
+    const module=this.course.modules[this.panicLeg];
+    const center=this.panicLeg>0?module.start:V.of(C.START_ORIGIN),from=this.player.origin;
+    this.driftVelocity=new V();this.rotationShock={angle:new V(),velocity:new V(),hits:0};
+    this.outside=false;this.outsideTime=this.heat=this.lastHeat=this.coolTime=this.cool=0;
+    this.shake=0;this.impacts=[];this.particles=[];
+    this.timedModule=this.panicLeg;this.resetLegClock();
+    this.course.rescueJoint=this.panicLeg-1;this.course.rescueChamber={module,center};
+    this.course.revealed.set(this.panicLeg,this.t-2);
+    this.panic={time:0,module,center,from,arrived:false};
+    this.panicCooldown=this.panicCooldownSeconds;
+    this.emit('panic');this.messageSet('PANIC RECOVERY REQUESTED',PANIC.pullSeconds+PANIC.holdSeconds+PANIC.openSeconds);
+    return true;
+  }
+  trackPanicLeg() {
+    this.panicLeg=Math.max(this.panicLeg,reachedLeg(this.course,this.player.origin));
+    const chamber=this.course.rescueChamber;
+    // Keep only the return chamber safe until the whole spinning body clears
+    // its forward face. The old pipe is still lethal throughout the escape.
+    if(chamber&&this.player.origin.sub(chamber.center).dot(chamber.module.bx)>12) {
+      this.course.rescueJoint=-1;this.course.rescueChamber=null;
+    }
+  }
+  requestRecouple(fromRescue=false) {
+    if(this.state!=='playing'||this.paused||this.help||(this.panic&&!(fromRescue&&this.panic.arrived))) return;
     if(this.recouplingBlockedByHeat) { this.messageSet('TOO HOT TO RE-COUPLE · RETURN INSIDE',1.45); return; }
     if(!this.recoupling.length&&!this.player.fragments.some(f=>f.age<7.95)) { this.messageSet('NO RECOVERABLE LOOSE CELLS',.75); return; }
     this.requests=this.requests.filter(t=>t>=this.t-10);
@@ -552,6 +584,16 @@ export class Game {
     if(this.recoupling.length) { this.messageSet('RE-COUPLING ALREADY ACTIVE',.55); return; }
     this.recoupling=beginRecouple(this.player,this.level,this.balance); this.recoupleTime=0;
     if(this.recoupling.length) { this.emit('recouple'); this.messageSet(`RE-COUPLING REQUESTED: ${this.recoupling.length} CELLS`); }
+  }
+  tickRecouple(dt) {
+    if(!this.recoupling.length)return;
+    this.recoupleTime+=dt;
+    if(this.recoupleTime>=1.18) {
+      const before=this.player.alive.size;
+      for(const p of this.recoupling)this.player.alive.add(p.target);
+      if(!this.endPortalPreview)this.runStats.recoupledCubes+=this.player.alive.size-before;
+      this.messageSet(`RE-COUPLED +${this.player.alive.size-before} CUBES`,.85);this.recoupling=[];
+    }
   }
   move(dt,input) {
     const rules=PLAYER_PROPULSION,speed=rules.speed*(input.rush?rules.rushMultiplier:1);
@@ -737,6 +779,26 @@ export class Game {
     if(this.paused) return;
     // Help suspends the simulation too, so debris and leg clocks cannot expire while reading.
     if(this.help) return;
+    if(this.state==='playing')this.panicCooldown=Math.max(0,this.panicCooldown-dt);
+    if(this.state==='playing'&&this.panic) {
+      const rescue=this.panic;
+      rescue.time+=dt;
+      this.player.origin=lerp(rescue.from,rescue.center,smooth(rescue.time/PANIC.pullSeconds));
+      if(!this.endPortalPreview)this.runStats.playSeconds+=dt;
+      if(rescue.time>=PANIC.pullSeconds) {
+        if(!rescue.arrived) {
+          rescue.arrived=true;
+          if(!this.recoupling.length&&this.player.fragments.some(f=>f.age<7.95))this.requestRecouple(true);
+          this.messageSet('PANIC RECOVERY REQUESTED',PANIC.holdSeconds+PANIC.openSeconds);
+        }
+        this.tickRecouple(Math.min(dt,rescue.time-PANIC.pullSeconds));
+      }
+      if(rescue.time>=PANIC.pullSeconds+PANIC.holdSeconds+PANIC.openSeconds) {
+        this.panic=null;this.damageTimer=.75;this.shutters.immunity=Math.max(this.shutters.immunity,.75);
+        this.messageSet('RELEASED · FOLLOW THE OPEN BARS',1.4);
+      }
+      return; // The fresh leg clock and all hazards wait until the bars open.
+    }
     this.t+=dt; this.stateTime+=dt;
     this.angles=this.angles.map((v,i)=>(v+[7.5,13,4.5][i]*dt)%360);
     this.messageTime=Math.max(0,this.messageTime-dt); this.shake=Math.max(0,this.shake-dt);
@@ -775,16 +837,9 @@ export class Game {
         if(this.stateTime>=7) { this.resetLegClock(); this.setState('playing'); this.damageTimer=.45; } break;
       case 'playing': {
         if(!this.endPortalPreview)this.runStats.playSeconds+=dt;
-        if(this.recoupling.length) {
-          this.recoupleTime+=dt;
-          if(this.recoupleTime>=1.18) {
-            const before=this.player.alive.size;
-            for(const p of this.recoupling) this.player.alive.add(p.target);
-            if(!this.endPortalPreview)this.runStats.recoupledCubes+=this.player.alive.size-before;
-            this.messageSet(`RE-COUPLED +${this.player.alive.size-before} CUBES`,.85); this.recoupling=[];
-          }
-        }
+        this.tickRecouple(dt);
         this.move(dt,input);
+        this.trackPanicLeg();
         this.course.update(this.player.origin,this.t,(name,pos)=>{
           this.emit(name,pos);
           if(name==='collapse') for(let i=0;i<70;i++) this.particles.push({pos:pos.add(randV(this.rng,7)),vel:randV(this.rng,7),age:0,life:1.25,color:[.4,.8,1]});
@@ -883,7 +938,7 @@ export class Game {
         if(key==='microgravity')this.driftVelocity=new V();
         if(key==='rotation_shocks'&&!v) {this.rotationShock.angle=new V();this.rotationShock.velocity=new V();}
         if(key.startsWith('change_'))this.shutters.restart();
-        if(key==='route3d') {this.course=new Course(this.level,v,{balance:this.balance});this.geometryVersion++;this.shutters.restart();}
+        if(key==='route3d') {this.panic=null;this.panicLeg=0;this.course=new Course(this.level,v,{balance:this.balance});this.geometryVersion++;this.shutters.restart();}
       }
     }]));
     settings.set('locate',{get:()=>this.locate,set:v=>{this.locate=v;}});
@@ -896,6 +951,11 @@ export class Game {
       const n=Number(value);if(value===undefined||!Number.isInteger(n)||n<0||n>1000000)throw Error('auto_locate_min_level expects an integer from 0 to 1000000');
       this.autoLocateMinLevel=n;return n;
     }});
+    for(const [key,property,max] of [['panic_outside_seconds','panicOutsideSeconds',30],['panic_cooldown_seconds','panicCooldownSeconds',300]])
+      numeric.set(key,{get:()=>this[property],set:value=>{
+        const n=Number(value);if(value===undefined||String(value).trim()===''||!Number.isFinite(n)||n<0||n>max)throw Error(`${key} expects a number from 0 to ${max}`);
+        this[property]=n;return n;
+      }});
     numeric.set('game_mode',{get:()=>this.gameMode,set:value=>this.setGameMode(value)});
     numeric.set('loss_min_level',{get:()=>this.lossMinLevel,set:value=>{
       const n=Number(value);if(value===undefined||String(value).trim()===''||!Number.isInteger(n)||n<0||n>this.balance.levelCap)throw Error(`loss_min_level expects an integer from 0 to ${this.balance.levelCap}`);
@@ -932,7 +992,7 @@ export class Game {
       return `Status for ${key} is: ${requireSetting(key).get()?'Enabled':'Disabled'}`;
     };
     const setFlag=(key,v)=>{requireSetting(key).set(v);return `${key} set to ${v}`;};
-    if(cmd==='help'||cmd==='?') return 'viewconfig / showconfig / showvars / viewvars / listvars / listconfig: list all settings\nhelp, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light end_portal culling microgravity overheat_blocks_recoupling change_1 change_2 change_3 change_4 change_4_pattern change_1_random_per_leg change_1_no_repeat_leg loss loss_grey route_outline preview_outline locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nNumbers: '+[...numeric.keys()].join(' ')+'\nRecords: toplevel / top_level (query); toplevel reset / top_level reset / reset top level (reset); keeps other records\nPreviews: test end_portal, test ending_1, test bonus_round_1, test change_1, test change_2, test change_3, test change_4, test loss, thank_you_note, bonus <type>';
+    if(cmd==='help'||cmd==='?') return 'viewconfig / showconfig / showvars / viewvars / listvars / listconfig: list all settings\nhelp, clear, flags, toggle <thing>, set <thing> [value]\nStatus aliases: status <thing>, view <thing>, get <thing>, set <thing>\nValues: true/false, on/off, 1/0, enabled/disabled\nFlags: panic panic_show_inactive damage lasers bounds noclip portal suction route3d shake spin rotation_shocks portal_white_light end_portal culling microgravity overheat_blocks_recoupling change_1 change_2 change_3 change_4 change_4_pattern change_1_random_per_leg change_1_no_repeat_leg loss loss_grey route_outline preview_outline locate'+(this.consoleSettings.mute?' mute':'')+'\nlevel <n> / set level <n>, restart, newrun, title, kill, heal, cubes <n>, portal, pos, route, score [n]\nNumbers: '+[...numeric.keys()].join(' ')+'\nRecords: toplevel / top_level (query); toplevel reset / top_level reset / reset top level (reset); keeps other records\nPreviews: test end_portal, test ending_1, test bonus_round_1, test change_1, test change_2, test change_3, test change_4, test loss, thank_you_note, bonus <type>';
     if(cmd==='flags')return [...settings.keys()].map(status).join('\n');
     if(['get','view','status'].includes(cmd)||['set','flag'].includes(cmd)&&value===undefined)return status(arg==='toplevel'?'top_level':arg);
     const numericKey=['set','flag'].includes(cmd)?arg:cmd;

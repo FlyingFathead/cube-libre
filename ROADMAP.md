@@ -5,53 +5,35 @@ Unimplemented proposals are marked explicitly; they are not promised releases. T
 is to sustain interest through new rules, rhythms and decisions as the journey
 gets harder, while preserving the feeling that arriving in one piece is unlikely.
 
-## Optional panic / return-to-corridor mechanic
+## Adopted for web 0.29.0: Panic recovery
 
-**Status: considered, not implemented.** Recorded from the author's Android
-playtest feedback on 2026-09-07. There is currently no panic button, rescue
-teleport, automatic pullback or console setting for this proposal.
+**Status: implemented.** The original Android disorientation report led to this
+optional rescue. The author expanded it to work throughout a normal leg,
+including difficult laser situations while still inside the field.
 
-The author reports that the touch beta is playable through roughly level 6.
-One difficulty is losing track of the grid after drifting into open space and
-being unable to find a way back. This may also affect desktop play. For now,
-that disorientation remains part of the game.
+- V, Xbox B or the bottom-left PANIC circle activates it. Matching Recouple
+  remains bottom-right on desktop and both mobile touch layouts.
+- A disintegrating-cube icon sits inside the circle, with PANIC underneath.
+  Overheating flashes the icon immediately. COOLDOWN shows whole seconds.
+- **PANIC RECOVERY REQUESTED** accompanies a white tractor beam pulling the
+  existing cube into laser prison bars at the start of its furthest physically
+  reached leg. The scene stays live. The bars open toward the next route section.
+- The 2.75-second pull/confinement/opening freezes hazards and the fresh leg
+  timer. Movement and countdown resume when the forward bars are open.
+  Only the returned junction is temporarily exempt from collapse death; old
+  pipes stay sealed, and the chamber closes after forward departure.
+- On arrival, use normal lossy Recouple for still-recoverable loose fragments,
+  with its existing quota. Continue an accepted request once. No new full body,
+  bonus points or overwrite of the level-entry checkpoint.
+- ALLOW PANIC BUTTON defaults on. Saved `panic_show_inactive` defaults true;
+  false hides the button until 3 seconds outside or earlier overheating.
+  V/B remain usable while hidden. Separate session variables tune the outside
+  delay and default 30-second cooldown. Pause and Help freeze recall/cooldown.
+- A zap/whoosh leads into two sustained DEEE–DAAAHH calls, swelling then
+  dropping in pitch like a passing space ambulance. Mute and pause apply.
 
-The possible addition is a panic button that becomes available after the player
-has spent long enough outside the grid. The author clarified the destination
-and presentation as follows:
-
-1. Pull the surviving collective back to the **collapsed leg's connection node**.
-2. Enclose the player in **prison-bar beams** at that node for a short confinement.
-3. Open the bars **toward the next leg**, releasing the player forward into the maze.
-
-This is a return to the previous leg's jail, with a visible confinement/release
-sequence. The connection node becomes a deliberate temporary return chamber.
-It must allow that sequence to play without the existing collapsed-section
-collision instantly killing the returned player. The old corridor stays
-collapsed; the forward opening provides the way out.
-
-Questions to settle before implementation:
-
-- **Trigger:** how long outside the grid before the button appears? Should
-  availability depend on the level, overheating, or both?
-- **Return chamber:** how long does confinement last, and how do the bars open?
-  Define how the temporary chamber interacts with the existing sealed node,
-  nearby hazards and the transition back to normal movement.
-- **Consequence:** confinement is the proposed jail experience. Any additional
-  score, time, cube cost, cooldown or use limit remains undecided.
-- **Clock and progress:** decide what happens to the current leg timer, collapse
-  history and progress. Returning must not become an accidental unlimited timer
-  reset or a way to skip the maze.
-- **Input and presentation:** how does a newly appearing button stay reachable
-  on touch, keyboard and controller without obscuring the cube or RECOUPLE?
-  A deliberate press is the initial idea; automatic rescue is not specified.
-- **Tuning:** if adopted, define an enable flag, activation threshold and other
-  settled parameters in the shared console configuration registry.
-
-The intended destination and prison-bar release are recorded above. Trigger
-threshold, confinement duration, additional costs and release date remain
-undecided. Revisit those details after further mobile and desktop playtesting,
-especially on longer routes.
+Automated checks cover geometry and return safety throughout both campaigns.
+Difficulty balance, touch layout comfort and the sound need device playtesting.
 
 ## Adopted for web 0.26.0: LOSS and the route ahead
 
@@ -69,7 +51,7 @@ consideration stage at the author's request.
   against white, before the statistics prompt.
 
 Late-game balance and the emotional timing need human playtesting. The jail-node
-return mechanic above remains considered, **not implemented**.
+return mechanic above was subsequently implemented in v0.29.0.
 
 ## Returning players: strict LOSS or a merciful fresh body?
 
@@ -93,7 +75,7 @@ Consider after playtesting:
   the incomplete reassembly and the ending?
 
 No full-body Continue override or public difficulty checkbox is included now.
-The earlier jail-node rescue proposal is also still unimplemented.
+The separate jail-node rescue is implemented as Panic recovery in v0.29.0.
 
 ## Adopted for web 0.28.0: the twenty-level journey
 

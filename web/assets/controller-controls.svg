@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="650" viewBox="0 0 1040 650" role="img" aria-labelledby="title desc">
 <title id="title">Cube Libre Xbox-style controller map</title>
-<desc id="desc">Left stick or D-pad moves X and Y in normal levels, or rolls on the floor in bonus rounds. Left trigger moves positive Z, right trigger negative Z. Left bumper or X re-couples; right bumper rushes. A confirms, B goes back, Y locates the cube. View opens Help and Menu pauses. The right stick scrolls dialogs.</desc>
+<desc id="desc">Left stick or D-pad moves X and Y in normal levels, or rolls on the floor in bonus rounds. Left trigger moves positive Z, right trigger negative Z. Left bumper or X re-couples; right bumper rushes. A confirms, B activates Panic in normal play and goes back in menus, Y locates the cube. View opens Help and Menu pauses. The right stick scrolls dialogs.</desc>
 <defs><style>
 text{font-family:DejaVu Sans,Arial,sans-serif;fill:#dceaf1} .title{font-size:26px;font-weight:700;letter-spacing:2px}.sub{font-size:15px;fill:#95b0c2}.key{font-size:19px;font-weight:700}.note{font-size:15px}.label{fill:#071520;stroke:#355464;stroke-width:1.5}.line{fill:none;stroke:#73dbe4;stroke-width:2;stroke-linejoin:round}.green{fill:#a3ffb2}.gold{fill:#ffe090}.muted{fill:#9db4c4}
 </style></defs>
@@ -40,9 +40,9 @@ text{font-family:DejaVu Sans,Arial,sans-serif;fill:#dceaf1} .title{font-size:26p
 <circle cx="722" cy="302" r="18" fill="#11202b" stroke="#ff8888" stroke-width="2"/><text x="722" y="309" text-anchor="middle" class="key" style="fill:#ff8888">B</text>
 <circle cx="686" cy="339" r="18" fill="#11202b" stroke="#a3ffb2" stroke-width="2"/><text x="686" y="346" text-anchor="middle" class="key green">A</text>
 <rect class="label" x="794" y="246" width="224" height="130" rx="8"/>
-<text x="810" y="274" class="key green" style="font-size:16px">A · CONFIRM / START</text><text x="810" y="303" class="key" style="fill:#ff8888">B · BACK / MENU</text><text x="810" y="332" class="key" style="fill:#72baff">X · RE-COUPLE</text><text x="810" y="361" class="key" style="fill:#ffdb5d">Y · LOCATE CUBE</text><path class="line" d="M743 302 H786"/>
+<text x="810" y="274" class="key green" style="font-size:16px">A · CONFIRM / START</text><text x="810" y="303" class="key" style="fill:#ff8888">B · PANIC / BACK</text><text x="810" y="332" class="key" style="fill:#72baff">X · RE-COUPLE</text><text x="810" y="361" class="key" style="fill:#ffdb5d">Y · LOCATE CUBE</text><path class="line" d="M743 302 H786"/>
 <path d="M32 539 H1008" stroke="#355464"/>
-<text x="520" y="568" text-anchor="middle" class="note"><tspan class="green" font-weight="700">NORMAL LEVELS:</tspan> LB / X re-couples · LT / RT moves on Z · RB rushes</text>
+<text x="520" y="568" text-anchor="middle" class="note"><tspan class="green" font-weight="700">NORMAL LEVELS:</tspan> LB / X re-couples · B panic · LT / RT moves on Z · RB rushes</text>
 <text x="520" y="595" text-anchor="middle" class="note"><tspan class="gold" font-weight="700">BONUS ROUND:</tspan> Left stick rolls · RB rushes · Pieces are picked up by contact</text>
 <text x="520" y="628" text-anchor="middle" class="sub">Menus: D-pad or left stick selects · A activates · B returns · Right stick scrolls</text>
 </svg>

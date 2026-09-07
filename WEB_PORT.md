@@ -94,7 +94,7 @@ remain active. Regression coverage is in `tests/web/collapse-contact.test.mjs`.
 | Persistence | Level-entry campaign checkpoints, best escape, best score and highest level in localStorage, plus mute, shaking, player rotation, hit rotation shocks, portal light, culling, microgravity, heat restriction, shutter booleans and sky preferences |
 | UI | Original cube-letter title and dot-matrix prompt; help, pause, menu/reset confirmations, fullscreen |
 | Console | Flags, level/restart/newrun, heal/kill/cubes, portal teleport, position/route, score, locate, and a scrollable live parameter listing |
-| Audio | 22 sounds in two codecs: 18 originals, shutter buzz/whoosh, LOSS engine wind-down and the final arrival water sweep |
+| Audio | 23 sounds in two codecs: 18 originals, shutter buzz/whoosh, LOSS engine wind-down, final arrival water sweep and Panic ambulance recall |
 
 The route, collision, scoring and portal rules are ported from the source. Web
 0.17.0 deliberately extends timing, re-coupling, heat and end-of-run progression.
@@ -915,7 +915,7 @@ The browser's standard Gamepad mapping is polled once per animation frame.
 Left stick and D-pad move X/Y; LT / RT move +Z / −Z. Stick and trigger magnitudes
 are analog. **LB re-couples on each press; X is an alias. RB holds rush.**
 In bonus rounds, left stick/D-pad roll on X/Z and the triggers are unused.
-A starts/confirms/continues, B returns/opens the menu, Y locates, View opens Help,
+A starts/confirms/continues, B requests Panic during normal play and returns in menus, Y locates, View opens Help,
 and Menu pauses. D-pad/left stick navigate menus; right stick scrolls dialogs.
 Help includes an exact controller diagram plus tables alongside keyboard Help.
 
@@ -1020,8 +1020,50 @@ prefers portrait. Players can choose either orientation. Portrait and
 landscape are both supported: resizing reprojects controls, releases gestures,
 and pauses active play across orientation changes. The new shutter rhythm and
 layout comfort still need device playtesting; iPhone/iPad remain unverified.
-The cloud browser could not access the local preview. See ROADMAP.md for the
-unimplemented panic/return proposal arising from this Android feedback.
+Panic recovery, arising from this Android feedback, is implemented in v0.29.0;
+its live beam/prison and sound still need device playtesting.
+
+## Panic recovery (web 0.29.0)
+
+Press V, Xbox B or the shedding-cube PANIC circle during any normal leg.
+Options → ALLOW PANIC BUTTON defaults on. B remains Back in menus and keeps its
+menu action in bonus rounds, where Panic is unavailable. Recouple has the same
+circular UI on desktop as on both touch layouts, with disabled/status feedback.
+
+**PANIC RECOVERY REQUESTED** starts a 0.65-second white tractor pull into a
+laser-bar prison, followed by 1.2 seconds confined and 0.9 seconds opening the
+forward bars. This stays inside the normal rendered scene and `playing` state.
+The beam returns the existing body to the start node of the furthest physically
+reached leg, or the original spawn for leg one. A broad location hint while
+outside cannot advance this checkpoint or seal an unreached corridor.
+
+The fresh leg timer, hazard animation, loose-fragment expiry and movement freeze
+during recall. On arrival, one normal lossy Recouple request can pull in existing
+recoverable fragments, with the usual quota and yield. An accepted recovery is
+continued instead of duplicated. The rescue does not regenerate missing cells,
+award points, refill LOSS or alter the level-entry body/save. The old pipe stays
+sealed; only the return junction stays safe until the body leaves forward.
+A 0.75-second release grace protects against immediate normal laser damage.
+
+The cooldown begins at activation, includes the recall, and advances only during
+normal play. Pause, Help and menus freeze it. A new level or retry resets it.
+Turning Panic off/on does not reset an active cooldown. A muted or locked audio
+context cannot delay or prevent activation. The zap/tractor whoosh and four
+alternating ambulance notes use one reusable sound buffer in Ogg and MP3;
+falling pitch, vibrato and an amplitude swell produce the passing-space-ambulance
+character. Timer sirens stop during the recall.
+
+| Console setting | Default | Behavior |
+| --- | --- | --- |
+| `panic` | `true` | Allow rescue; saved, also exposed in Options. |
+| `panic_show_inactive` | `true` | Show while safe; saved. Off hides until outside delay or earlier overheating. V/B still work when hidden. |
+| `panic_outside_seconds` | `3` | Hidden-mode reveal delay, 0–30 seconds; session only. Actual overheating at 2.4 / 1.4 seconds reveals and flashes it earlier. |
+| `panic_cooldown_seconds` | `30` | Cooldown for subsequent uses, 0–300 seconds; session only. |
+
+All are registered in `viewconfig` and accept the standard inert status queries.
+The circle greys out on cooldown and shows `COOLDOWN 30 s`, counting up-rounded
+whole seconds with no fractions. Heat flashes it immediately even on cooldown;
+the warning uses simulation time and freezes when play is paused.
 
 ## Versioning
 
@@ -1029,14 +1071,14 @@ unimplemented panic/return proposal arising from this Android feedback.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.28.2**, continuing from published **0.28.1** (`2a4970b`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.29.0**, continuing from published **0.28.2** (`f6a91de`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
 For future releases, use `0.28.3`, `0.28.4`, etc. for fixes, and `0.29.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.28.2.zip` and `v0.28.2`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.29.0.zip` and `v0.29.0`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior
@@ -1106,7 +1148,9 @@ immunity, warning/closed rendering, local audio events, movable introductions,
 camera centering, legacy and irregular skies, saved pattern switching and full
 configuration listings. Web 0.23.0 adds controller axes/buttons and browser-dispatch
 checks, record resets, globally capped alternating shutters, preview limits/fade
-uniforms, startup cache replacement and live leg totals. The suite now has 189 passing test groups. Existing regression fixtures select
+uniforms, startup cache replacement and live leg totals. The suite now has 200 passing test groups, including Panic return geometry and safety
+at every leg start, exact-body preservation without debris, normal recovery limits,
+whole-second cooldown, saved preferences and actual keyboard/controller/touch dispatch. Existing regression fixtures select
 mode 50 explicitly; `game-modes.test.mjs` exercises the default 20-level variant,
 both caps, curve endpoints, legacy checkpoint migration, mode-isolated records,
 LOSS carry and final traversal. Ending tests inspect monochrome wave motion, the final blank white pause,
@@ -1126,6 +1170,7 @@ python tools/build_web_audio.py --source ../cube-libre-pygame/cube_libre_pygame.
 python tools/build_shutter_audio.py
 python tools/build_loss_audio.py
 python tools/build_arrival_audio.py
+python tools/build_panic_audio.py
 ```
 
 The script uses the original synthesizer functions directly and reuses an existing
@@ -1162,7 +1207,8 @@ generator's bandpass helper, with no PyGame checkout or external recording.
 | `web/js/space-view.mjs` | Cached ghost route, overview framing, detail window and selectable infinite starfields |
 | `web/js/render.mjs` | Batched cube/line rendering, title, field and transition effects |
 | `web/js/audio.mjs` | Local audio loading, codecs, channels, loops and state mix |
-| `web/js/help-tabs.mjs` | Accessible Help tabs and explicit visual-only option allowlist |
+| `web/js/help-tabs.mjs` | Accessible Help tabs, visual effects and the explicit Panic gameplay option |
+| `web/js/panic.mjs` | Rescue tuning, shared status and physical reached-leg lookup |
 | `web/js/orientation.mjs` | Optional mobile orientation lock, confirmed state and fullscreen/device fallback |
 | `web/js/gamepad.mjs` | Standard controller polling, analog inputs, action edges and menu navigation |
 | `web/assets/controller-controls.svg` | Controller diagram with exact action callouts |

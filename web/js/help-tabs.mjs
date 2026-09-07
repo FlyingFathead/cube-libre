@@ -1,4 +1,4 @@
-// Public options are deliberately limited to effects with no simulation/route impact.
+// Visual options stay separate from the explicitly offered gameplay rescue option.
 export const HELP_VISUAL_OPTIONS=Object.freeze([
   {key:'shake',label:'Shaking and heat flashes',storage:'cube-libre-shake-v1'},
   {key:'rotation_shocks',label:'Hit rotation shocks',storage:'cube-libre-rotation-shocks-v1'},
@@ -36,5 +36,11 @@ export function createVisualOptions(document,game,write) {
     input.addEventListener('change',()=>{game.command(`set ${key} ${input.checked}`);write(storage,game.flags[key]);});
     row.append(input,label);body.append(row);
   }
+  const rescue=document.createElement('h3');rescue.textContent='RESCUE';body.append(rescue);
+  const row=document.createElement('label');row.className='shake-setting';
+  const input=document.createElement('input');input.type='checkbox';input.checked=game.flags.panic;input.dataset.setting='panic';
+  input.addEventListener('change',()=>{game.command(`set panic ${input.checked}`);write('cube-libre-panic-v1',game.flags.panic);});
+  row.append(input,'ALLOW PANIC BUTTON');body.append(row);
+  const note=document.createElement('p');note.textContent='Return to the start of your reached leg with your surviving cubes and a fresh timer. The tractor beam also requests normal Recouple for recoverable loose pieces. Available throughout a normal leg, with a 30-second cooldown. On by default.';body.append(note);
   return body;
 }

@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.29.0 — Panic recovery
+
+Based on published web v0.28.2 (`f6a91de`).
+
+- Add default-on Panic rescue throughout normal play: V, Xbox B, or the new
+  bottom-left shedding-cube circle opposite Recouple. Both mobile layouts and
+  desktop use matching action circles, disabled states and whole-second cooldown.
+  B still goes back in menus; Panic is unavailable in bonus rounds.
+- Display **PANIC RECOVERY REQUESTED** and pull the existing body along a white
+  tractor beam into laser prison bars at the start of the furthest physically
+  reached leg. The bars retract toward the forward exit. Keep the live scene,
+  reset the leg timer, and start its countdown only after the 2.75-second recall.
+  The return junction stays safe until forward departure; old pipes stay sealed.
+- Request normal lossy Recouple on arrival for existing recoverable fragments,
+  preserving its quota and any request already underway. No fresh body, score
+  award or permanent restoration of lost cells. Entry checkpoints remain intact.
+- Add ALLOW PANIC BUTTON to Options, on by default. Saved `panic_show_inactive`
+  also defaults on; off hides the circle until 3 seconds outside or earlier
+  overheating. V/B still work while hidden. Heat makes it flash immediately,
+  including on cooldown. `panic_outside_seconds` and `panic_cooldown_seconds`
+  tune the delay and 30-second cooldown for the session. Pause and Help freeze it.
+- Synthesize a zap/whoosh and two DEEE–DAAAHH ambulance calls with a falling
+  Doppler pitch sweep, in Ogg and MP3. Respect mute/pause and silence the leg
+  clock's sirens during confinement. Update Help, control maps and documentation.
+- Require physical progress before sealing a previous corridor, so drifting
+  alongside an unreached future leg cannot collapse the rescue destination.
+
+Validation: 200 automated test groups and static checks pass on Node.js 18.19.1.
+New checks cover both campaigns, every leg's return point, live transport, clock
+freezing/restart, sealed-pipe safety, normal recovery yield/quota, keyboard and
+controller dispatch, both touch layouts and desktop buttons, preferences,
+rendered beam/prison geometry and one-shot audio. Both codecs decode without
+clipping. Device visual/audio playtesting remains needed.
+
 ## 0.28.2 — White tide
 
 Based on published web v0.28.1 (`2a4970b`).

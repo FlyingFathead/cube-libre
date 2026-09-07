@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.28.2
+# Cube Libre — Web v0.29.0
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,7 +23,24 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.28.2 · White tide
+## Web release 0.29.0 · Panic recovery
+
+**A way back when a leg goes badly.** Press **V**, **Xbox B**, or tap the
+bottom-left **PANIC** circle. A white tractor beam pulls your existing body
+into a laser-bar prison at the start of the furthest leg reached. The bars open
+forward, then the reset leg timer starts running. The HUD says **PANIC RECOVERY
+REQUESTED** and a zap/whoosh leads into two Doppler-like space-ambulance calls.
+The beam requests normal lossy Recouple for still-recoverable loose pieces;
+it does not rebuild your body. Old corridors remain sealed.
+
+Panic is available throughout normal legs, with a **30-second cooldown** and
+whole-second countdown. Both mobile layouts and desktop get matching Panic and
+Recouple circles. Panic flashes immediately on overheating. **Options → ALLOW
+PANIC BUTTON** defaults on. `set panic_show_inactive false` hides the circle
+until 3 seconds outside or earlier overheating; V/B remain available while
+hidden. The visibility choice is saved. Bonus rounds do not offer Panic.
+
+The twenty-level journey and White tide ending remain:
 
 **Twenty levels. One more leg each time.** The default journey now reaches
 ascension after level 20, with the difficulty curves compressed to reach the
@@ -42,7 +59,7 @@ same final severity as the original campaign. Before retries, that is 210 legs.
 
 Shutter warnings, open windows, alternating legs, damage protection and the
 one-cube minimum per shutter hit are retained. The game keeps its existing
-movement speeds, collision rules and controller/touch controls. The final laser
+movement speeds and laser rules, with the new Panic controls described above. The final laser
 spin multiplier is also unchanged. Shortening the journey does not remove the
 late-game pressure.
 
@@ -223,11 +240,8 @@ The revised shutter rhythm still needs human playtesting; iPhone/iPad gameplay,
 layout and performance remain unverified. Portrait and landscape are both
 supported; use whichever feels better to you.
 
-Future design ideas, including an optional panic/return button after prolonged
-time outside the grid, are recorded in [ROADMAP.md](ROADMAP.md). The proposed
-return goes to the collapsed leg's connection node, cages the player in beam
-bars, then opens toward the next leg. It is **not implemented**; getting lost
-outside remains part of current play.
+The earlier prison-node proposal is implemented in v0.29.0 as Panic recovery.
+See [ROADMAP.md](ROADMAP.md) for its settled rules and other considered ideas.
 
 ### Retained from 0.23.0
 
@@ -481,6 +495,7 @@ Use a browser with JavaScript, import maps and WebGL 2. Audio starts after inter
 | Q / E | Move on Z |
 | Shift | Rush |
 | C | Re-couple loose pieces |
+| V | Panic recovery to the start of the furthest reached leg |
 | L | Locate camera |
 | H | Help |
 | P | Pause |
@@ -496,7 +511,7 @@ Use a browser with JavaScript, import maps and WebGL 2. Audio starts after inter
 | **LB / X** | **Re-couple** on each press |
 | RB | Hold to rush |
 | A | Start / confirm / continue |
-| B | Back / menu |
+| B | Panic in normal play; Back in menus; menu in bonus rounds |
 | Y | Locate cube |
 | View / Back | Help |
 | Menu / Start | Pause / resume |
@@ -518,7 +533,7 @@ python -m http.server 8000 --directory web
 
 Open http://localhost:8000/ (on Windows, `py` can replace `python`).
 The complete static game lives in `web/`, including its renderer, font and
-22 sounds in Ogg and MP3 (18 originals, two shutter effects, the LOSS engine wind-down and the arrival water sweep). No backend or npm installation is required.
+23 sounds in Ogg and MP3 (18 originals, two shutter effects, the LOSS engine wind-down, arrival water sweep and Panic ambulance recall). No backend or npm installation is required.
 
 ## GitHub Pages
 
@@ -543,12 +558,13 @@ node --test tests/web/*.test.mjs
 
 See [WEB_PORT.md](WEB_PORT.md) for gameplay details, browser differences,
 source layout, and optional regeneration using a separate PyGame checkout.
-Web 0.28.1 (`2a4970b`) is the published baseline. This release passes 189
+Web 0.28.2 (`f6a91de`) is the published baseline. This release passes 200
 automated test groups and static checks on Node.js 18.19.1, including both
 campaigns, legacy save migration, independent records, LOSS body carry, ending
-wave/audio timing and render data, controller/touch dispatch and simulated final routes.
+wave/audio timing and render data, controller/touch dispatch, simulated final routes,
+and Panic returns at every leg start in both campaigns with preserved recovery limits.
 The baseline tests explicitly select mode 50; additional mode tests exercise the
-default 20-level campaign. The shorter campaign's human balance and new ending's
+default 20-level campaign. The shorter campaign's human balance and Panic's
 visual/audio pacing still need device playtesting. Automated traversal does not
 establish human completion under campaign LOSS.
 

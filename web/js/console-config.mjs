@@ -4,6 +4,10 @@ export const CONFIG_COMMANDS=Object.freeze(['viewconfig','showconfig','showvars'
 // Browser-owned settings may supply their own name and description alongside get/set.
 const DETAILS=Object.freeze({
   game_mode:['Campaign variant','20: default compact campaign; 50: original campaign, console only. Changing mode returns to the title and resets mode thresholds; existing save is kept. New runs use the selected mode; Continue uses its saved mode. Session only.'],
+  panic:['Allow Panic button','Enable emergency return of surviving cells to the start of the furthest physically reached leg. Usable throughout normal play; also requests normal Recouple for existing fragments, without a fresh body or points. Saved boolean, on by default.'],
+  panic_show_inactive:['Show Panic while safe','Keep the Panic circle visible throughout normal play. Off: show after the outside delay or immediately on overheating. Keyboard/controller activation still works while hidden. Saved boolean, on by default.'],
+  panic_outside_seconds:['Panic appearance delay','Continuous seconds outside before Panic appears. Overheating reveals it immediately. Default 3; range 0–30. Session only.'],
+  panic_cooldown_seconds:['Panic cooldown','Seconds of play between rescues. Pause/Help freeze it; new level or retry resets it. Default 30; range 0–300. Session only.'],
   damage:['Damage','Allow normal-level cell damage from boundaries and laser grids, including shutters.'],
   lasers:['Laser grids','Enable laser hazards, including electric shutters.'],
   bounds:['Boundary damage','Allow corridor boundaries to shave off exposed cells and trigger overheating.'],

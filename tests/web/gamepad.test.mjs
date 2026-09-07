@@ -93,6 +93,8 @@ test('real browser controller dispatcher separates gameplay, pause, Help, consol
   const release=()=>{s.p.buttons.forEach(b=>b.value=0);ctx.updateController(0,.01);};
   const press=i=>{s.p.buttons[i].value=1;ctx.updateController(10,.01);};
   press(4);ctx.updateController(20,.01);assert.equal(recouples,1);release();
+  press(1);assert.ok(game.panic);assert.equal(game.state,'playing');ctx.updateController(20,.01);assert.equal(game.events.filter(e=>e.name==='panic').length,1);release();
+  game.resetAttempt();game.setState('playing');
   press(9);assert.equal(game.paused,true);release();press(9);assert.equal(game.paused,false);release();
   press(8);assert.equal(game.help,true);release();press(1);assert.equal(game.help,false);release();
   nodes.console.open=true;press(4);assert.equal(recouples,1);release();press(13);assert.equal(nodes['console-log'].scrollTop,200);release();press(1);assert.equal(nodes.console.open,false);release();

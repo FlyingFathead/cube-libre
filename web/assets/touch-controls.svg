@@ -16,9 +16,12 @@
   <circle cx="338" cy="215" r="63" fill="none" stroke="#a2a8aa" stroke-width="2" stroke-dasharray="6 5"/>
   <path d="M360 215H466l-12-8m12 8-12 8" stroke="#a7fff4" stroke-width="3" fill="none"/>
   <circle cx="480" cy="215" r="10" fill="#a7fff4"/><text x="480" y="184" font-size="23" fill="#fff1a9">RUSH</text>
-  <text x="180" y="366" font-size="20">Grey ring marks rush</text><text x="180" y="394" font-size="20">Release to coast</text>
+  <text x="300" y="325" font-size="16">Grey ring marks rush · Release to coast</text>
   <circle cx="480" cy="362" r="38" fill="#0a4442" stroke="#a7fff4" stroke-width="2"/>
   <path d="m461 352 19-11 19 11v22l-19 11-19-11z m0 0 19 11 19-11 m-19 11v22" stroke="#d5fff3" fill="#244044" stroke-width="2"/>
+  <circle cx="100" cy="362" r="38" fill="#24353e" stroke="#d6e4e5" stroke-width="2"/>
+  <g transform="translate(72 334) scale(.94)" fill="#adcfdb30" stroke="#e7faff" stroke-width="2" stroke-linejoin="round"><path d="m28 17 13 7v15l-13 8-13-8V24Z m-13 7 13 8 13-8M28 32v15"/><path d="m9 7 5 3v6l-5 3-5-3v-6Zm38-4 5 3v6l-5 3-5-3V6ZM51 38l5 3v6l-5 3-5-3v-6ZM8 44l4 2v5l-4 2-4-2v-5Z"/></g>
+  <text x="100" y="427" font-size="20">PANIC</text>
   <text x="480" y="427" font-size="20">RECOUPLE</text>
   <text x="300" y="460" font-size="19">Grab the centre for free dragging.</text>
  </g>
