@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.25.0
+# Cube Libre — Web v0.25.1
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,7 +23,21 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.25.0 · Learn the shutter rhythm
+## Web release 0.25.1 · Mobile orientation lock
+
+On mobile, **⚙ → Options → Lock current orientation** requests a lock to your
+current portrait or landscape view. It starts off each visit, and the checkbox
+only stays checked after the browser confirms success. If fullscreen is needed,
+tap **Fullscreen & lock**. Unsupported browsers explain how to use the device's
+rotation lock instead. Both orientations remain playable without a lock.
+
+Leaving fullscreen or hiding the page releases the game's lock; enable it again
+when ready. Unlocked orientation changes still pause play and release held touch
+gestures. This update leaves the v0.25.0 shutter progression and difficulty intact.
+Browser API and integration checks pass; actual device lock behavior still needs
+Android/iPhone/iPad testing.
+
+## Shutter progression · Introduced in 0.25.0
 
 Shutters now develop through four **CHANGE ...** introductions:
 
@@ -93,7 +107,8 @@ remains available. Touch starts proceed while audio loads in the background.
 **Beta testing:** the author reports playable Android touch controls through
 roughly level 6. Automated input, projection and regression checks also pass.
 The revised shutter rhythm still needs human playtesting; iPhone/iPad gameplay,
-layout and performance remain unverified. Landscape is suggested.
+layout and performance remain unverified. Portrait and landscape are both
+supported; use whichever feels better to you.
 
 Future design ideas, including an optional panic/return button after prolonged
 time outside the grid, are recorded in [ROADMAP.md](ROADMAP.md). The proposed

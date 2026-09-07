@@ -802,11 +802,38 @@ panning/zooming on game controls and leaves Help scrollable. Safe-area insets ke
 actions away from cutouts and system edges; OS navigation cannot be locked out.
 Sound starts from a gesture, with touch play continuing while audio downloads.
 
+### Mobile orientation lock (web 0.25.1)
+
+Options → **Lock current orientation** is available on detected mobile devices
+(including when using a keyboard/controller) and in forced touch mode. It is off
+at each page load. `web/js/orientation.mjs` requests the current screen orientation,
+and the checkbox represents a confirmed native lock, never a pending preference.
+No fullscreen request or orientation preference is saved in localStorage.
+
+Try the lock in the current browser view first. If it is denied and fullscreen
+is available, show **Fullscreen & lock** for a separate user gesture. Capture the
+orientation before entering fullscreen, which may rotate the viewport. Missing
+or unsupported lock APIs and failed fullscreen attempts leave play available and
+suggest the device's rotation lock. Fullscreen remains optional. Browser support
+varies; see [MDN's ScreenOrientation.lock() documentation](https://developer.mozilla.org/en-US/docs/Web/API/ScreenOrientation/lock).
+
+Unchecking releases only the game's orientation lock; it does not exit fullscreen.
+Fullscreen exit, page hiding and leaving mobile presentation release the lock and
+invalidate pending requests. Native orientation changes that break a confirmed
+lock clear its checkbox. Existing app handlers continue to release touch gestures
+and pause active touch play across orientation changes or fullscreen exit.
+The option is browser presentation, not a difficulty flag; it is operated by
+an Options gesture rather than the synchronous simulation console registry.
+Tests in `tests/web/orientation.test.mjs` simulate browser success, rejection,
+async cancellation and Options state, and run the real app resize/pause handlers.
+Physical device behavior remains unverified.
+
 Validation covers all six pulls, changing view orientation, tiny surviving
 bodies, free dragging, analog thrust/coasting, rush hysteresis, two-finger helper
 input, cancelled gestures, pauses, recouple states, saved modes, entry choices,
 Help tabs and bonus rolling. The touch diagram is visually checked. The author
-reports playable Android touch controls through roughly level 6. Portrait and
+reports playable Android touch controls through roughly level 6 and currently
+prefers portrait. Players can choose either orientation. Portrait and
 landscape are both supported: resizing reprojects controls, releases gestures,
 and pauses active play across orientation changes. The new shutter rhythm and
 layout comfort still need device playtesting; iPhone/iPad remain unverified.
@@ -819,14 +846,14 @@ unimplemented panic/return proposal arising from this Android feedback.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.25.0**, based on published **0.24.1**, commit `3240594`. The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.25.1**, the mobile orientation addendum to **0.25.0**. The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.25.1`, `0.25.2`, etc. for fixes, and `0.26.0` for the
+For future releases, use `0.25.2`, `0.25.3`, etc. for fixes, and `0.26.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.25.0.zip` and `v0.25.0`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.25.1.zip` and `v0.25.1`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior
@@ -935,6 +962,7 @@ entries. Temporary source WAV files are not included in the published game.
 | `web/js/render.mjs` | Batched cube/line rendering, title, field and transition effects |
 | `web/js/audio.mjs` | Local audio loading, codecs, channels, loops and state mix |
 | `web/js/help-tabs.mjs` | Accessible Help tabs and explicit visual-only option allowlist |
+| `web/js/orientation.mjs` | Optional mobile orientation lock, confirmed state and fullscreen/device fallback |
 | `web/js/gamepad.mjs` | Standard controller polling, analog inputs, action edges and menu navigation |
 | `web/assets/controller-controls.svg` | Controller diagram with exact action callouts |
 | `tools/prepare_web_release.mjs` | Regenerate committed release metadata, import map and stylesheet version |

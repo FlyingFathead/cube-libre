@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.25.1 — Mobile orientation lock
+
+Based on web v0.25.0. The shutter release remains a separate package.
+
+- Add mobile Options → Lock current orientation, off at the start of each visit.
+  Keep the current portrait/landscape direction, including reversed orientations;
+  only check the box after the browser confirms the lock.
+- Offer an explicit Fullscreen & lock retry when the browser requires fullscreen.
+  Capture the original orientation before fullscreen can rotate the display.
+  Explain the device rotation-lock fallback when browser locking is unavailable.
+- Release the lock on fullscreen exit, page hiding or leaving mobile presentation.
+  Cancel pending requests safely so late browser promises cannot restore a lock.
+  Keep unlocked portrait/landscape resizing, pause behavior and touch cancellation.
+- Preserve all v0.25.0 shutters, sound pitches, balance and roadmap proposals.
+  The orientation option does not modify gameplay flags or saved player records.
+
+Validation: all 155 automated test groups and static checks pass, including on
+Node.js 18.19.1. New coverage
+includes confirmed and rejected locks, explicit fullscreen fallback, orientation
+capture, async cancellation, Options state and actual app rotation/pause handlers.
+Native browser APIs are simulated in these tests; physical Android and Apple
+device lock behavior still requires playtesting.
+
+
 ## 0.25.0 — Learn the shutter rhythm
 
 Based on published web v0.24.1 (`3240594`).

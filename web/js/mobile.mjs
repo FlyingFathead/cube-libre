@@ -1,5 +1,6 @@
 // Touch input only. All movement still passes through the ordinary simulation.
 import {emptyMovement} from './gamepad.mjs';
+import {MobileOrientation,createOrientationOptions} from './orientation.mjs';
 
 export const TOUCH_RULES=Object.freeze({rushRadius:56,deadzone:6,grabRadius:44,pixelRatio:1.25});
 export const MOBILE_NOTICE='A DESKTOP COMPUTER WITH A KEYBOARD\nOR GAME CONTROLLER IS RECOMMENDED.\n\nTRY MOBILE TOUCH CONTROLS — BETA\nGrab a labelled side of the cube and pull.\nDrag beyond the grey ring to rush.\n\nChoose below. Space tries the mobile beta.\nYou can switch later in Help → Options.';
@@ -85,7 +86,8 @@ export function createTouchHelp(document,inBonus,diagramURL){
     'The grey ring stays where you first touched. Cross it to rush; move back inside to slow down. Release to coast. Drag the opposite way to brake.',
     'Grab the centre for free dragging in the screen plane. Optional extra drag/depth areas are available in Options if you prefer them. DEPTH: up moves away from the camera, down moves toward it.',
     inBonus?'Re-coupling is automatic by contact in this bonus round.':'RECOUPLE lights up when pieces can be recovered. A dim button means no loose pieces, an active recovery, overheating or cooldown; its small status label explains which.',
-    'Landscape gives your thumbs more room. Pause before changing grip. Fullscreen is optional; system navigation gestures can still leave the game.',
+    'Portrait and landscape are both supported. Play whichever way feels right to you. Pause before changing grip. Fullscreen is optional; system navigation gestures can still leave the game.',
+    'Options → Lock current orientation keeps your current portrait or landscape view where supported. It starts off each visit. If the browser needs fullscreen, use Fullscreen & lock; otherwise use your device’s rotation lock. Unlocked rotation still pauses play.',
     'Help → Options → Input mode switches between automatic detection, touch and keyboard/controller. Keyboard and controller inputs remain available in touch mode.'
   ]){const line=document.createElement('p');line.textContent=text;section.append(line);}return section;
 }
@@ -104,6 +106,7 @@ export function createMobileOptions(document,mobile){
   const helpers=document.createElement('button');helpers.type='button';helpers.textContent='Extra drag / depth areas';helpers.setAttribute('aria-pressed',String(mobile.helpers));
   helpers.addEventListener('click',()=>{mobile.setHelpers(!mobile.helpers);helpers.setAttribute('aria-pressed',String(mobile.helpers));});body.append(helpers);
   const hint=document.createElement('p');hint.textContent='Optional thumb areas, in addition to grabbing the cube. Off by default.';body.append(hint);
+  if(mobile.orientation)body.append(createOrientationOptions(document,mobile.orientation));
   return body;
 }
 
@@ -114,6 +117,7 @@ export class MobileControls {
     this.helpers=read('cube-libre-touch-helpers-v1',false)===true;this.pullAxis=null;
     this.move=new DragStick(this.rules);this.depth=new DragStick(this.rules);this.captures=new Map();this.recoupleId=null;
     this.view=null;this.active=false;this.lastState=null;this.bonus=false;
+    this.orientation=new MobileOrientation({document});
     this.install();this.applyMode();this.resize();
   }
   get enabled(){return touchEnabled(this.mode,this.detected);}
@@ -124,6 +128,7 @@ export class MobileControls {
   }
   setHelpers(value){this.helpers=Boolean(value);this.reset();this.write('cube-libre-touch-helpers-v1',this.helpers);}
   applyMode(){
+    this.orientation.setAvailable(this.detected||this.enabled);
     this.$('game').dataset.mobileMode=String(this.enabled);
     this.renderer.pixelRatioCap=this.enabled?this.rules.pixelRatio:2;this.renderer.resize();
     this.$('title-touch-tip').hidden=!this.enabled;
