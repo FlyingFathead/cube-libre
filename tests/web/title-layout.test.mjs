@@ -50,14 +50,17 @@ test('title layout remeasures wrapping, resize and menu entry without layout rea
   class Observer {constructor(cb){callback=cb;}observe(el){observed.push(el);}}
   const canvas={clientWidth:770,clientHeight:900,getBoundingClientRect(){reads++;return {top:44,width:this.clientWidth,height:this.clientHeight};}};
   const start={getBoundingClientRect(){return {bottom:114};}},info={getBoundingClientRect(){return {top};}},title={hidden:false};
-  const renderer={resize(){this.width=canvas.clientWidth;this.height=canvas.clientHeight;}};
-  const layout=observeTitleLayout(renderer,{canvas,start,info,title},Observer);
+  const renderer={resize(){this.width=canvas.clientWidth;this.height=canvas.clientHeight;}},logo={style:{}};
+  const layout=observeTitleLayout(renderer,{canvas,start,info,title,logo},Observer);
   assert.deepEqual(observed,[canvas,start,info]);layout.update();const first={...renderer.titleArea};
+  assert.deepEqual(logo.style,{left:`${first.x}px`,top:`${first.y}px`,width:`${first.width}px`,height:`${first.height}px`,visibility:'visible'});
   for(let n=0;n<120;n++)layout.update();assert.equal(reads,1);
   top=550;callback();layout.update();assert.ok(renderer.titleArea.height<first.height);assert.equal(reads,2);
+  assert.equal(logo.style.height,`${renderer.titleArea.height}px`);
   canvas.clientWidth=960;layout.invalidate();layout.update();assert.equal(renderer.width,960);
   title.hidden=true;layout.update();top=700;title.hidden=false;layout.update();assert.ok(renderer.titleArea.height>first.height);
   top=80;callback();layout.update();assert.equal(renderer.titleArea.height,0,'Do not overlap the controls when there is no available area');
+  assert.equal(logo.style.visibility,'hidden');
 });
 
 test('title camera offsets are cleared before gameplay and ending scenes, while geometry bounds are reused',()=>{

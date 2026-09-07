@@ -36,7 +36,7 @@ export function frameTitle(camera,bounds,rotation,width,height,area) {
 }
 
 // Read layout only on entry, resize or changed text wrapping, not every frame.
-export function observeTitleLayout(renderer,{canvas,start,info,title},Observer=globalThis.ResizeObserver) {
+export function observeTitleLayout(renderer,{canvas,start,info,title,logo},Observer=globalThis.ResizeObserver) {
   let dirty=true,visible=false;
   const invalidate=()=>{dirty=true;};
   const observer=Observer?new Observer(invalidate):null;
@@ -49,6 +49,12 @@ export function observeTitleLayout(renderer,{canvas,start,info,title},Observer=g
     if(rect.width<=0||rect.height<=0)return;
     if(renderer.width!==canvas.clientWidth||renderer.height!==canvas.clientHeight)renderer.resize();
     renderer.titleArea=titleSafeArea(rect,start.getBoundingClientRect(),info.getBoundingClientRect());
+    if(logo) {
+      // All animated cells fit inside this area; keep the tap target clear of
+      // the saved-run choice above and the information/controls below.
+      const {x,y,width,height}=renderer.titleArea;
+      Object.assign(logo.style,{left:`${x}px`,top:`${y}px`,width:`${width}px`,height:`${height}px`,visibility:width>0&&height>0?'visible':'hidden'});
+    }
     dirty=false;
   }};
 }

@@ -266,6 +266,7 @@ html,body{overscroll-behavior:none}
 /* The title fitter measures this entire group, including a saved-run choice. */
 #title-actions{position:absolute;top:max(3%,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(760px,92%);text-align:center;pointer-events:auto}
 #title-actions #start{position:relative;top:auto;left:auto;transform:none;width:100%}
+#title-logo{position:absolute;pointer-events:auto;touch-action:manipulation;background:transparent;border:0;padding:0;min-height:0}
 #new-run{min-height:44px;margin:0 .5rem;padding:.35rem .9rem}
 #save-note{margin:.3rem auto 0;max-width:42rem;color:#a6bcc2;font-size:.8rem;line-height:1.3}
 @media(max-height:560px){#title-actions{top:max(2%,env(safe-area-inset-top))}#new-run{min-height:36px}#save-note{font-size:.7rem;margin-top:.1rem}}

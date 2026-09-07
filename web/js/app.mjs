@@ -291,7 +291,10 @@ async function main() {
   $('console-close').onclick=closeConsole;
   $('console').addEventListener('cancel',e=>{e.preventDefault();closeConsole();});
   $('modal').addEventListener('cancel',e=>{e.preventDefault();closeModal();});
-  $('start').onclick=()=>startOrContinue();$('new-run').onclick=requestNewRun;$('next').onclick=()=>{clearInput();if(game.state==='ended')start();else game.continue();};
+  $('start').onclick=$('title-logo').onclick=()=>{
+    if(game.state==='title'&&!loadingStart&&!game.paused&&!game.help&&!$('modal').open&&!$('console').open)void startOrContinue();
+  };
+  $('new-run').onclick=requestNewRun;$('next').onclick=()=>{clearInput();if(game.state==='ended')start();else game.continue();};
   $('settings').onclick=()=>help('options');
   $('pause').onclick=pause;$('help').onclick=help;$('mute').onclick=mute;$('fullscreen').onclick=fullscreen;$('menu').onclick=menu;
   $('locate').onclick=()=>{game.locate=!game.locate;game.messageSet(`LOCATE ${game.locate?'ON':'OFF'}${game.autoLocate?' · AUTO TRACKING ACTIVE':''}`);};
@@ -333,7 +336,7 @@ async function main() {
     clearInput();game.continue();focusGame();syncAudio();
   });
   $('scene').addEventListener('webglcontextlost',e=>{e.preventDefault();game.paused=true;syncAudio();cancelAnimationFrame(raf);fail(Error('The graphics context was lost. Reload to restart'));});
-  const titleLayout=observeTitleLayout(renderer,{canvas:$('scene'),start:$('title-actions'),info:document.querySelector('.title-info'),title:$('title')});
+  const titleLayout=observeTitleLayout(renderer,{canvas:$('scene'),start:$('title-actions'),info:document.querySelector('.title-info'),title:$('title'),logo:$('title-logo')});
   let portrait=renderer.height>=renderer.width;
   window.addEventListener('resize',()=>{
     renderer.resize();mobile.resize();titleLayout.invalidate();
@@ -490,9 +493,12 @@ async function main() {
       const resume=!!campaignStore.value,action=resume?'CONTINUE':'NEW RUN';
       const label=resume?`Continue from level ${campaignStore.value.level}`:'Start a new run';
       $('start').setAttribute('aria-label',label);$('start-label').textContent=label;
+      $('title-logo').hidden=false;
+      $('title-logo').disabled=loadingStart||game.paused||game.help||$('modal').open||$('console').open;
+      $('title-logo').setAttribute('aria-label',`Cube Libre: ${label}`);
       $('new-run').hidden=!resume;$('new-run').disabled=loadingStart;
       $('save-note').textContent=campaignStore.note;
-      dots(loadingStart?'LOADING AUDIO - PLEASE WAIT':`${mobile.enabled?'TAP':connected?'A / SPACE / ENTER':'SPACE / ENTER'} = ${action}`,game.t);
+      dots(loadingStart?'LOADING AUDIO - PLEASE WAIT':mobile.enabled?`TAP TO ${resume?'CONTINUE':'START'}`:`${connected?'A / SPACE / ENTER':'SPACE / ENTER'} = ${action}`,game.t);
       $('title-stats').textContent=`Score ${game.score} · Best escape ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${game.levelCap}`;
     }
     const phase=s.endsWith('_intro')&&!opening&&!bonusIntro,ready=s==='level_ready',result=s==='result_overlay',rebuild=['reassembly','loss_assembly'].includes(s),ended=s==='ended';

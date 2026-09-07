@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.29.2 — Tap the title
+
+Based on published web v0.29.1 (`1b2b3e3`).
+
+- Make the animated Cube Libre logo an additional Start/Continue button on
+  mobile and desktop. The existing text button remains clickable. Both use the
+  same saved-run choice and audio startup behavior.
+- Keep the mobile prompt simple: TAP TO START or TAP TO CONTINUE. Preserve the
+  existing desktop keyboard/controller prompt, without an extra visible label.
+- Fit the transparent logo button to the title's measured free area on resize
+  and layout changes. Keep it clear of the New run choice and information below;
+  hide its hit area if there is no room. Preserve the animated cube layout.
+- Ignore title-button activation during loading, pause, Help, dialogs, console or after
+  leaving the title. Repeated taps cannot restart a run or skip its introduction.
+
+Validation: 205 automated test groups and static checks pass on Node.js 18.19.1.
+Title checks cover the actual text/logo handlers for Start and Continue on both
+input modes, exact prompt wording, saved-run protection, repeated and blocked
+activation, and hit-area updates during resize and wrapping. Device checking of
+the added tap target remains needed.
+
 ## 0.29.1 — Desktop action HUD
 
 Based on published web v0.29.0 (`cd7c357`).

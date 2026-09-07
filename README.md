@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.29.1
+# Cube Libre — Web v0.29.2
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,7 +23,15 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.29.1 · Desktop action HUD
+## Web release 0.29.2 · Tap the title
+
+Tap or click either the **Cube Libre logo** or the text above it to start a new
+journey or continue a saved one. Mobile says **TAP TO START** or **TAP TO
+CONTINUE**; desktop keeps its keyboard/controller prompt. New run still asks
+before replacing a saved journey. The logo button follows the fitted title area
+through screen resizing and leaves the other controls clear.
+
+### Retained from 0.29.1 · Desktop action HUD
 
 Fix a reproduced disappearing-corridor edge case on levels 7, 8 and later:
 when outside drift loses the local route lookup, keep drawing the nearby
@@ -582,7 +590,7 @@ node --test tests/web/*.test.mjs
 
 See [WEB_PORT.md](WEB_PORT.md) for gameplay details, browser differences,
 source layout, and optional regeneration using a separate PyGame checkout.
-Web 0.29.0 (`cd7c357`) is the published baseline. This release passes 204
+Web 0.29.1 (`1b2b3e3`) is the published baseline. This release passes 205
 automated test groups and static checks on Node.js 18.19.1, including both
 campaigns, legacy save migration, independent records, LOSS body carry, ending
 wave/audio timing and render data, controller/touch dispatch, simulated final routes,

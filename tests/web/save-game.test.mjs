@@ -133,3 +133,30 @@ test('title Continue starts on touch/controller without awaiting audio, while Ne
     original.ready(6);
   }
 });
+
+test('title text and cube logo both start or resume, while repeats and blocked activations are ignored',()=>{
+  const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
+  for(const touch of [true,false])for(const saved of [true,false])for(const target of ['start','title-logo']) {
+    const b=browser(),store=b.load();
+    if(saved){const original=savedGame(store);original.newRun();original.ready(6);}
+    const game=new Game({saveCheckpoint:data=>store.save(data)}),nodes={};
+    for(const id of ['start','title-logo','new-run','next','modal','console','start-label','save-note'])nodes[id]={open:false,setAttribute(k,v){this[k]=v;}};
+    const ctx={game,campaignStore:store,$:id=>nodes[id],controllerAction:false,controllerAudioPending:false,loadingStart:false,audioProgress:'',audioWarning:'',connected:false,
+      mobile:{enabled:touch},audio:{muted:true},clearInput(){},focusGame(){},syncAudio(){},dots(text){ctx.prompt=text;}};
+    vm.createContext(ctx);
+    vm.runInContext(source.slice(source.indexOf('  async function start('),source.indexOf('  function unlockControllerAudio()')),ctx);
+    vm.runInContext(source.slice(source.indexOf("  $('start').onclick="),source.indexOf("  $('settings').onclick=")),ctx);
+    assert.equal(nodes.start.onclick,nodes['title-logo'].onclick);
+    vm.runInContext(source.slice(source.indexOf('      const resume=!!campaignStore.value'),source.indexOf("      $('title-stats').textContent=")),ctx);
+    assert.equal(ctx.prompt,touch?saved?'TAP TO CONTINUE':'TAP TO START':saved?'SPACE / ENTER = CONTINUE':'SPACE / ENTER = NEW RUN');
+    assert.equal(nodes['title-logo'].hidden,false);assert.match(nodes['title-logo']['aria-label'],saved?/Continue from level 6/:/Start a new run/);
+    const snapshot=()=>JSON.stringify({state:game.state,level:game.level,save:store.value});
+    const before=snapshot();
+    for(const field of ['paused','help']){game[field]=true;nodes[target].onclick();assert.equal(snapshot(),before);game[field]=false;}
+    for(const id of ['modal','console']){nodes[id].open=true;nodes[target].onclick();assert.equal(snapshot(),before);nodes[id].open=false;}
+    ctx.loadingStart=true;nodes[target].onclick();assert.equal(snapshot(),before);ctx.loadingStart=false;
+    nodes[target].onclick();assert.equal(game.state,saved?'resume_intro':'opening_intro');assert.equal(game.level,saved?6:1);
+    const started=snapshot();nodes[target].onclick();assert.equal(snapshot(),started,'A repeated title click cannot restart the run or skip its introduction');
+    if(saved)assert.equal(store.value.level,6,'Logo Continue does not replace the saved journey');
+  }
+});

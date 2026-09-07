@@ -398,10 +398,15 @@ the stored bytes. Resume selects the balance before restoring level, shape or
 ending state, so an old level-45 save is never clamped to 20. Subsequent normal
 checkpoint writes upgrade the stored value to schema 2 under the same save key.
 
-The title's main button and Space/Enter/controller A continue when a checkpoint
-exists. A separate New run button asks before replacing it. Touch uses those
-same buttons. The entire title action group is measured by the existing title
-fitter, so save text and the extra choice reserve room above the cube logo.
+The title's main button, animated Cube Libre logo and Space/Enter/controller A
+continue when a checkpoint exists. A separate New run button asks before
+replacing it. Both the text and logo are clickable on desktop and tappable on
+mobile. Mobile displays TAP TO START or TAP TO CONTINUE; desktop retains its
+keyboard/controller prompt. The transparent logo button occupies the measured
+free area containing the animated cubes, and follows resizing and text wrapping
+without per-frame layout reads. Save text and New run remain above it, and title
+information stays below it. Both buttons ignore loading, pause, Help, dialogs,
+console and repeated clicks after leaving the title.
 
 Continue uses `resume_intro` against blank white. `RESUME_TIMING` gives the
 first line a one-second fade; "Welcome back." starts at 1.5 seconds and fades
@@ -1099,14 +1104,14 @@ live hazards. A console preview cannot overwrite a campaign checkpoint.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.29.1**, continuing from published **0.29.0** (`cd7c357`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.29.2**, continuing from published **0.29.1** (`1b2b3e3`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.29.2`, `0.29.3`, etc. for fixes, and `0.30.0` for the
+For future releases, use `0.29.3`, `0.29.4`, etc. for fixes, and `0.30.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.29.1.zip` and `v0.29.1`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.29.2.zip` and `v0.29.2`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior
@@ -1176,7 +1181,7 @@ immunity, warning/closed rendering, local audio events, movable introductions,
 camera centering, legacy and irregular skies, saved pattern switching and full
 configuration listings. Web 0.23.0 adds controller axes/buttons and browser-dispatch
 checks, record resets, globally capped alternating shutters, preview limits/fade
-uniforms, startup cache replacement and live leg totals. The suite now has 204 passing test groups, including Panic return geometry and safety
+uniforms, startup cache replacement and live leg totals. The suite now has 205 passing test groups, including title text/logo activation and Panic return geometry and safety
 at every leg start, exact-body preservation without debris, normal recovery limits,
 whole-second cooldown, saved preferences and actual keyboard/controller/touch dispatch.
 The action HUD checks cover setup visibility, desktop key labels and urgency only
