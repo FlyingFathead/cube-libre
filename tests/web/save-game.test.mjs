@@ -13,7 +13,7 @@ function browser() {
   const load=()=>new CheckpointStore(()=>storage);
   return {entries,writes,storage,load};
 }
-const savedGame=store=>new Game({rng:()=>.5,saveCheckpoint:data=>store.save(data)});
+const savedGame=store=>new Game({gameMode:50,rng:()=>.5,saveCheckpoint:data=>store.save(data)});
 const shape=cells.map((_,i)=>i).filter(i=>i%3===0);
 const welcome=g=>{assert.equal(g.state,'resume_intro');g.tick(RESUME_TIMING.seconds);};
 const enter=g=>{for(let i=0;i<300&&g.state!=='playing';i++)g.tick(.1);assert.equal(g.state,'playing');};
@@ -91,7 +91,7 @@ test('console previews and debug jumps cannot replace or clear a saved campaign,
 
 test('malformed, incompatible and blocked browser storage fail safely and never touch other games or preferences',()=>{
   const b=browser(),g=savedGame(b.load());g.newRun();const valid=b.load().value;
-  for(const data of [null,{}, {...valid,schema:2},{...valid,level:51},{...valid,cells:[]},{...valid,cells:[1,1]},{...valid,cells:[125]},
+  for(const data of [null,{}, {...valid,schema:99},{...valid,level:51},{...valid,cells:[]},{...valid,cells:[1,1]},{...valid,cells:[125]},
     {...valid,score:NaN},{...valid,runStats:{...valid.runStats,deaths:-1}},{...valid,stage:'ending'}])assert.equal(validateCheckpoint(data),null);
   b.entries.set('other-game','kept');b.entries.set('cube-libre-scores-v1','kept');b.entries.set(SAVE_KEY,'{broken');
   const corrupt=b.load();assert.equal(corrupt.value,null);assert.equal(corrupt.status,'incompatible');assert.equal(b.entries.get(SAVE_KEY),'{broken');
@@ -100,11 +100,11 @@ test('malformed, incompatible and blocked browser storage fail safely and never 
   assert.equal(b.entries.get('other-game'),'kept');assert.equal(b.entries.get('cube-libre-scores-v1'),'kept');
   const denied=new CheckpointStore(()=>{throw Error('blocked');});assert.equal(denied.status,'unavailable');assert.equal(denied.save(valid),false);assert.deepEqual(denied.value,valid);
   const quota=new CheckpointStore(()=>({getItem:()=>null,setItem(){throw Error('quota');}}));assert.equal(quota.save(valid),false);assert.match(quota.note,/only.*while this page stays open/);
-  const untouched=new Game();untouched.score=10;assert.equal(untouched.resumeCheckpoint({schema:99}),false);assert.equal(untouched.score,10);assert.equal(untouched.state,'title');
+  const untouched=new Game({gameMode:50});untouched.score=10;assert.equal(untouched.resumeCheckpoint({schema:99}),false);assert.equal(untouched.score,10);assert.equal(untouched.state,'title');
 });
 
 test('the actual white welcome UI sequences its lines, holds, fades, and ignores early continue and pause time',()=>{
-  const b=browser(),g=savedGame(b.load());g.newRun();g.ready(6);const r=new Game();r.resumeCheckpoint(b.load().value);
+  const b=browser(),g=savedGame(b.load());g.newRun();g.ready(6);const r=new Game({gameMode:50});r.resumeCheckpoint(b.load().value);
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
   const start=source.indexOf("    } else if(s==='resume_intro') {"),end=source.indexOf('    } else if(phase)',start);
   const code=source.slice(start,end).replace('    } else if','if')+'}';
@@ -122,14 +122,14 @@ test('title Continue starts on touch/controller without awaiting audio, while Ne
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
   const b=browser(),store=b.load(),original=savedGame(store);original.newRun();original.ready(6);
   for(const mobile of [true,false]) {
-    const game=savedGame(store),nodes={start:{}},ctx={game,campaignStore:store,$:id=>nodes[id],controllerAction:false,controllerAudioPending:false,loadingStart:false,audioProgress:'',audioWarning:'',
+    const game=new Game({saveCheckpoint:d=>store.save(d)}),nodes={start:{}},ctx={game,campaignStore:store,$:id=>nodes[id],controllerAction:false,controllerAudioPending:false,loadingStart:false,audioProgress:'',audioWarning:'',
       mobile:{enabled:mobile},audio:{muted:false,unlock:()=>new Promise(()=>{})},clearInput(){},focusGame(){},syncAudio(){},closeModal(){},modal(kind,title,body,actions){ctx.actions=actions;}};
     vm.createContext(ctx);const start=source.indexOf('  async function start('),end=source.indexOf('  function unlockControllerAudio()',start);vm.runInContext(source.slice(start,end),ctx);
-    await ctx.startOrContinue({controller:!mobile});assert.equal(game.state,'resume_intro');assert.equal(game.level,6);assert.equal(nodes.start.disabled,false);
+    await ctx.startOrContinue({controller:!mobile});assert.equal(game.state,'resume_intro');assert.equal(game.level,6);assert.equal(game.gameMode,50);assert.equal(nodes.start.disabled,false);
     game.title();ctx.requestNewRun();assert.equal(game.state,'title');assert.equal(store.value.level,6);
     ctx.actions[0][1]();assert.equal(store.value.level,6,'Cancelling keeps the saved run');
     // Use muted audio so a deliberate desktop restart is also synchronous.
-    ctx.audio.muted=true;ctx.actions[1][1]();assert.equal(game.level,1);assert.equal(store.value.level,1);assert.equal(game.state,'opening_intro');
+    ctx.audio.muted=true;ctx.actions[1][1]();assert.equal(game.level,1);assert.equal(store.value.level,1);assert.equal(game.state,'opening_intro');assert.equal(game.gameMode,20);assert.equal(store.value.gameMode,20);
     original.ready(6);
   }
 });

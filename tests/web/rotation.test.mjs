@@ -10,7 +10,7 @@ import {Renderer} from '../../web/js/render.mjs';
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-7,`${a} != ${b}`);
 const nearV=(a,b)=>a.forEach((value,i)=>near(value,b[i]));
 function advance(g,seconds,input={}) {for(let i=0;i<Math.round(seconds*120);i++)g.tick(1/120,input);}
-function playing() {const g=new Game({rng:()=>.5});g.ready(1);g.setState('playing');return g;}
+function playing() {const g=new Game({gameMode:50,rng:()=>.5});g.ready(1);g.setState('playing');return g;}
 const axes=[new V(1,0,0),new V(0,1,0),new V(0,0,1)];
 const orient=(point,angles)=>axes.reduce((p,axis,i)=>rotate(p,axis,angles[i]),point);
 function capture(g) {
@@ -39,7 +39,7 @@ test('the surviving collective rotates rigidly about its origin, with matching r
 });
 
 test('all three slow phases start on spawn, freeze for pause/help, wrap smoothly and reset on respawn',()=>{
-  const g=new Game();assert.equal(g.flags.spin,true);assert.deepEqual(PLAYER_ROTATION.degreesPerSecond,{x:3,y:6,z:2});
+  const g=new Game({gameMode:50});assert.equal(g.flags.spin,true);assert.deepEqual(PLAYER_ROTATION.degreesPerSecond,{x:3,y:6,z:2});
   g.ready(1);g.setState('course_materialize');advance(g,1);nearV(g.player.spinAngles,[3,6,2]);
   for(const field of ['paused','help']) {g[field]=true;advance(g,2);nearV(g.player.spinAngles,[3,6,2]);g[field]=false;}
   g.ready(1);nearV(g.player.spinAngles,[0,0,0]);g.setState('playing');g.flags.damage=false;
@@ -127,6 +127,6 @@ test('console spin accepts booleans and numbers, restores alignment when off, an
   assert.match(game.command('help'),/shake spin/);
   // Execute the browser's saved-setting read for a fresh instance too.
   const load=source.split('\n').find(line=>line.includes("game.flags.spin=read("));
-  const reloaded=new Game();vm.runInNewContext(load,{game:reloaded,read:key=>saved.findLast(([name])=>name===key)?.[1]});
+  const reloaded=new Game({gameMode:50});vm.runInNewContext(load,{game:reloaded,read:key=>saved.findLast(([name])=>name===key)?.[1]});
   assert.equal(reloaded.flags.spin,false);
 });

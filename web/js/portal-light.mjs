@@ -1,9 +1,9 @@
 import * as T from '../vendor/three.module.min.js';
-import {BALANCE,C,V,smooth} from './core.mjs';
+import {C,V,smooth} from './core.mjs';
 import {END_PORTAL} from './config.mjs';
 
 export function isEndPortal(g) {
-  return g.flags.end_portal&&g.level===BALANCE.levelCap&&!g.state.startsWith('bonus_');
+  return g.flags.end_portal&&g.level===g.levelCap&&!g.state.startsWith('bonus_');
 }
 
 export function portalWhiteLightPose(g) {

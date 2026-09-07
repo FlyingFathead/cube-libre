@@ -19,7 +19,7 @@ function captureCourse() {
 
 test('play outlines cover three upcoming legs with independent tuning and no extra hazard reveals or buffer allocation',()=>{
   for(const level of [4,5,50]) {
-    const g=new Game();g.ready(level);g.setState('playing');const cap=captureCourse();
+    const g=new Game({gameMode:50});g.ready(level);g.setState('playing');const cap=captureCourse();
     let geometry;
     for(const index of [0,1,level-2,level-1]) {
       g.player.origin=g.course.modules[index].world(0);g.course.update(g.player.origin,g.t,()=>{});
@@ -83,7 +83,7 @@ test('spatial collision queries match a full route scan at walls, seams and turn
 });
 
 test('the overview contains only cached ghost outlines and the exit, while gameplay bounds detail to nearby legs',()=>{
-  const g=new Game();g.ready(50);g.setState('course_materialize');const cap=captureCourse();
+  const g=new Game({gameMode:50});g.ready(50);g.setState('course_materialize');const cap=captureCourse();
   let geometry;
   for(const culling of [true,false])for(const time of [.2,3.8,5,6.99]) {
     g.flags.culling=culling;g.stateTime=time;cap.reset();cap.r.course(g,true);
@@ -108,7 +108,7 @@ test('the overview contains only cached ghost outlines and the exit, while gamep
 });
 
 test('the previous corridor collapses once after clearing its junction, with sound, culling and sealed backtracking',()=>{
-  const g=new Game();g.ready(50);g.setState('playing');g.flags.damage=false;g.events=[];
+  const g=new Game({gameMode:50});g.ready(50);g.setState('playing');g.flags.damage=false;g.events=[];
   for(const x of [-23,-16]) {
     g.player.origin=g.course.modules[1].world(x);g.tick(1/120);assert.equal(g.course.collapsed.has(0),false);
     assert.equal(g.state,'playing','Reaching the turn must not collapse the junction under the player');
@@ -124,7 +124,7 @@ test('the previous corridor collapses once after clearing its junction, with sou
 
 test('the complete 50-leg overview and its portal fit inside the camera for wide and narrow screens',()=>{
   for(const route3d of [true,false])for(const aspect of [16/9,4/3,9/16]) {
-    const g=new Game();g.flags.route3d=route3d;g.ready(50);g.setState('course_materialize');g.stateTime=4.8;g.angles=[34,98,43];
+    const g=new Game({gameMode:50});g.flags.route3d=route3d;g.ready(50);g.setState('course_materialize');g.stateTime=4.8;g.angles=[34,98,43];
     const cap=captureCourse(),r=cap.r,noop=()=>{};
     r.scene=new T.Scene();r.rotator=new T.Group();r.rotator.add(r.world);r.scene.add(r.rotator);
     r.camera=new T.PerspectiveCamera(45,aspect,.1,12000);r.stars=createInfiniteStarfield(r.scene);
@@ -162,7 +162,7 @@ test('the fixed starfield survives arbitrary map travel and overview zoom withou
 test('culling boolean/number console settings persist and leave nearby collision rules active',()=>{
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
   const start=source.indexOf("$('console-form').onsubmit="),end=source.indexOf("  $('console-input').addEventListener",start);
-  const game=new Game(),elements={'console-form':{},'console-input':{},'console-log':{}},saved=[];
+  const game=new Game({gameMode:50}),elements={'console-form':{},'console-input':{},'console-log':{}},saved=[];
   vm.runInNewContext(source.slice(start,end),{$:id=>elements[id],game,history:[],historyIndex:0,log:[],consoleLog(){},syncAudio(){},write(key,value){saved.push([key,value]);}});
   assert.equal(game.flags.culling,true);game.ready(50);
   for(const [command,expected] of [['culling false',false],['culling true',true],['set culling 0',false],['set culling 1',true]]) {
@@ -172,13 +172,13 @@ test('culling boolean/number console settings persist and leave nearby collision
     assert.deepEqual(game.course.activeLasers(game.player.origin,game.t),active);
   }
   game.command('culling 0');game.newRun();assert.equal(game.flags.culling,false);
-  const fresh=new Game(),load=source.split('\n').find(line=>line.includes('game.flags.culling=read('));
+  const fresh=new Game({gameMode:50}),load=source.split('\n').find(line=>line.includes('game.flags.culling=read('));
   vm.runInNewContext(load,{game:fresh,read:()=>false});assert.equal(fresh.flags.culling,false);
 });
 
 
 test('minimal preview caps draw work, fades after configurable legs, and reuses geometry when tuned',()=>{
-  const g=new Game();g.ready(50);g.setState('course_materialize');g.stateTime=4;
+  const g=new Game({gameMode:50});g.ready(50);g.setState('course_materialize');g.stateTime=4;
   const cap=captureCourse();cap.r.course(g,true);const guide=cap.r.routeGuide,geo=guide.lines.geometry,u=guide.lines.material.uniforms;
   assert.equal(geo.attributes.position.count,400);assert.equal(geo.drawRange.count,400);
   assert.equal(u.fadeAfter.value,2);assert.equal(u.farOpacity.value,.12);assert.equal(u.previewCount.value,50);

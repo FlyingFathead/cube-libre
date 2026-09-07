@@ -83,13 +83,13 @@ remain active. Regression coverage is in `tests/web/collapse-contact.test.mjs`.
 | Movement | Fixed world X/Y/Z axes, arrows and Ctrl aliases, 2.6× rush |
 | View | Original continuous three-axis rotation; L locate and automatic tracking from level 1 (minimum 0) |
 | Lasers | All five original grid templates, rotating/tilting planes, moving cyan apertures, difficulty speed scaling; full-square electric shutters from level 4, with sequential stages at 6, 7 and 8 |
-| Maze | Modular self-avoiding X/Z/Y route and open turn chambers; one added leg per level through fifty legs at level 50 |
+| Maze | Modular self-avoiding X/Z/Y route and open turn chambers; one added leg per level through twenty at the default cap; original fifty-leg mode retained |
 | Boundary damage | Cell shaving, delayed overheating, cooling, local impacts and drifting debris |
 | Recovery | Eight-second expiry, warning blinks, compact reconstruction, five requests per ten seconds, active-spam quota |
-| Difficulty | Space at level 3; timed legs from level 5; shutter changes at levels 4, 6, 7 and 8; entropy from level 10; HEAT at level 15; LOSS from the exit of 44; gradual timer/yield ramp to level 50 |
+| Difficulty | Space at level 3; timed legs from level 5; shutter changes at levels 4, 6, 7 and 8; entropy from level 10; HEAT at level 15; LOSS from exit 16; timer/yield ramp to 20 (original mode: LOSS 44, endpoint 50) |
 | Collapse | Progressive reveal/arming; the previous leg dissolves after the next turn is cleared, with debris, sound and sealed timed backtracking |
 | Portal | Per-cell slab contact, suction, charge, absorption and 98.5% body commitment |
-| Progression | Preview, level-ready cards, portal warp, result cards and automatic progression up to level 50, then ascension, thank-you fades and run statistics |
+| Progression | Preview, level-ready cards, portal warp, result cards and automatic progression to the active cap (20 by default), then ascension, thank-you fades and run statistics |
 | Death | Dissolve into the void, reconstruct the level-entry body, retry the current level with fresh geometry and timer |
 | Persistence | Level-entry campaign checkpoints, best escape, best score and highest level in localStorage, plus mute, shaking, player rotation, hit rotation shocks, portal light, culling, microgravity, heat restriction, shutter booleans and sky preferences |
 | UI | Original cube-letter title and dot-matrix prompt; help, pause, menu/reset confirmations, fullscreen |
@@ -139,13 +139,13 @@ before the deadline to bank **100 bonus points per recovered piece**. Escaping e
 is allowed. A timeout forfeits that round's bonus, preserves the existing run score,
 and proceeds to the next normal level after its result screen. Corridor damage,
 entropy, boundary overheating and the leg timer do not run in this arena. The bonus clock does not
-reset at the ramp; pause, help and dialogs freeze it. Normal levels refill until LOSS begins. From the exit of 44 onward, the bonus
+reset at the ramp; pause, help and dialogs freeze it. Normal levels refill until LOSS begins. From the configured LOSS exit onward, the bonus
 preserves the exact campaign body carried through that portal. Run statistics now include bonus rounds played, pieces
 successfully banked and bonus points.
 
 `BONUS_SCHEDULE` in `web/js/bonus.mjs` starts after level 5 and repeats every five
-cleared levels. The final campaign level takes precedence: with the cap at 50,
-bonuses occur after 5, 10, 15, 20, 25, 30, 35, 40 and 45; clearing 50 goes to ascension.
+cleared levels. The final campaign level takes precedence: the default cap is 20, so bonuses occur after 5, 10 and 15. Mode 50 retains
+bonuses after 5 through 45 in steps of five. The final level goes directly to ascension.
 Each scheduled occurrence runs once. `BONUS_TYPES` is a registry keyed by `001`,
 with a factory for the round model; new types can be registered and listed in
 `BONUS_SCHEDULE.types`. `PIECES_RULES` contains duration, scoring and arena geometry.
@@ -222,31 +222,42 @@ and coarse-pointer devices. An explicit saved choice overrides detection.
 Help ends with the current game version, author/profile link,
 **© 2024–2026 FlyingFathead**, and the PyGame v0.15.79 provenance.
 
-## Web 0.17.0: difficulty and level cap
+## Campaign variants and difficulty (web 0.28.0)
 
-| Level | Seconds per leg | Re-coupling yield per request | Overheating grace outside |
+`DEFAULT_GAME_MODE=20` selects the public new-run campaign. `GAME_MODES` in
+`difficulty.mjs` holds immutable balances for 20 and 50; `BALANCE` remains the
+original 50-level reference. Each `Game` has `gameMode`, `balance` and `levelCap`.
+Do not use the reference export to decide an active game's cap. Runtime calls to
+`difficultyForLevel`, `beginRecouple`, `featuresForSettings`, `introductionsForLevel`
+and `introductionCard` pass the active balance explicitly. Reference helper
+arguments and `LEVEL_FEATURES` retain their legacy defaults for external tools.
+
+| Default mode level | Seconds per leg | Recovery per request | Outside heat grace |
 | --- | --- | --- | --- |
 | 5 | 30.0 | 90% | 2.4 s |
-| 10 | 29.3 | 50% | 2.4 s |
-| 15 | 27.5 | 48% | 1.4 s |
-| 20 | 24.8 | 42% | 1.4 s |
-| 30 | 18.3 | 26% | 1.4 s |
-| 35 | 15.2 | 17% | 1.4 s |
-| 40 | 12.5 | 9% | 1.4 s |
-| 50 | 10.0 | 1% | 1.4 s |
+| 10 | 24.8 | 50% | 2.4 s |
+| 15 | 15.2 | 26% | 1.4 s |
+| 16 | 13.5 | 18% | 1.4 s |
+| 18 | 11.0 | 6% | 1.4 s |
+| 19 | 10.3 | 2% | 1.4 s |
+| 20 | 10.0 | 1% | 1.4 s |
 
-Both curves use a smooth easing function. Seconds are rounded to a tenth;
-re-coupling yield is rounded to the nearest whole percentage. Re-coupling applies
-to the currently recoverable loose pieces **per request**. The original minimum
-of one piece, eight-second expiry, 1.18-second re-coupling duration, and request
-quota remain. Repeated requests can gather more of the remaining pieces.
+Time uses `smoothstep((level - 5) / (cap - 5))`; entropy uses the same easing
+from 10 to the cap. Mode 50 retains the original values (for example, 27.5
+seconds / 48% recovery at 15, 15.2 seconds / 17% at 35, and 10 seconds / 1% at 50).
+Seconds round to a tenth and rates to a whole percentage. The existing one-piece
+minimum, fragment expiry, request quota, movement speed, shutter windows, damage
+protection and 1.45× laser-spin ceiling remain. Laser speed is already capped by 14.
 
-`web/js/difficulty.mjs` contains `BALANCE` and the ordered `featuresForSettings()`
-registry; `LEVEL_FEATURES` is the default schedule snapshot. `spaceStartLevel` defaults to 3, `timeStartLevel` to 5,
-`entropyStartLevel` to 10, `heatMinLevel` to 15, and `levelCap` and `capLevel`
-(the curve endpoint) to 50. Phase selection, banner wording and the Help table
-use this schedule, including CHANGE at the current shutter minimum (default 4).
-See [the complete milestone list](docs/LEVEL_PROGRESSION.md).
+`set game_mode 20` / `50` returns to the title if the active mode changes, resets
+its LOSS and colour-onset thresholds, and preserves the stored checkpoint.
+`newrun` uses that session selection; Continue uses its checkpoint mode without
+changing the next-new-run selection. There is no mode selector in public Options.
+Same-value sets and status/listing aliases leave active play untouched.
+
+SPACE (3), TIME (5), ENTROPY (10), HEAT (15) and CHANGE (4/6/7/8) retain their
+introductions. Mode 20 begins colour fading at 10 and LOSS at exit 16; mode 50
+keeps both starting at 44. See [the complete comparison](docs/LEVEL_PROGRESSION.md).
 
 HEAT subtracts one second from the original 2.4-second outside grace period.
 From web 0.21.0, the same HEAT gate also blocks new re-coupling requests when
@@ -259,16 +270,16 @@ re-coupling. Refused requests consume no quota and do not change cooldown or
 fragments; any request already accepted finishes normally. Bonus collection is
 independent. Subsequent heating and cooling rates remain unchanged.
 
-TIME cards return at levels 20, 35 and 50 and show the effective allowance.
+TIME cards return at 10, 15 and 20 in default mode, or 20, 35 and 50 in original mode and show the effective allowance.
 Phase cards, pause and help do not consume the leg timer. New legs, retries and
 reassembly all reset to the current level's allowance. Level-ready cards and Help
-show the current rules. At level 50 the ten-second warning is active from the
+show the current rules. At the active final level the ten-second warning is active from the
 start of each timed leg.
 
 Top speeds remain 6 units/second, or 15.6 with Shift. At full speed, a straight
 46-unit corridor takes about 7.7 seconds, or 3 seconds rushing; thrust buildup
 and braking add maneuvering time. A
-simulation test traverses level 50 with rush, active lasers, actual turns and the
+simulation test traverses each variant's final level with rush, active lasers, actual turns and the
 ten-second timer. This demonstrates a viable route, not a guarantee of human
 playability or a complete balance assessment.
 
@@ -355,10 +366,10 @@ existing score/cell cheats which use `score N` and `cubes N`.
 
 `web/js/save-game.mjs` owns the browser store, checkpoint schema validation and
 welcome timing. Campaign data uses `cube-libre-campaign-v1`, separately from
-`cube-libre-scores-v1` and preferences. `Game` receives a `saveCheckpoint`
+`cube-libre-mode-scores-v1` and preferences. `Game` receives a `saveCheckpoint`
 callback; simulation code has no direct browser-storage dependency.
 
-A schema-1 checkpoint contains a level, a stage (`level`, `bonus` or `ending`),
+A schema-2 checkpoint contains `gameMode` (20 or 50), a level, a stage (`level`, `bonus` or `ending`),
 exact cell IDs, score, run statistics, completed level, last escape count and
 completed bonus scheduling history. It contains no live movement, input, debris,
 renderer buffers or clock position. Continue always restarts the saved stage;
@@ -366,20 +377,26 @@ normal levels start at their first leg with their full level-entry allowance.
 
 - New run enables checkpoint writes and creates the level-one checkpoint.
 - Level entry and the next-level transition save the body that belongs there.
-  Before LOSS it is full; exits from 44 onward carry the exact survivors.
+  Before LOSS it is full; exits from 16 onward carry exact survivors (44 in mode 50).
 - Reloading during milestone cards or a portal transition already has the next
   checkpoint. Continue shows that level's applicable cards after its welcome.
 - A pending scheduled bonus is saved before it starts. Reloading restarts that
   bonus, retaining the normal survivor body and score from before the bonus.
   Completion saves the next normal level immediately, including any awarded
   points, so revisiting cannot duplicate a completed reward.
-- Clearing 50 saves an ending checkpoint. Resume replays the ending without
+- Clearing the active cap saves an ending checkpoint. Resume replays the ending without
   re-awarding the portal score. The ordinary statistics-to-menu transition clears
   the completed checkpoint. Preview endings never clear a campaign save.
 - Console previews, level jumps, healing, cube-count/score edits and the portal
   teleport stop checkpoint writes for that debug session. New run or Continue
   establishes a campaign again. Visual switches and status queries remain safe
   to use during a saved run. This is save isolation, not an anti-cheat system.
+
+Schema-1 checkpoints are migrated in memory to mode 50, even at level 1. Unknown
+modes/schemas and levels beyond the saved mode's cap are rejected without deleting
+the stored bytes. Resume selects the balance before restoring level, shape or
+ending state, so an old level-45 save is never clamped to 20. Subsequent normal
+checkpoint writes upgrade the stored value to schema 2 under the same save key.
 
 The title's main button and Space/Enter/controller A continue when a checkpoint
 exists. A separate New run button asks before replacing it. Touch uses those
@@ -406,7 +423,7 @@ campaign. The roadmap retains full-body Continue as a possible mercy alternative
 `end_portal` defaults true and is saved under `cube-libre-end-portal-v1`.
 `END_PORTAL` in `config.mjs` sets the final frame scale (3), halo diameter (80),
 core diameter (24) and approach distance (85), in scene units. The corridor is
-14 units wide. The predicate follows `BALANCE.levelCap` (currently 50) and excludes
+14 units wide. The predicate follows `game.levelCap` (20 by default, 50 in original mode) and excludes
 bonus scenes. All final frame/spiral lines and the distant endpoint marker are
 white. The original small glow texture is shared by the halo and one extra
 reusable core sprite. No bloom pass, real-time lights or remote asset is added.
@@ -415,7 +432,7 @@ The `portal_white_light` switch disables both glow layers; `end_portal false`
 restores ordinary portal presentation. Capture, suction, collision and the
 level-cap ending trigger use the existing simulation constants.
 
-`test end_portal` starts level 50 on its last leg, at local X=10.8 in the safe
+`test end_portal` starts the active final level on its last leg, at local X=10.8 in the safe
 gap between the last two gates. All earlier legs are already revealed/collapsed;
 the last is active, its clock begins at ten seconds, drift is neutral and the
 camera follows the cube. The console closes and the test runs immediately.
@@ -426,9 +443,10 @@ campaign checkpoint untouched. The summary is marked as an END PORTAL preview.
 
 ## LOSS and route visibility (web 0.26.0)
 
-`BALANCE.lossMinLevel` defaults to 44 and supplies the runtime `loss_min_level`
-console value. `loss` is enabled by default. The threshold applies to the exit:
-43 → 44 refills normally; 44 → 45 carries exact survivor IDs and the same holes.
+`game.balance.lossMinLevel` defaults to 16 in mode 20, or 44 in mode 50,
+and supplies the runtime `loss_min_level` console value. `loss` is enabled by default. The threshold applies to the exit:
+15 → 16 refills normally; 16 → 17 carries exact survivor IDs and holes.
+Original mode retains 43 → 44 refill and 44 → 45 carry.
 The ordered milestone registry supplies **LOSS ...**, **PORTALS NO LONGER
 RESTORE LOST PIECES**, and **WHAT SURVIVES GOES WITH YOU.** Moving the threshold
 moves the rule and the card together; 0 enables both from level 1.
@@ -451,13 +469,14 @@ not player cells or debris. `loss_weep` fires once as they depart. The caption
 switches to **ONLY PARTIAL REASSEMBLY SUCCEEDED**, with the surviving count, under the cube.
 The existing batches draw at most 125 real-plus-absent forms.
 
-`loss_grey` independently controls colour fading during LOSS. It begins with
-2.5% desaturation at the threshold and follows a quadratic curve to full neutral
-grey at level 50, preserving luminance. `LOSS_COLOUR` defines onset/exponent in
+`loss_grey` independently controls colour fading. `loss_grey_min_level` starts
+it at 10 in mode 20, or 44 in mode 50; it is independent from the LOSS rule.
+It begins with 2.5% desaturation and follows a quadratic curve to full neutral
+grey at the active cap, preserving luminance. `LOSS_COLOUR` defines onset/exponent in
 `loss.mjs`. Heat, cooling and hit cues are applied afterward. This changes no
 collision positions, spin, damage or controls. Bonus bodies and the white
 ending cube retain their own colours. `test loss` previews the card plus an
-incomplete demonstration body; `level 44` shows the actual full-body introduction.
+incomplete demonstration body; `level 16` shows the default full-body introduction (`level 44` in mode 50).
 
 The gameplay route guide now reuses four exterior edges for each of up to three
 upcoming legs. Its draw range moves forward through the existing buffer: at most
@@ -512,7 +531,7 @@ edited in the file; the console flag changes the restriction's enabled state.
 ## Ascension and run statistics
 
 Clearing the current level cap awards the final portal score once, then replaces
-normal level advancement with the ten-second starfield ascension scene. The scene
+normal level advancement with the silent outline and starfield ascension scene. The scene
 fades completely white, holds white for two seconds, and fades in:
 
 > YOU'VE ASCENDED
@@ -622,7 +641,7 @@ body/cell amplitudes. Existing saved preferences take precedence over the defaul
 ## Long routes, ghost overviews and culling (web 0.20.0)
 
 Level 1 has one leg, level 2 has two, and each subsequent level adds one, through
-50 legs at the current cap. Routing starts on X, adds Z at level 2, and introduces
+20 legs at the default cap; original mode retains all 50. Routing starts on X, adds Z at level 2, and introduces
 Y from level 3. The self-avoiding route generator and open turn chambers remain.
 The imported PyGame 0.15.79 snapshot has a seven-leg performance cap; web 0.20.0
 deliberately replaces that cap with the intended growing route.
@@ -767,15 +786,22 @@ settings. Browser settings join the same registry through `game.consoleSettings`
 
 ## Ascending into the stars (web 0.20.0)
 
-Ending 001 begins with one white cube resting just above a blue grid floor.
-The broad grid fades toward the distant horizon. After a brief 0.6-second hold,
-the cube levitates upward and away while the camera smoothly tilts into the sky.
-It shrinks and blends into a white star from 5.2 to 6.4 seconds, then remains a
-small point among the stars. The white fade starts at 7.6 seconds and completes
-at 10 seconds. A two-second white hold follows. From web 0.20.1, YOU'VE ASCENDED
-then fades in for 1.4 seconds and holds fully visible on its own for two seconds.
-Only then does ... FOR NOW. fade in beneath it over 1.2 seconds. The stats prompt
-now follows the thank-you segment below; earlier input cannot skip the cinematic.
+Ending 001 now opens with one intact outline on pure white, rotating slowly
+(3 degrees/second plus a 0.6 degree/second secondary tilt). This uses twelve
+lines from the existing batch and no miniature cubes. The outline holds for
+3 seconds, vanishes over 0.18 seconds, white holds for 0.12 seconds, then the
+scene is revealed over 0.12 seconds. This is one brief flash, not repeated
+flickering. The final portal tail and all channels stop immediately; queued
+sounds are dropped throughout this silent arrival. The live body/save is unchanged.
+
+The original scene then shows one white cube above the blue grid. After its
+0.6-second rest, the cube levitates and the camera follows. It becomes a star
+from 5.2 to 6.4 seconds relative to the fully revealed scene. The completed
+star now lingers for 3.2 seconds (two seconds longer), then fades white over
+2.4 seconds. Arrival plus scene lasts 15.42 seconds. A two-second white hold
+follows; YOU'VE ASCENDED fades in for 1.4 seconds and holds alone for two.
+... FOR NOW. follows over 1.2 seconds. Input remains guarded until the full
+thank-you segment completes.
 
 The sky uses 900 points in one reusable geometry buffer. A separate single point
 keeps the final star visible even as the cube's mesh shrinks away. The scene is
@@ -809,7 +835,7 @@ pause, Help and tab interruptions freeze them. Repeated input cannot skip them.
 `thank_you_note` and `test thank_you_note` preview just this segment. The full
 `test ending_1` and legacy `view_end_anim_v1` previews include it automatically.
 They do not award points or save new records. Normal progression reaches the
-ending only after clearing the campaign cap, still level 50.
+ending only after clearing the active campaign cap (20 by default, or 50).
 
 ## Title framing and readability (web 0.20.1)
 
@@ -858,21 +884,24 @@ clamping and attempt reset. For example, `set level 20` starts level 20.
 
 Title, level result and HUD records use `TOP LEVEL: <highest reached>/<level cap>`.
 The numerator comes from `game.stats.highest_level`, saved in this browser across
-runs; the denominator comes from `BALANCE.levelCap` (currently 50). It reports the
+runs; the denominator comes from the active `game.levelCap`. It reports the
 highest level reached, rather than cleared. Console level jumps also update this
 record under the existing debug behavior. The title and HUD record tooltips
 explain that the value persists across runs.
 
-The storage key is `cube-libre-scores-v1`, field `highest_level`. It is specific
+The storage key is `cube-libre-mode-scores-v1`, with separate 20/50 records
+containing `highest_level`, `best_score` and `best_escape`. Old
+`cube-libre-scores-v1` records import into mode 50 only, without deleting the old
+key. Reading/migrating is inert; later record writes save both mode entries. It is specific
 to a browser profile and origin. `toplevel` / `top_level` queries it;
 `toplevel reset`, `top_level reset`, `reset top level`, `reset top_level`,
 `reset toplevel` and `reset highest_level` reset only this record to 1 and save it.
-Best score, best escape, other preferences and the current run stay intact.
+The other mode, best score, best escape, preferences and current run stay intact.
 Malformed commands do not modify records. `status top_level`, `view top_level`,
 `get top_level` and bare `set top_level` are also read-only.
 
-The top-right timer now uses the actual route length: `LEG 1/50` through
-`LEG 50/50`. Bonus rounds retain their separate BONUS timer label.
+The top-right timer now uses the actual route length: `LEG 1/20` through
+`LEG 20/20` at the default final level (1/50 through 50/50 in original mode). Bonus rounds retain their separate BONUS timer label.
 
 ## Xbox-style controllers (web 0.23.0)
 
@@ -994,14 +1023,14 @@ unimplemented panic/return proposal arising from this Android feedback.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.27.0**, continuing from published **0.26.0** (`bb6a420`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.28.0**, continuing from published **0.27.0** (`fd8ce6a`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.27.1`, `0.27.2`, etc. for fixes, and `0.28.0` for the
+For future releases, use `0.28.1`, `0.28.2`, etc. for fixes, and `0.29.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.27.0.zip` and `v0.27.0`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.28.0.zip` and `v0.28.0`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior
@@ -1021,7 +1050,7 @@ version and commit fixed unless deliberately rebasing on a different PyGame sour
   reliably close tabs they did not open.
 - Scores are local to this browser and origin. They do not import the Python
   `cube_libre_scores.json`, sync between devices, or form an online leaderboard.
-- WebGL 2, JavaScript and import maps are required. Web 0.23.0 is the published
+- WebGL 2, JavaScript and import maps are required. Web 0.27.0 is the published
   baseline. Controller mapping and the new tabbed Help layout still require
   browser and hardware playtesting; automated checks do not claim a hardware benchmark.
 
@@ -1029,7 +1058,7 @@ version and commit fixed unless deliberately rebasing on a different PyGame sour
 
 No npm installation is required. The project declares its ES module configuration explicitly; earlier releases
 were checked by the author on Node.js 18.19.1.
-This release was checked with Node.js 24:
+This release was checked with Node.js 18.19.1:
 
 ```bash
 node tools/check_web.mjs
@@ -1071,7 +1100,12 @@ immunity, warning/closed rendering, local audio events, movable introductions,
 camera centering, legacy and irregular skies, saved pattern switching and full
 configuration listings. Web 0.23.0 adds controller axes/buttons and browser-dispatch
 checks, record resets, globally capped alternating shutters, preview limits/fade
-uniforms, startup cache replacement and live leg totals. The suite now has 162 passing test groups, including LOSS carry/retries/bonus isolation, colour fading, forward outlines, and the complete ending UI timing.
+uniforms, startup cache replacement and live leg totals. The suite now has 188 passing test groups. Existing regression fixtures select
+mode 50 explicitly; `game-modes.test.mjs` exercises the default 20-level variant,
+both caps, curve endpoints, legacy checkpoint migration, mode-isolated records,
+LOSS carry and final traversal. Ending tests inspect the silent rotating outline,
+flash, longer star hold, actual audio adapter and pause/input guards. The shorter
+campaign's human balance and new visual/audio timing still need device playtesting.
 The fifty-leg simulated pilot accounts for closed shutters.
 
 The original synthesized WAV cache is approximately 10.5 MiB; the web audio is
@@ -1105,7 +1139,8 @@ It contains no sampled voice. Temporary source WAV files are not included in the
 | `web/js/config.mjs` | Original constants and web visual, camera, rotation and propulsion defaults |
 | `web/js/changes.mjs` | Numbered mechanic registry, shutter defaults, timing and damage rules |
 | `web/js/console-config.mjs` | Live configuration listing aliases and friendly descriptions |
-| `web/js/difficulty.mjs` | Balance thresholds, ordered feature introductions, banners and heat restriction |
+| `web/js/difficulty.mjs` | Immutable 20/50 mode balances, thresholds, curves, ordered introductions and heat restriction |
+| `web/js/save-game.mjs` | Mode-aware checkpoint validation, schema migration, local save store and welcome timing |
 | `docs/LEVEL_PROGRESSION.md` | Feature, banner and level reference |
 | `docs/GITHUB_METADATA.md` | Repository description, homepage and topic command |
 | `web/js/loss.mjs` | Nonlinear colour fading and visual-only missing assembly forms |

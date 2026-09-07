@@ -1,7 +1,7 @@
 # Cube Libre: considerations and roadmap
 
 This records considered design work and decisions that have since been implemented.
-Unimplemented proposals are marked explicitly; they are not promised releases. The current campaign cap is 50 levels. The aim
+Unimplemented proposals are marked explicitly; they are not promised releases. The default campaign now ends at 20; the original 50-level variant is retained in configuration. The aim
 is to sustain interest through new rules, rhythms and decisions as the journey
 gets harder, while preserving the feeling that arriving in one piece is unlikely.
 
@@ -95,6 +95,19 @@ Consider after playtesting:
 No full-body Continue override or public difficulty checkbox is included now.
 The earlier jail-node rescue proposal is also still unimplemented.
 
+## Adopted for web 0.28.0: the twenty-level journey
+
+**Status: implemented.** Default new runs now end at 20, with the original
+50-level variant retained in console/configuration. Time and entropy reach the
+same final limits sooner; fading starts at 10, HEAT at 15 and LOSS at exit 16.
+This aims to concentrate the existing content and make the journey inviting to
+attempt without removing its late pressure. Existing saves retain their mode.
+
+The shared ending gains a silent, slowly rotating intact outline on white,
+a single brief flash into the existing starfield scene, and two extra seconds
+holding the final star. The outline changes no physical or saved pieces.
+These presentation choices preserve the complete ascension arc.
+
 ## Playtest evidence and remaining questions
 
 - The author reports playable Android touch controls up to about level 6.
@@ -102,7 +115,30 @@ The earlier jail-node rescue proposal is also still unimplemented.
   the intentional difficulty of navigating outside the grid.
 - v0.25.0 introduces staged shutter rhythms at levels 4, 6, 7 and 8. Their new
   pacing and pitch cues still need human playtesting.
-- A simulated level-50 route is traversable. Maintaining interest and readable
-  difficulty across all fifty levels still requires actual playtest feedback.
+- Simulated final routes in both variants are traversable. Maintaining interest
+  and readable difficulty across the default twenty levels, particularly under
+  campaign LOSS, still requires actual playtest feedback. The original fifty-level
+  journey remains available for developers to compare.
 - This Android report does not establish iPhone/iPad compatibility, comfort or
   performance; those devices still need testing.
+
+## Beyond ascension: YOU HAVE DESCENDED
+
+**Status: humorous thought experiment, not a serious proposal at present; not implemented.**
+The author feels the ascension arc already works beautifully as a complete ending.
+This records a playful possibility, not an intention to undo that arc or promise
+a sequel. If revisited someday, an optional continuation could
+pick up after the current ending and reverse its direction: **YOU HAVE DESCENDED**.
+The cube returns from above in a violent atmospheric re-entry, with the author
+citing the feeling of a Helldivers 2 drop as a visual reference.
+
+The next chapter could overturn the rules and expectations built by the first
+journey. Ascension need not be the last word; the return could introduce new
+mechanics and meanings instead of simply adding more procedural corridors.
+Whether the body returns whole, remains grey and incomplete, or changes form
+is undecided. So are the trigger, level numbering, difficulty, save transitions,
+and the placement of any continuation relative to the thank-you segment.
+
+No descent sequence, post-ending level or automatic continuation is implemented.
+The complete 20-level ending, and the original 50-level variant's ending, remain
+intact. This is a possibility for a future chapter, not a release commitment.

@@ -60,7 +60,7 @@ test('menu navigation repeats deliberately, focuses visible controls and scrolls
 test('keyboard/controller mixing caps speed and actual normal gameplay responds to partial analog thrust',()=>{
   assert.deepEqual(mergeMovement({x:1,y:-1,z:.5,rush:false},{x:1,y:1,z:.8,rush:true}),{x:1,y:0,z:1,rush:true});
   for(const microgravity of [false,true]) {
-    const full=new Game(),half=new Game();for(const g of [full,half]){g.ready(1);g.setState('playing');g.flags.microgravity=microgravity;g.flags.damage=false;g.flags.suction=false;}
+    const full=new Game({gameMode:50}),half=new Game({gameMode:50});for(const g of [full,half]){g.ready(1);g.setState('playing');g.flags.microgravity=microgravity;g.flags.damage=false;g.flags.suction=false;}
     const start=half.player.origin.x;
     for(let i=0;i<60;i++){full.tick(1/120,{x:1});half.tick(1/120,{x:.5});}
     near(half.player.origin.x-start,(full.player.origin.x-start)/2);
@@ -68,7 +68,7 @@ test('keyboard/controller mixing caps speed and actual normal gameplay responds 
 });
 
 test('controller and deadzone console setters save preferences while queries preserve momentum and write nothing',()=>{
-  const game=new Game(),writes=[],context={game,GamepadInput,emptyMovement,read:(key,fallback)=>key==='cube-libre-controller-deadzone-v1'?.25:fallback,write:(...x)=>writes.push(x)};
+  const game=new Game({gameMode:50}),writes=[],context={game,GamepadInput,emptyMovement,read:(key,fallback)=>key==='cube-libre-controller-deadzone-v1'?.25:fallback,write:(...x)=>writes.push(x)};
   vm.createContext(context);
   const a=source.indexOf('  const controller=new GamepadInput()'),b=source.indexOf('  const keyboard=',a);
   vm.runInContext(source.slice(a,b),context);
@@ -84,7 +84,7 @@ test('controller and deadzone console setters save preferences while queries pre
 });
 
 test('real browser controller dispatcher separates gameplay, pause, Help, console and ending inputs',()=>{
-  const s=setup(),game=new Game();game.ready(7);game.setState('playing');let recouples=0;game.requestRecouple=()=>recouples++;
+  const s=setup(),game=new Game({gameMode:50});game.ready(7);game.setState('playing');let recouples=0;game.requestRecouple=()=>recouples++;
   const nodes={modal:{open:false},console:{open:false},'modal-title':{},'modal-body':{firstElementChild:{}},'console-log':{scrollTop:0},locate:{click(){game.locate=!game.locate;}}};
   const ctx={game,controller:s.controller,emptyMovement,controllerMovement:emptyMovement(),controllerAction:false,document:{hidden:false,hasFocus:()=>true},$:id=>nodes[id],modalKind:null,syncAudio(){},navigateControllerMenu(){},
     clearInput(){s.controller.suspend();},pause(){game.paused=!game.paused;nodes.modal.open=game.paused;ctx.modalKind='pause';},help(){game.help=true;game.paused=true;nodes.modal.open=true;ctx.modalKind='help';},
@@ -103,7 +103,7 @@ test('real browser controller dispatcher separates gameplay, pause, Help, consol
 });
 
 test('controller-only start does not await a browser-blocked audio unlock',async()=>{
-  const game=new Game(),nodes={start:{}},ctx={game,$:id=>nodes[id],controllerAction:false,controllerAudioPending:false,loadingStart:false,audioProgress:'',audioWarning:'',
+  const game=new Game({gameMode:50}),nodes={start:{}},ctx={game,$:id=>nodes[id],controllerAction:false,controllerAudioPending:false,loadingStart:false,audioProgress:'',audioWarning:'',
     audio:{muted:false,failed:[],unlock:()=>new Promise(()=>{})},clearInput(){},focusGame(){},syncAudio(){}};
   vm.createContext(ctx);const a=source.indexOf('  async function start('),b=source.indexOf('  function unlockControllerAudio()',a);vm.runInContext(source.slice(a,b),ctx);
   await ctx.start({controller:true});assert.equal(game.state,'opening_intro');assert.equal(ctx.loadingStart,false);assert.equal(nodes.start.disabled,false);

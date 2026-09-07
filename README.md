@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.27.0
+# Cube Libre — Web v0.28.0
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,89 +23,104 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.27.0 · Welcome back
+## Web release 0.28.0 · Twenty levels
 
-**Continue your journey.** Your browser now saves a checkpoint at each level
-entrance. On returning, choose **Continue** or **New run**. Continue opens on
-white: **Continuing from level X ...**, then **Welcome back.** fades in beneath
-it. New run asks before replacing an existing saved journey.
+**Twenty levels. One more leg each time.** The default journey now reaches
+ascension after level 20, with the difficulty curves compressed to reach the
+same final severity as the original campaign. Before retries, that is 210 legs.
 
-The checkpoint restores the level from its entrance, your score and run progress,
-and the **exact surviving pieces and holes**. During LOSS, beginning with the
-body carried out of level 44 into 45, Continue plays the partial reassembly when
-pieces are missing: grey forms tremble and scatter, the engine winds down, and
-**ONLY PARTIAL REASSEMBLY SUCCEEDED** appears. The surviving body retains the
-resumed level's greyness. Like an ordinary retry, this restores the level-entry
-body; it does not restore pieces lost before that level.
+| Level | What changes |
+| --- | --- |
+| 3 | SPACE: the Y axis opens. |
+| 4 / 6 / 7 / 8 | CHANGE: one, two, three, then four sequential shutter zaps. |
+| 5 | TIME begins at 30 seconds per leg. |
+| 10 | ENTROPY begins at 50% recovery per request. Colour starts fading almost imperceptibly. TIME announces 24.8 seconds per leg. |
+| 15 | HEAT: 1.4 seconds outside before overheating; no new recovery requests while hot. TIME announces 15.2 seconds per leg. Recovery is down to 26%. |
+| 16 | LOSS: the exit no longer restores missing pieces. Level 17 receives what survived. |
+| 18 | The ongoing curves have tightened to 11 seconds per leg and 6% recovery. |
+| 20 | Twenty legs, 10 seconds per leg, 1% recovery and a completely grey body. The final white portal leads to ascension. |
 
-Pending bonus rounds can be resumed, and completed bonus rewards are saved once.
-A completed final level can resume its ending without awarding its points again.
-After the ending and statistics are finished, the completed checkpoint is cleared.
+Shutter warnings, open windows, alternating legs, damage protection and the
+one-cube minimum per shutter hit are retained. The game keeps its existing
+movement speeds, collision rules and controller/touch controls. The final laser
+spin multiplier is also unchanged. Shortening the journey does not remove the
+late-game pressure.
 
-Saves stay in **this browser on this device**, using local browser storage. There
-is no account, cloud upload or cross-device sync. Clearing site data removes the
-save; private browsing and blocked storage may prevent it surviving a visit.
-The title reports when persistent saving is unavailable. Saves begin with this
-release; an older TOP LEVEL record cannot reconstruct an earlier run.
+**A moment before ascension.** The final portal leads into silence: one intact
+cube outline turns very slowly against pure white for three seconds. A single
+brief white flash reveals the blue-grid/starfield scene. The cube rises as before;
+once it becomes a star, it lingers for 3.2 seconds, two seconds longer than before,
+then fades to white. The existing **YOU'VE ASCENDED / ... FOR NOW.**, slow
+**thank you for playing / CUBE LIBRE**, and separate statistics/menu inputs follow.
+The outline is symbolic; it never refills your saved or physical body.
 
-**The final exit is pure white.** Level 50's portal has a frame three times the
-normal size, with a broad white halo and bright core extending beyond the
-corridor. Earlier portals retain their colours. The light does not enlarge the
-physical capture area or change the ending after clearing 50.
+**Your existing save is kept.** Continue retains its campaign variant, exact
+level-entry pieces, holes, score and progress. Old v0.27.0 saves resume the
+original 50-level journey, even when saved at an early level. New runs default
+to 20. TOP LEVEL, best score and best escape are tracked separately for each
+variant; old records belong to the original one.
 
-Open the debug console with backtick or Ctrl+Shift+F1:
+### Continue and what remains
+
+The title offers **Continue** or **New run**; replacing a saved journey requires
+a deliberate choice. Continue opens on white with **Continuing from level X ...**,
+then **Welcome back.** An incomplete LOSS body plays the partial reassembly:
+missing grey forms tremble and scatter with an engine wind-down, followed by
+**ONLY PARTIAL REASSEMBLY SUCCEEDED**. Retries and Continue restore exactly the
+body you entered that level with. Fresh debris can still be re-coupled while
+it remains available. Bonuses award points without replenishing the normal body.
+
+Saves use local browser storage on this device, with no account or cloud sync.
+Clearing site data removes them; the title reports unavailable saving. Pending
+bonuses and completed endings resume without duplicating rewards. An old TOP
+LEVEL record alone cannot reconstruct a campaign.
+
+### Console previews and variants
+
+The original 50-level progression remains available **only through configuration
+and the debug console**, alongside Continue for existing saves. There is no
+public mode selector or difficulty checkbox. Open the console with backtick or
+Ctrl+Shift+F1:
 
 ```text
+game_mode
+set game_mode 20
+level 16
+test loss
 test end_portal
+test ending_1
+thank_you_note
 ```
 
-This starts a playable preview on **LEG 50/50**, in the gap before the last gate,
-with the camera located on the body and the normal ten-second leg clock.
-Approach the exit to see the full ascension and thank-you sequence. Retry returns
-to that final-leg gap. The test awards no points or records and never replaces
-your saved campaign. `end_portal true` / `end_portal false` switches the special
-presentation; `portal_white_light` also controls its halo. Both are saved visual
-preferences. The preview respects your current console switches.
+`test end_portal` starts on **LEG 20/20**, before the last gate, with ten seconds
+and the camera located. Entering the actual portal plays the complete ending.
+Retry returns to that gap. Previews never replace a saved campaign or award points.
+The final portal retains its oversized pure-white frame and glow.
 
-The full-body Continue reprieve discussed for late LOSS is recorded in
-[ROADMAP.md](ROADMAP.md) as **considered, not implemented**.
-
-## What remains · Introduced in 0.26.0
-
-**LOSS ...** arrives at level **44**: **PORTALS NO LONGER RESTORE LOST PIECES**.
-Level 44 still starts with the usual full body. From its exit onward, each new
-level inherits the exact surviving shape, including the holes. A retry restores
-only the pieces you had when entering that level. Bonus rounds keep their own
-body and award points; they do not replenish your normal body.
-
-When an incomplete body assembles, missing pieces briefly appear as trembling
-grey forms, then scatter away with a brief electrical stutter followed by a soft electronic engine wind-down. They
-cannot be recovered. The surviving body also begins losing a barely visible
-amount of colour at 44; the loss accelerates along a curved progression until
-it is completely grey at 50. Heat and damage flashes remain readable.
-
-**See a little farther ahead.** During normal play, up to three upcoming legs
-have faint exterior outlines that fade with distance. This reuses the cached
-corridor edges on desktop and mobile. Nearby hazards retain their reveal rules;
-the outlines reveal no distant laser grids or shutters.
-
-The ending still follows **clearing level 50**. After the ascension and
-**YOU'VE ASCENDED / ... FOR NOW.**, the words fade back to white. A four-second
-white pause leads into **thank you for playing / CUBE LIBRE**: four seconds to
-fade in, five to linger, seven to fade out, then two more seconds of white.
-Separate inputs show your statistics and then return to the menu.
-
-Console previews and tuning:
+For the preserved original campaign:
 
 ```text
-level 44                 # Show the LOSS introduction, then start level 44
-set level 50             # Show the final TIME introduction, then start level 50
-test loss                # LOSS card and an incomplete demonstration body
-test ending_1            # Full ending, including the thank-you segment
-thank_you_note           # Just the thank-you segment
-set loss true
-set loss_min_level 44    # 0 enables LOSS from the first level
-set loss_grey true
+set game_mode 50
+newrun
+```
+
+Changing mode returns to the title, resets that mode's LOSS/fade thresholds and
+keeps the existing save. `newrun` starts the selected mode; `test end_portal` now
+uses its last leg. Selection lasts for the page session. Continue reads the saved
+mode without changing the selection for the next new run. `game_mode`, `get`,
+`view`, `status`, bare `set` and `viewconfig` report values without changing play.
+The only mode values are **20** and **50**; boolean toggles are rejected.
+
+`loss_min_level` defaults to 16 in mode 20, or 44 in mode 50. The separate
+`loss_grey_min_level` defaults to 10 or 44 respectively. Both accept 0 for the
+first level, up to the active cap, and last for the session. `loss_grey true` /
+`false` is a saved visual switch. Gameplay tuning stays console-only.
+
+**See a little farther ahead.** During play, three upcoming corridor legs have
+faint exterior outlines without revealing distant laser grids or shutters.
+Their independent settings remain:
+
+```text
 set route_outline true
 set route_outline_ahead_legs 3
 set route_outline_fade_after_legs 1
@@ -113,11 +128,10 @@ set route_outline_opacity 0.32
 set route_outline_far_opacity 0.25
 ```
 
-Enter commands without the explanatory comments. `status`, `view`, bare `set`
-and `toggle` use the existing console conventions. Gameplay settings remain
-console-only. See [the progression reference](docs/LEVEL_PROGRESSION.md) for
-all defaults. These additions have automated coverage; their presentation and
-late-game balance still need human playtesting.
+See [the full progression and tuning reference](docs/LEVEL_PROGRESSION.md).
+[ROADMAP.md](ROADMAP.md) keeps the rescue and merciful Continue ideas as
+unimplemented possibilities. “YOU HAVE DESCENDED” is recorded as a humorous
+what-if, not a serious continuation proposal; the ascension arc stands complete.
 
 ## Mobile orientation lock · Introduced in 0.25.1
 
@@ -241,7 +255,7 @@ viewconfig
 Booleans are saved; numeric shutter tuning lasts for the page session.
 
 **The opening map preview is just four exterior lines per corridor**, with no
-laser gates or shutter previews. It shows up to 50 legs and fades gradually after
+laser gates or shutter previews. Its configured ceiling remains 50 legs, limited by the actual route, and it fades after
 the first two, keeping the distant exit visible. Fifty legs use 200 line segments
 in a reusable buffer. Tune it with:
 
@@ -253,9 +267,9 @@ set preview_far_opacity 0.12
 toggle preview_outline
 ```
 
-The top-right timer now shows **LEG 1/50**, using the actual route length.
-**TOP LEVEL: 7/50** remains your highest reached level saved in this browser
-across runs, including debug level jumps. Query it with `toplevel` or `top_level`.
+The top-right timer now shows **LEG 1/20**, using the actual route length.
+**TOP LEVEL: 7/20** remains your highest reached level saved in this browser
+across runs in the active variant, including debug level jumps. Query it with `toplevel` or `top_level`.
 Use `toplevel reset`, `top_level reset` or `reset top level` to reset that record
 to 1, keeping your best score, best escape, preferences and current run.
 
@@ -313,7 +327,7 @@ The flag defaults to on and is saved through the debug console.
 `BALANCE.heatMinLevel` in [`web/js/difficulty.mjs`](web/js/difficulty.mjs) defaults
 to **15**; **0 removes the level gate**. Both heat penalties and the HEAT banner
 share this setting. `featuresForSettings()` supplies the ordered introduction
-schedule, banner titles and Help milestone table; `LEVEL_FEATURES` is its default snapshot. See [the full progression list](docs/LEVEL_PROGRESSION.md).
+schedule, banner titles and Help milestone table with `game.balance`; `LEVEL_FEATURES` remains the legacy 50-level reference snapshot. See [the full progression list](docs/LEVEL_PROGRESSION.md).
 Thrust response and coasting are tuned in `PLAYER_PROPULSION` in `web/js/config.mjs`.
 
 The package also declares its JavaScript module type explicitly, so local checks
@@ -331,7 +345,7 @@ The animated title also fits the space between the start prompt and instructions
 including narrow browser windows and enlarged browser text.
 
 Each level adds **one corridor leg**: level 1 has one, level 2 has two, and level
-50 has fifty. X/Z routes gain the Y axis from level 3. The opening camera pulls
+20 has twenty (50 in the original variant). X/Z routes gain the Y axis from level 3. The opening camera pulls
 back to fit the whole maze as a faint ghost outline, with the distant exit visible
 and no red cutting grids. The outline fades as the camera returns to the start.
 
@@ -397,7 +411,7 @@ on returning inside. Open **Help → Options → Shaking and heat flashes** to t
 your choice. The switch also controls bonus warning tremors and camera jolts.
 
 
-**PICKING UP THE PIECES · BONUS ROUND 001** follows levels 5, 10, 15…45.
+**PICKING UP THE PIECES · BONUS ROUND 001** follows levels 5, 10 and 15 in the default campaign.
 A full cube crashes onto a solid floor and shatters. Roll the surviving mini-cube
 through the scattered pieces to rebuild, then climb the ramp to the portal.
 You have **45 seconds** after the crash; escape banks **100 points per piece**.
@@ -430,19 +444,17 @@ beta or keyboard/controller mode. You can change the choice later through ⚙ Op
 
 ## Difficulty and the current ending
 
-Time tightens from 30 seconds per leg at level 5 to 10 seconds at level 50.
-Entropy reduces re-coupling yield from 50% at level 10 to 1% at level 50, rounded
-to the nearest whole percent. **HEAT** arrives at level 15, shortening the
-out-of-bounds overheating grace period from 2.4 to 1.4 seconds. **TIME** returns
-at levels 20, 35 and 50 to announce the current allowance. From HEAT onward,
-active overheating also blocks new re-coupling requests when its flag is enabled.
-The route also grows by one leg each level, so the final level combines fifty
-legs with the strictest timer, heat and re-coupling settings. **LOSS** at level
-44 also removes the portal refill; arriving with every piece becomes less likely.
+Time tightens from 30 seconds per leg at level 5 to 10 at level 20. ENTROPY
+reduces recovery from 50% per request at 10 to 1% at 20. HEAT at 15 shortens
+outside grace to 1.4 seconds and blocks new requests while hot. TIME warnings
+return at 10, 15 and 20; the curves tighten continuously between them. LOSS
+starts at the exit of 16, with partial bodies carried into 17 and onward.
+Colour fades quadratically from barely perceptible at 10 to completely grey at 20.
 
-The current level cap is **50**. Clear it to see a single white cube ascend into the stars,
-followed by the ending, the slow thank-you fade and your run statistics. Separate Space / Enter / click
-inputs advance to the stats and then return to the main menu.
+Clear the **20-level cap** to see the silent outline, single white flash,
+starfield ascension, slow thank-you fade and statistics. The original 50-level
+variant retains its own difficulty curves, LOSS at 44 and colour fading from
+44 to 50, followed by the same expanded ending.
 
 The game reads its version from [`web/version.json`](web/version.json).
 Balance settings, including the entropy introduction level and current level cap,
@@ -528,11 +540,14 @@ node --test tests/web/*.test.mjs
 
 See [WEB_PORT.md](WEB_PORT.md) for gameplay details, browser differences,
 source layout, and optional regeneration using a separate PyGame checkout.
-Web 0.23.0 (`acbb831`) is the published baseline. This release passes 128 automated
-test groups and static checks, including a complete level-50 traversal, controller
-input and menu dispatch, shutter limits, startup cache handling and preview
-geometry and tabbed Help. The controller mapping and new visual layout need browser/hardware
-playtesting. WebGL effects are recreated and are not pixel-identical to the desktop version.
+Web 0.27.0 (`fd8ce6a`) is the published baseline. This release passes 188
+automated test groups and static checks on Node.js 18.19.1, including both
+campaigns, legacy save migration, independent records, LOSS body carry, ending
+silence and render data, controller/touch dispatch and simulated final routes.
+The baseline tests explicitly select mode 50; additional mode tests exercise the
+default 20-level campaign. The shorter campaign's human balance and new ending's
+visual/audio pacing still need device playtesting. Automated traversal does not
+establish human completion under campaign LOSS.
 
 After changing the version or adding/removing modules, regenerate the committed
 startup metadata before the checks:

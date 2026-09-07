@@ -7,7 +7,7 @@ import {Game,portalMetrics} from '../../web/js/core.mjs';
 import {portalWhiteLightPose,updatePortalWhiteLight} from '../../web/js/portal-light.mjs';
 
 test('portal white light grows with proximity in normal and bonus modes and does not alter absorption',()=>{
-  const g=new Game();g.ready(1);g.setState('playing');assert.equal(g.flags.portal_white_light,true);
+  const g=new Game({gameMode:50});g.ready(1);g.setState('playing');assert.equal(g.flags.portal_white_light,true);
   let previous=0;
   for(const distance of [30,20,12,5,0]) {
     g.player.origin=g.course.portal.world(20-distance);
@@ -22,7 +22,7 @@ test('portal white light grows with proximity in normal and bonus modes and does
 });
 
 test('the halo reuses one small texture and sprite and hides on disable and non-portal scenes',()=>{
-  const g=new Game(),renderer={world:new T.Group()};g.ready(1);g.setState('playing');
+  const g=new Game({gameMode:50}),renderer={world:new T.Group()};g.ready(1);g.setState('playing');
   g.player.origin=g.course.portal.world(19);updatePortalWhiteLight(renderer,g);
   const light=renderer.portalWhiteLight,map=light.material.map;
   assert.equal(renderer.world.children.length,1);assert.equal(map.image.data.length,64*64*4);
@@ -40,17 +40,17 @@ test('the halo reuses one small texture and sprite and hides on disable and non-
 test('portal_white_light console changes persist and set level aliases the existing level command',()=>{
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
   const start=source.indexOf("$('console-form').onsubmit="),end=source.indexOf("  $('console-input').addEventListener",start);
-  const game=new Game(),elements={'console-form':{},'console-input':{},'console-log':{}},saved=[];
+  const game=new Game({gameMode:50}),elements={'console-form':{},'console-input':{},'console-log':{}},saved=[];
   vm.runInNewContext(source.slice(start,end),{$:id=>elements[id],game,history:[],historyIndex:0,log:[],consoleLog(){},syncAudio(){},write(key,value){saved.push([key,value]);}});
   for(const [command,expected] of [['portal_white_light false',false],['portal_white_light true',true],['set portal_white_light 0',false],['set portal_white_light 1',true]]) {
     elements['console-input'].value=command;elements['console-form'].onsubmit({preventDefault(){}});
     assert.equal(game.flags.portal_white_light,expected);assert.deepEqual(saved.at(-1),['cube-libre-portal-white-light-v1',expected]);
   }
   game.command('portal_white_light false');game.newRun();assert.equal(game.flags.portal_white_light,false);
-  const reloaded=new Game(),load=source.split('\n').find(line=>line.includes('game.flags.portal_white_light=read('));
+  const reloaded=new Game({gameMode:50}),load=source.split('\n').find(line=>line.includes('game.flags.portal_white_light=read('));
   vm.runInNewContext(load,{game:reloaded,read:()=>false});assert.equal(reloaded.flags.portal_white_light,false);
   for(const level of [1,20,50,999,-5]) {
-    const direct=new Game(),alias=new Game();direct.score=alias.score=1234;
+    const direct=new Game({gameMode:50}),alias=new Game({gameMode:50});direct.score=alias.score=1234;
     assert.equal(alias.command(`set level ${level}`),direct.command(`level ${level}`));
     for(const key of ['level','state','score','legTime'])assert.equal(alias[key],direct[key]);
     assert.deepEqual(alias.player.spinAngles,[0,0,0]);assert.equal(alias.player.alive.size,125);

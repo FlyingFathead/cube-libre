@@ -1,5 +1,5 @@
 import {releaseAssetURL} from './updates.mjs';
-import {clamp,smooth,portalMetrics} from './core.mjs';
+import {clamp,smooth,portalMetrics,ASCENSION_TIMING} from './core.mjs';
 const root=new URL('../assets/audio/',import.meta.url);
 const volumes={crash:.70,structure_alert:.48,portal:.88,laser_reveal:.64,laser_dissipate:.62,
   materialize:.62,death:.74,reassembly:.60,recouple:.62,collapse:.82,time_buzzer:.78,shutter_close:.54,shutter_open:.48,loss_weep:.60};
@@ -71,7 +71,7 @@ export class GameAudio {
     const now=this.ctx.currentTime; item.gain.gain.cancelScheduledValues(now); item.gain.gain.setTargetAtTime(0,now,Math.max(.005,fade/4));
     try {item.source.stop(now+fade);} catch {}
   }
-  stopAll() {for(const channel of [...this.channels.keys()]) this.stop(channel);}
+  stopAll(fade=.15) {for(const channel of [...this.channels.keys()]) this.stop(channel,fade);}
   sound(name,volume=volumes[name]??.6,channel=name,loop=false,semitones=0) {
     if(!this.ready||!this.buffers.has(name)) return;
     const now=this.ctx.currentTime,existing=this.channels.get(channel);
@@ -90,6 +90,11 @@ export class GameAudio {
     source.start();
   }
   update(g) {
+    if(g.state==='ascension'&&g.stateTime<ASCENSION_TIMING.arrivalSeconds) {
+      // The silent outline/flash is intentional, including the final portal tail
+      // and any event queued by the simulation before this browser audio frame.
+      g.events.length=0;this.stopAll(0);return;
+    }
     for(const event of g.events.splice(0)) {
       if(event.name==='stop') this.stopAll(); else this.sound(event.name,undefined,event.name,false,event.semitones??0);
     }

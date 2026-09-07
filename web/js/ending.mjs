@@ -3,6 +3,7 @@ import * as T from '../vendor/three.module.min.js';
 import {ASCENSION_TIMING as timing,V,smooth,mix} from './core.mjs';
 
 export const ASCENSION_STAGE=Object.freeze({floorY:-8,starCount:900});
+export const arrivalOutlineOpacity=time=>1-smooth((time-timing.arrivalHoldSeconds)/timing.arrivalFadeSeconds);
 export function ascensionPose(time,aspect=16/9) {
   const rise=smooth((time-timing.riseStarts)/timing.riseSeconds);
   const merge=smooth((time-timing.starStarts)/timing.starSeconds);
@@ -15,7 +16,7 @@ export function ascensionPose(time,aspect=16/9) {
     target:new V(0,mix(-.5,17,follow),mix(-8,-55,follow)),
     gridOpacity:.92*(1-.8*follow),starOpacity:merge,
     starSize:mix(8,2.6,smooth((time-timing.starStarts-timing.starSeconds)/.8)),
-    white:smooth((time-timing.fadeStarts)/timing.fadeSeconds),
+    white:Math.max(1-smooth((time-timing.arrivalSeconds)/timing.sceneFadeSeconds),smooth((time-timing.fadeStarts)/timing.fadeSeconds)),
   };
 }
 

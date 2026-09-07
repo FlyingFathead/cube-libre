@@ -2,7 +2,7 @@
 // Rendering, audio, persistence and input are injected by the browser adapter.
 import {C,END_PORTAL,VISUAL_EFFECTS,PLAYER_ROTATION,PLAYER_PROPULSION,CAMERA_RULES,PREVIEW_NUMBERS,ROUTE_OUTLINE_NUMBERS } from './config.mjs';
 import {BONUS_SCHEDULE,createBonus,scheduledBonus,recoveredShape,rotateQ} from './bonus.mjs';
-import { BALANCE,difficultyForLevel,introductionsForLevel,recouplingHeatBlocked,lossLevelReached } from './difficulty.mjs';
+import { BALANCE,DEFAULT_GAME_MODE,balanceForMode,difficultyForLevel,introductionsForLevel,recouplingHeatBlocked,lossLevelReached } from './difficulty.mjs';
 import {CHANGES,CHANGE_NUMBERS,createChangeSettings,setChangeNumber,Shutters,shutterEnabled,shutterLoss} from './changes.mjs';
 import {CONFIG_COMMANDS,describeConsoleConfig} from './console-config.mjs';
 import {LOSS_ASSEMBLY} from './loss.mjs';
@@ -17,8 +17,15 @@ export const OPENING_DURATION = 9.2;
 export const openingLineOpacity = (time,line) =>
   smooth((time-.8-line*1.6)/1.2)*(1-smooth((time-7.2)/1.2));
 export const ASCENSION_TIMING = Object.freeze({
-  riseStarts: .6, riseSeconds: 5.8, starStarts: 5.2, starSeconds: 1.2,
-  flySeconds: 10, fadeStarts: 7.6, fadeSeconds: 2.4,
+  arrivalHoldSeconds: 3, arrivalFadeSeconds: .18, arrivalWhiteSeconds: .12,
+  get arrivalSeconds() {return this.arrivalHoldSeconds+this.arrivalFadeSeconds+this.arrivalWhiteSeconds;},
+  sceneFadeSeconds: .12,
+  get sceneStarts() {return this.arrivalSeconds+this.sceneFadeSeconds;},
+  get riseStarts() {return this.sceneStarts+.6;}, riseSeconds: 5.8,
+  get starStarts() {return this.sceneStarts+5.2;}, starSeconds: 1.2,
+  starHoldSeconds: 3.2, // Original 1.2-second star hold, plus two more seconds.
+  get fadeStarts() {return this.starStarts+this.starSeconds+this.starHoldSeconds;}, fadeSeconds: 2.4,
+  get flySeconds() {return this.fadeStarts+this.fadeSeconds;},
   whiteHoldSeconds: 2, titleFadeSeconds: 1.4, titleHoldSeconds: 2,
   get subtitleStarts() { return this.titleFadeSeconds+this.titleHoldSeconds; },
   subtitleFadeSeconds: 1.2,
@@ -120,11 +127,11 @@ export class Module {
   end() { return this.world(C.COURSE_X_MAX); }
 }
 
-export function routeDirections(count,route3d=true) {
+export function routeDirections(count,route3d=true,spaceStartLevel=BALANCE.spaceStartLevel) {
   const dirs=[],boxes=[]; let cursor=new V(-23,0,0),last=null;
   const axes=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]].filter(d=>route3d||!d[1]);
   for(let i=0;i<count;i++) {
-    const preferred=(route3d && i+1>=BALANCE.spaceStartLevel ? C.COURSE_ROUTE_3D_SPINE:C.COURSE_ROUTE_2D_SPINE);
+    const preferred=(route3d && i+1>=spaceStartLevel ? C.COURSE_ROUTE_3D_SPINE:C.COURSE_ROUTE_2D_SPINE);
     const candidates=[preferred[i%preferred.length],...axes].filter(d=>!last||V.of(d).dot(last)===0);
     let found=false;
     for(const d of candidates) {
@@ -172,16 +179,16 @@ export class Laser {
 }
 
 export class Course {
-  constructor(level,route3d=true,{moduleCount=clamp(Math.trunc(level),1,BALANCE.levelCap)}={}) {
-    this.level=level; this.modules=[]; let start=new V(-23,0,0);
-    for(const d of routeDirections(moduleCount,route3d)) {
+  constructor(level,route3d=true,{balance=BALANCE,moduleCount=clamp(Math.trunc(level),1,balance.levelCap)}={}) {
+    this.level=level;this.balance=balance; this.modules=[]; let start=new V(-23,0,0);
+    for(const d of routeDirections(moduleCount,route3d,balance.spaceStartLevel)) {
       const m=new Module(this.modules.length,start,d); this.modules.push(m); start=m.end();
     }
     this.portal=this.modules.at(-1);
     this.joints=this.modules.slice(0,-1).map((m,i)=>({index:i,center:m.end(),open:[m.bx.mul(-1).array(),this.modules[i+1].bx.array()]}));
     this.moduleLasers=this.modules.map(m=>laserTemplates.map(t=>new Laser(t,m,level)));
     this.lasers=this.moduleLasers.flat();
-    this.revealed=new Map(level<BALANCE.spaceStartLevel?this.modules.map(m=>[m.index,-9999]):[[0,-9999]]);
+    this.revealed=new Map(level<this.balance.spaceStartLevel?this.modules.map(m=>[m.index,-9999]):[[0,-9999]]);
     this.collapsed=new Map();
     const pts=[];
     for(const m of this.modules) for(const x of this.span(m)) for(const y of [-7,7]) for(const z of [-7,7]) pts.push(m.world(x,y,z));
@@ -241,13 +248,13 @@ export class Course {
     return {index,x};
   }
   revealIndex(p) {
-    if(this.level<BALANCE.spaceStartLevel) return this.modules.length-1;
+    if(this.level<this.balance.spaceStartLevel) return this.modules.length-1;
     const j=this.jointAt(p,1.2);
     return j>=0?Math.min(this.modules.length-1,j+1):this.location(p).index;
   }
   revealProgress(i,t) { const start=this.revealed.get(i); return start===undefined?0:smooth((t-start)/1.45); }
   distanceFade(i,p) {
-    if(this.level<BALANCE.spaceStartLevel)return 0;
+    if(this.level<this.balance.spaceStartLevel)return 0;
     const {index,x}=this.location(p),collapse=i+1;
     if(index<collapse) return 0;
     if(index>collapse) return 1;
@@ -258,13 +265,13 @@ export class Course {
   fade(i,p,t) { return Math.max(this.distanceFade(i,p),this.collapsed.has(i)?smooth((t-this.collapsed.get(i))/1.25):0); }
   activeLaser(l,p,t) {
     const i=l.module.index,{index}=this.location(p);
-    if(this.level>=BALANCE.spaceStartLevel && (i<index-1||i>index+2||i>this.revealIndex(p))) return false;
-    const hardCulled=this.level>=BALANCE.spaceStartLevel&&i<index&&this.collapsed.has(i)&&t-this.collapsed.get(i)>=1.25;
+    if(this.level>=this.balance.spaceStartLevel && (i<index-1||i>index+2||i>this.revealIndex(p))) return false;
+    const hardCulled=this.level>=this.balance.spaceStartLevel&&i<index&&this.collapsed.has(i)&&t-this.collapsed.get(i)>=1.25;
     return !hardCulled && this.revealProgress(i,t)>=.78 && this.distanceFade(i,p)<.98;
   }
   activeLasers(p,t) {
     const index=this.location(p).index,active=[];
-    const first=this.level<BALANCE.spaceStartLevel?0:Math.max(0,index-1),last=this.level<BALANCE.spaceStartLevel?this.modules.length-1:Math.min(this.modules.length-1,index+2);
+    const first=this.level<this.balance.spaceStartLevel?0:Math.max(0,index-1),last=this.level<this.balance.spaceStartLevel?this.modules.length-1:Math.min(this.modules.length-1,index+2);
     for(let i=first;i<=last;i++)for(const l of this.moduleLasers[i])if(this.activeLaser(l,p,t))active.push(l);
     return active;
   }
@@ -273,7 +280,7 @@ export class Course {
       this.revealed.set(i,t); emit('laser_reveal',this.modules[i].start);
     }
     const {index}=this.location(p);
-    for(let i=0;this.level>=BALANCE.spaceStartLevel&&i<=index-1;i++) if(!this.collapsed.has(i)&&this.distanceFade(i,p)>=.04) {
+    for(let i=0;this.level>=this.balance.spaceStartLevel&&i<=index-1;i++) if(!this.collapsed.has(i)&&this.distanceFade(i,p)>=.04) {
       this.collapsed.set(i,t); emit('collapse',this.modules[i].end()); emit('laser_dissipate');
     }
   }
@@ -307,11 +314,11 @@ export function recoupleTargets(player,count) {
   const neighbors=i=>cells.reduce((n,c,j)=>n+(player.alive.has(j)&&c.reduce((s,v,k)=>s+Math.abs(v-cells[i][k]),0)===1?1:0),0);
   return cells.map((_,i)=>i).filter(i=>!player.alive.has(i)).sort((a,b)=>neighbors(b)-neighbors(a)||compactOrder(a,b)).slice(0,count);
 }
-export function beginRecouple(player,level) {
+export function beginRecouple(player,level,balance=BALANCE) {
   const usable=player.fragments.filter(f=>f.age<7.95).sort((a,b)=>a.age-b.age||a.pos.sub(player.origin).length()-b.pos.sub(player.origin).length());
   const maximum=Math.min(125-player.alive.size,usable.length);
   if(maximum<=0) return [];
-  const desired=maximum*difficultyForLevel(level).recouplingRate;
+  const desired=maximum*difficultyForLevel(level,balance).recouplingRate;
   const count=clamp(Math.floor(desired)+(player.rng()<desired%1?1:0),1,maximum);
   const targets=recoupleTargets(player,count),selected=usable.slice(0,targets.length);
   player.fragments=player.fragments.filter(f=>!selected.includes(f));
@@ -319,13 +326,19 @@ export function beginRecouple(player,level) {
 }
 
 export class Game {
-  constructor({rng=Math.random,stats={},save=()=>{},saveCheckpoint=()=>{}}={}) {
+  constructor({rng=Math.random,gameMode=DEFAULT_GAME_MODE,stats=null,modeRecords={},save=()=>{},saveCheckpoint=()=>{}}={}) {
+    this.gameMode=gameMode;this.selectedGameMode=gameMode;this.balance=balanceForMode(gameMode);
+    const clean=(record,cap)=>({best_escape:clamp(Math.trunc(Number(record?.best_escape)||0),0,125),
+      highest_level:clamp(Math.trunc(Number(record?.highest_level)||1),1,cap),
+      best_score:clamp(Math.trunc(Number(record?.best_score)||0),0,Number.MAX_SAFE_INTEGER)});
+    this.modeRecords={20:clean(modeRecords[20],20),50:clean(modeRecords[50],50)};
+    if(stats)this.modeRecords[gameMode]=clean(stats,gameMode);
     this.saveCheckpoint=saveCheckpoint;this.campaignSaving=false;this.pendingResume=null;
-    this.rng=rng; this.save=save; this.stats={best_escape:0,highest_level:1,best_score:0,...stats};
-    this.flags={...C.DEBUG_FLAGS,shake:VISUAL_EFFECTS.shakingEnabled,spin:PLAYER_ROTATION.enabled,portal_white_light:VISUAL_EFFECTS.portalWhiteLight,end_portal:END_PORTAL.enabled,culling:VISUAL_EFFECTS.courseCulling,preview_outline:VISUAL_EFFECTS.previewOutline,rotation_shocks:VISUAL_EFFECTS.rotationShocks,microgravity:PLAYER_PROPULSION.enabled,overheat_blocks_recoupling:BALANCE.overheatBlocksRecoupling}; this.player=new Player(rng); this.t=0; this.angles=[0,0,0];
+    this.rng=rng; this.save=save; this.stats=this.modeRecords[gameMode];
+    this.flags={...C.DEBUG_FLAGS,shake:VISUAL_EFFECTS.shakingEnabled,spin:PLAYER_ROTATION.enabled,portal_white_light:VISUAL_EFFECTS.portalWhiteLight,end_portal:END_PORTAL.enabled,culling:VISUAL_EFFECTS.courseCulling,preview_outline:VISUAL_EFFECTS.previewOutline,rotation_shocks:VISUAL_EFFECTS.rotationShocks,microgravity:PLAYER_PROPULSION.enabled,overheat_blocks_recoupling:this.balance.overheatBlocksRecoupling}; this.player=new Player(rng); this.t=0; this.angles=[0,0,0];
     for(const [id,change] of Object.entries(CHANGES))this.flags[id]=change.enabled;this.flags.change_4_pattern=true;this.flags.change_1_random_per_leg=CHANGES.change_1.randomPerLeg;this.flags.change_1_no_repeat_leg=CHANGES.change_1.noRepeatLeg;
     this.changeSettings=createChangeSettings();
-    this.flags.loss=BALANCE.lossEnabled;this.lossMinLevel=BALANCE.lossMinLevel;
+    this.flags.loss=this.balance.lossEnabled;this.lossMinLevel=this.balance.lossMinLevel;this.lossGreyMinLevel=this.balance.lossGreyMinLevel;
     this.flags.loss_grey=true;
     this.flags.route_outline=VISUAL_EFFECTS.routeOutline;
     this.routeOutlineSettings=Object.fromEntries(Object.entries(ROUTE_OUTLINE_NUMBERS).map(([k,r])=>[k,r.value]));
@@ -340,22 +353,36 @@ export class Game {
     this.state='title'; this.stateTime=0; this.message=''; this.messageTime=0; this.resetAttempt();
   }
   emit(name,pos,semitones) { this.events.push({name,pos,...(semitones===undefined?{}:{semitones})}); }
-  persist() { this.save({...this.stats}); }
+  persist() { this.save({...this.stats},this.gameMode); }
+  get levelCap() {return this.balance.levelCap;}
+  applyGameMode(mode) {
+    this.balance=balanceForMode(mode);this.gameMode=mode;this.stats=this.modeRecords[mode];
+    this.lossMinLevel=this.balance.lossMinLevel;this.lossGreyMinLevel=this.balance.lossGreyMinLevel;
+  }
+  setGameMode(value) {
+    const mode=Number(value);balanceForMode(mode); // Validate before touching any active state.
+    this.selectedGameMode=mode;
+    if(mode===this.gameMode)return mode;
+    this.title();this.applyGameMode(mode);this.level=1;this.score=0;this.completedLevel=0;this.lastEscape=0;
+    this.entryCells=Object.freeze(cells.map((_,i)=>i));this.missingEntryCells=[];
+    this.resetAttempt();this.messageSet('GAME MODE CHANGED · start a new run · existing save kept',4);
+    return mode;
+  }
   checkpoint({level=this.level,survivors=this.entryCells,stage='level'}={}) {
     if(!this.campaignSaving||this.endPortalPreview)return;
-    const data=validateCheckpoint({schema:1,stage,level,cells:[...survivors],score:this.score,
+    const data=validateCheckpoint({schema:2,gameMode:this.gameMode,stage,level,cells:[...survivors],score:this.score,
       completedLevel:this.completedLevel||0,lastEscape:this.lastEscape||0,
       bonusesPlayedAfter:[...this.bonusesPlayedAfter],runStats:{...this.runStats}});
     if(data)this.saveCheckpoint(data);
   }
   checkpointNextLevel() {
-    const stage=this.level>=BALANCE.levelCap?'ending':scheduledBonus(this.level,BALANCE.levelCap)&&!this.bonusesPlayedAfter.has(this.level)?'bonus':'level';
-    this.checkpoint({level:Math.min(BALANCE.levelCap,this.level+1),stage,
+    const stage=this.level>=this.balance.levelCap?'ending':scheduledBonus(this.level,this.balance.levelCap)&&!this.bonusesPlayedAfter.has(this.level)?'bonus':'level';
+    this.checkpoint({level:Math.min(this.balance.levelCap,this.level+1),stage,
       survivors:stage==='ending'?[...this.player.alive]:this.portalCarry?.cells||cells.map((_,i)=>i)});
   }
   resumeCheckpoint(data) {
     const saved=validateCheckpoint(data);if(!saved)return false;
-    this.campaignSaving=false;this.endPortalPreview=false;this.pendingResume=saved;
+    this.campaignSaving=false;this.endPortalPreview=false;this.applyGameMode(saved.gameMode);this.pendingResume=saved;
     this.level=saved.level;this.help=false;this.paused=false;this.emit('stop');this.setState('resume_intro');return true;
   }
   restoreCheckpoint() {
@@ -366,7 +393,7 @@ export class Game {
     this.ready(saved.stage==='bonus'?saved.level-1:saved.level,{survivors:saved.cells});
     this.campaignSaving=true;
     if(saved.stage==='bonus') {
-      const type=scheduledBonus(this.level,BALANCE.levelCap);
+      const type=scheduledBonus(this.level,this.balance.levelCap);
       if(type) {
         this.portalCarry={fromLevel:this.level,cells:Object.freeze([...saved.cells])};
         this.bonusesPlayedAfter.add(this.level);this.startBonus(type);return;
@@ -378,16 +405,16 @@ export class Game {
   }
   messageSet(text,time=1.6) { this.message=text; this.messageTime=time; }
   setState(s) { this.state=s; this.stateTime=0; }
-  get difficulty() { return difficultyForLevel(this.level); }
+  get difficulty() { return difficultyForLevel(this.level,this.balance); }
   get autoLocate() { return this.endPortalPreview||this.autoLocateMinLevel===0||this.level>=this.autoLocateMinLevel; }
   get lossActive() { return this.flags.loss&&lossLevelReached(this.level,this.lossMinLevel); }
-  get recouplingBlockedByHeat() { return recouplingHeatBlocked(this.level,this.heat>0,this.flags.overheat_blocks_recoupling); }
+  get recouplingBlockedByHeat() { return recouplingHeatBlocked(this.level,this.heat>0,this.flags.overheat_blocks_recoupling,this.balance.heatMinLevel); }
   resetLegClock() {
     this.legTime=this.difficulty.secondsPerLeg;
     this.timeResetNotice=this.difficulty.timed?1.6:0;
   }
   resetAttempt() {
-    this.player.reset(); this.player.alive=new Set(this.entryCells);this.course=new Course(this.level,this.flags.route3d); this.geometryVersion=(this.geometryVersion||0)+1;
+    this.player.reset(); this.player.alive=new Set(this.entryCells);this.course=new Course(this.level,this.flags.route3d,{balance:this.balance}); this.geometryVersion=(this.geometryVersion||0)+1;
     this.driftVelocity=new V();
     this.shutters=new Shutters(this.rng);
     this.damageTimer=.45; this.legTime=this.difficulty.secondsPerLeg; this.timedModule=0; this.timeResetNotice=0;
@@ -413,7 +440,7 @@ export class Game {
     this.portalCarry=null;this.pendingLevelCells=null;
     this.bonus=null;this.previewReturn=null;
     this.pendingIntroductions=[];
-    this.level=clamp(Math.trunc(level),1,BALANCE.levelCap); this.paused=false; this.openingTransition=false; this.resetAttempt();
+    this.level=clamp(Math.trunc(level),1,this.balance.levelCap); this.paused=false; this.openingTransition=false; this.resetAttempt();
     if(!this.endPortalPreview) {this.stats.highest_level=Math.max(this.stats.highest_level,this.level); this.persist();}
     this.setState('level_ready');this.checkpoint();
   }
@@ -424,6 +451,7 @@ export class Game {
     this.ready(this.level,{survivors:introducing?this.pendingLevelCells:this.entryCells});
   }
   newRun() {
+    if(this.gameMode!==this.selectedGameMode)this.applyGameMode(this.selectedGameMode);
     this.campaignSaving=true;this.pendingResume=null;
     this.score=0; this.completedLevel=0; this.lastEscape=0; this.help=false;
     this.runStats={playSeconds:0,deaths:0,recoupledCubes:0,levelsCleared:0,bonusRounds:0,bonusPieces:0,bonusScore:0}; this.runSummary=null;
@@ -433,8 +461,8 @@ export class Game {
   title() { this.campaignSaving=false;this.pendingResume=null;this.endPortalPreview=false;this.bonus=null;this.previewReturn=null;this.portalCarry=null;this.pendingLevelCells=null;this.paused=false; this.help=false; this.pendingIntroductions=[]; this.setState('title'); this.recoupling=[]; this.emit('stop'); }
   advance() {
     const target=Math.max(this.level+1,(this.completedLevel||0)+1,2);
-    if(target>BALANCE.levelCap) { this.beginAscension(); return; }
-    const type=scheduledBonus(this.completedLevel||0,BALANCE.levelCap);
+    if(target>this.balance.levelCap) { this.beginAscension(); return; }
+    const type=scheduledBonus(this.completedLevel||0,this.balance.levelCap);
     if(type&&!this.bonusesPlayedAfter.has(this.completedLevel)) {
       this.bonusesPlayedAfter.add(this.completedLevel);this.startBonus(type);return;
     }
@@ -443,7 +471,7 @@ export class Game {
   introduceLevel(target,{survivors=null}={}) {
     this.checkpoint({level:target,survivors:survivors||cells.map((_,i)=>i)});
     this.portalCarry=null;this.pendingLevelCells=survivors?[...survivors]:null;
-    const phases=introductionsForLevel(target,this.flags.route3d,this.changeSettings,this.flags,this.lossMinLevel);
+    const phases=introductionsForLevel(target,this.flags.route3d,this.changeSettings,this.flags,this.lossMinLevel,this.balance);
     if(phases.length) {
       this.level=target; this.pendingIntroductions=phases.slice(1); this.setState(phases[0]);
     } else this.ready(target,{survivors:this.pendingLevelCells});
@@ -470,7 +498,7 @@ export class Game {
     if(preview&&!this.previewReturn) {
       const noActiveLevel=['title','quit_confirm','ended','ascension','ascension_white','ascension_title','thank_you_note','run_summary'].includes(this.state);
       const hasCurrentLevel=Number.isInteger(this.level)&&this.level>=1;
-      this.previewReturn={nextLevel:noActiveLevel||!hasCurrentLevel?BONUS_SCHEDULE.firstLevel:Math.min(BALANCE.levelCap,this.level+1),
+      this.previewReturn={nextLevel:noActiveLevel||!hasCurrentLevel?BONUS_SCHEDULE.firstLevel:Math.min(this.balance.levelCap,this.level+1),
         cells:!noActiveLevel&&this.lossActive?[...this.player.alive]:null};
     }
     this.bonus=bonus;this.bonusPreview=preview;this.setState('bonus_intro');this.emit('stop');
@@ -522,7 +550,7 @@ export class Game {
     if(this.requests.length>=5) { this.cooldown=Math.max(0,this.requests[0]+10-this.t); this.messageSet('RE-COUPLING ON COOLDOWN',1.45); return; }
     this.requests.push(this.t);
     if(this.recoupling.length) { this.messageSet('RE-COUPLING ALREADY ACTIVE',.55); return; }
-    this.recoupling=beginRecouple(this.player,this.level); this.recoupleTime=0;
+    this.recoupling=beginRecouple(this.player,this.level,this.balance); this.recoupleTime=0;
     if(this.recoupling.length) { this.emit('recouple'); this.messageSet(`RE-COUPLING REQUESTED: ${this.recoupling.length} CELLS`); }
   }
   move(dt,input) {
@@ -686,7 +714,7 @@ export class Game {
   win() {
     if(this.state!=='playing') return;
     if(this.endPortalPreview) {
-      this.recoupling=[];this.beginAscension(true);this.emit('portal');return;
+      this.recoupling=[];this.beginAscension(true);return;
     }
     this.recoupling=[]; this.completedLevel=this.level; this.lastEscape=this.player.alive.size;
     this.portalCarry=this.lossActive?{fromLevel:this.level,cells:Object.freeze([...this.player.alive])}:null;
@@ -694,8 +722,8 @@ export class Game {
     this.stats.best_escape=Math.max(this.stats.best_escape,this.lastEscape);
     this.score+=this.lastEscape*100; this.stats.best_score=Math.max(this.stats.best_score,this.score); this.persist();
     this.checkpointNextLevel();
-    if(this.level>=BALANCE.levelCap) this.beginAscension(); else this.setState('portal_warp');
-    this.emit('portal');
+    if(this.level>=this.balance.levelCap)this.beginAscension();
+    else {this.setState('portal_warp');this.emit('portal');}
   }
   beginAscension(preview=false) {
     if(preview){this.campaignSaving=false;this.pendingResume=null;}
@@ -703,7 +731,7 @@ export class Game {
     this.pendingIntroductions=[];
     this.runSummary=Object.freeze({...this.runStats,endPortalPreview:this.endPortalPreview,score:this.score,finalLevel:this.endPortalPreview?this.level:this.completedLevel||this.level,
       finalCubes:this.endPortalPreview?this.player.alive.size:this.lastEscape||0,bestScore:this.stats.best_score,bestEscape:this.stats.best_escape});
-    this.setState('ascension');
+    this.events=[];this.emit('stop');this.setState('ascension');
   }
   tick(dt,input={}) {
     if(this.paused) return;
@@ -726,7 +754,7 @@ export class Game {
         if(this.stateTime>=RESUME_TIMING.seconds)this.restoreCheckpoint();break;
       case 'opening_intro':
         if(this.stateTime>=OPENING_DURATION) {
-          const phases=introductionsForLevel(this.level,this.flags.route3d,this.changeSettings,this.flags,this.lossMinLevel);
+          const phases=introductionsForLevel(this.level,this.flags.route3d,this.changeSettings,this.flags,this.lossMinLevel,this.balance);
           this.openingTransition=true;this.pendingIntroductions=phases.slice(1);
           this.setState(phases[0]||'level_ready');
         } break;
@@ -802,7 +830,7 @@ export class Game {
   }
   startEndPortalPreview() {
     this.campaignSaving=false;this.pendingResume=null;
-    this.ready(BALANCE.levelCap,{endPortalPreview:true});
+    this.ready(this.balance.levelCap,{endPortalPreview:true});
     this.help=false;this.angles=[18,145,0];this.setState('playing');this.events=[];this.emit('stop');
     this.messageSet('END PORTAL TEST · final leg · no records or points awarded',4);
   }
@@ -810,7 +838,7 @@ export class Game {
     const parts=text.trim().toLowerCase().split(/\s+/),[cmd,arg,value]=parts;
     const topLevelCommand=['toplevel','top_level'].includes(cmd);
     if(topLevelCommand) {
-      if(parts.length===1)return `TOP LEVEL: ${this.stats.highest_level}/${BALANCE.levelCap}`;
+      if(parts.length===1)return `TOP LEVEL: ${this.stats.highest_level}/${this.balance.levelCap}`;
       if(parts.length!==2||arg!=='reset')throw Error(`Usage: ${cmd} [reset]`);
     }
     if(cmd==='test'&&arg==='end_portal') {
@@ -825,9 +853,11 @@ export class Game {
       this.startBonus(cmd==='bonus'?(arg||'001'):'001',{preview:true});return `Bonus round 001 test · exit to level ${this.previewReturn.nextLevel}`;
     }
     if(cmd==='test'&&Object.hasOwn(CHANGES,arg)) {
+      const threshold=Math.max(1,this.changeSettings.change_1_min_level,this.changeSettings[`${arg}_min_level`]);
+      if(threshold>this.levelCap)throw Error(`${arg} starts at level ${threshold}, above the game_mode ${this.gameMode} cap`);
       this.campaignSaving=false;this.pendingResume=null;
       this.flags.change_1=true;this.flags[arg]=true;this.flags.lasers=true;
-      this.ready(Math.max(1,this.changeSettings.change_1_min_level,this.changeSettings[`${arg}_min_level`]));
+      this.ready(threshold);
       this.setState(CHANGES[arg].state);return `${arg.replace('_',' ').toUpperCase()} test · level ${this.level}`;
     }
     if(cmd==='test'&&arg==='loss') {
@@ -841,7 +871,7 @@ export class Game {
       if(cmd==='reset'&&!['top level','top_level','toplevel','highest_level'].includes(parts.slice(1).join(' ')))
         throw Error('Usage: reset top level (aliases: reset top_level, reset toplevel, reset highest_level)');
       this.stats.highest_level=1;this.persist();
-      return `Top level reset to 1/${BALANCE.levelCap}. Best score and best escape kept.`;
+      return `Top level reset to 1/${this.balance.levelCap}. Best score and best escape kept.`;
     }
     const trueValues=['1','on','true','enabled','yes'],falseValues=['0','off','false','disabled','no'];
     const bool=s=>{if(trueValues.includes(s)) return true; if(falseValues.includes(s)) return false; throw Error('Expected true/false, on/off, 1/0 or enabled/disabled');};
@@ -853,7 +883,7 @@ export class Game {
         if(key==='microgravity')this.driftVelocity=new V();
         if(key==='rotation_shocks'&&!v) {this.rotationShock.angle=new V();this.rotationShock.velocity=new V();}
         if(key.startsWith('change_'))this.shutters.restart();
-        if(key==='route3d') {this.course=new Course(this.level,v);this.geometryVersion++;this.shutters.restart();}
+        if(key==='route3d') {this.course=new Course(this.level,v,{balance:this.balance});this.geometryVersion++;this.shutters.restart();}
       }
     }]));
     settings.set('locate',{get:()=>this.locate,set:v=>{this.locate=v;}});
@@ -866,9 +896,14 @@ export class Game {
       const n=Number(value);if(value===undefined||!Number.isInteger(n)||n<0||n>1000000)throw Error('auto_locate_min_level expects an integer from 0 to 1000000');
       this.autoLocateMinLevel=n;return n;
     }});
+    numeric.set('game_mode',{get:()=>this.gameMode,set:value=>this.setGameMode(value)});
     numeric.set('loss_min_level',{get:()=>this.lossMinLevel,set:value=>{
-      const n=Number(value);if(value===undefined||String(value).trim()===''||!Number.isInteger(n)||n<0||n>BALANCE.levelCap)throw Error(`loss_min_level expects an integer from 0 to ${BALANCE.levelCap}`);
+      const n=Number(value);if(value===undefined||String(value).trim()===''||!Number.isInteger(n)||n<0||n>this.balance.levelCap)throw Error(`loss_min_level expects an integer from 0 to ${this.balance.levelCap}`);
       this.lossMinLevel=n;return n;
+    }});
+    numeric.set('loss_grey_min_level',{get:()=>this.lossGreyMinLevel,set:value=>{
+      const n=Number(value);if(value===undefined||String(value).trim()===''||!Number.isInteger(n)||n<0||n>this.levelCap)throw Error(`loss_grey_min_level expects an integer from 0 to ${this.levelCap}`);
+      this.lossGreyMinLevel=n;return n;
     }});
     for(const [rules,values] of [[PREVIEW_NUMBERS,this.previewSettings],[ROUTE_OUTLINE_NUMBERS,this.routeOutlineSettings]])for(const [key,rule] of Object.entries(rules))numeric.set(key,{get:()=>values[key],set:value=>{
       const n=Number(value);if(value===undefined||String(value).trim()===''||!Number.isFinite(n)||n<rule.min||n>rule.max||rule.integer&&!Number.isInteger(n))throw Error(`${key} expects ${rule.integer?'an integer':'a number'} from ${rule.min} to ${rule.max}`);
@@ -911,7 +946,7 @@ export class Game {
     if(cmd==='level'||cmd==='set'&&arg==='level') {
       const target=cmd==='level'?arg:value;
       if([...trueValues,...falseValues].includes(target)&&!['0','1'].includes(target))throw Error('level cannot be toggled with on/off!');
-      const level=clamp(number(target,1,1000000),1,BALANCE.levelCap);
+      const level=clamp(number(target,1,1000000),1,this.balance.levelCap);
       this.campaignSaving=false;this.pendingResume=null;this.ready(level);this.introduceLevel(level);return `Starting level ${this.level}`;
     }
     if(['set','flag','toggle'].includes(cmd)) {

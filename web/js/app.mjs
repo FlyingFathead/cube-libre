@@ -28,11 +28,12 @@ async function main() {
   document.title=`Cube Libre · Web v${release.version}`;
   const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}};
   const write=(key,data)=>{try{localStorage.setItem(key,JSON.stringify(data));}catch{}};
-  const raw=read('cube-libre-scores-v1',{}),stats={
-    best_escape:clamp(Math.trunc(Number(raw?.best_escape)||0),0,125),highest_level:clamp(Math.trunc(Number(raw?.highest_level)||1),1,1000000),
-    best_score:clamp(Math.trunc(Number(raw?.best_score)||0),0,Number.MAX_SAFE_INTEGER)};
+  // Old records belong exclusively to the original 50-level campaign. Reading
+  // never writes; each later record update retains both modes in the new key.
+  const raw=read('cube-libre-scores-v1',{}),savedRecords=read('cube-libre-mode-scores-v1',{});
+  const modeRecords={20:savedRecords?.[20]||{},50:savedRecords?.[50]||raw};
   const campaignStore=new CheckpointStore(()=>localStorage);
-  const game=new Game({stats,save:s=>write('cube-libre-scores-v1',s),saveCheckpoint:data=>campaignStore.save(data)});
+  const game=new Game({modeRecords,save:(s,mode)=>{modeRecords[mode]=s;write('cube-libre-mode-scores-v1',modeRecords);},saveCheckpoint:data=>campaignStore.save(data)});
   game.flags.shake=read('cube-libre-shake-v1',game.flags.shake)!==false;
   game.flags.spin=read('cube-libre-spin-v1',game.flags.spin)!==false;
   game.flags.portal_white_light=read('cube-libre-portal-white-light-v1',game.flags.portal_white_light)!==false;
@@ -185,12 +186,12 @@ async function main() {
     heading.textContent='What changes as you advance';milestones.append(heading);
     const header=document.createElement('tr');
     for(const text of ['Level','Banner','Change']) {const th=document.createElement('th');th.scope='col';th.textContent=text;header.append(th);}milestones.append(header);
-    for(const feature of featuresForSettings(game.changeSettings,game.flags,game.lossMinLevel)) {
+    for(const feature of featuresForSettings(game.changeSettings,game.flags,game.lossMinLevel,game.balance)) {
       const row=document.createElement('tr');
       for(const text of [feature.level,feature.banner,feature.summary()]) {const cell=document.createElement('td');cell.textContent=text;row.append(cell);}milestones.append(row);
     }
     rulesDetails.append(milestones);
-    const q=document.createElement('p');q.textContent='Each level adds one corridor leg, up to fifty. Repeated re-coupling requests can recover more pieces before they expire. Once HEAT is active, new requests are blocked while overheating. Returning inside cools you immediately. A request already in progress finishes; refused requests use no quota. Lost cubes cost 100 potential points each. Once LOSS is active, portals carry only your surviving pieces onward. Retrying restores the body you entered the level with. Bonus pieces earn points without refilling your normal body. Your run score stays.';rulesDetails.append(q);
+    const q=document.createElement('p');q.textContent=`Each level adds one corridor leg, up to ${game.levelCap}. Repeated re-coupling requests can recover more pieces before they expire. Once HEAT is active, new requests are blocked while overheating. Returning inside cools you immediately. A request already in progress finishes; refused requests use no quota. Lost cubes cost 100 potential points each. Once LOSS is active, portals carry only your surviving pieces onward. Retrying restores the body you entered the level with. Bonus pieces earn points without refilling your normal body. Your run score stays.`;rulesDetails.append(q);
     const shutterHelp=document.createElement('p');shutterHelp.textContent=`CHANGE begins at level ${Math.max(1,game.changeSettings.change_1_min_level)}. This level uses ${shutterGateCount(game.level,game.changeSettings,5,game.flags)} different gates per sequence, one gate at a time in one leg. Zap starts are ${shutterStepInterval(game.changeSettings)} seconds apart; each closure lasts ${game.changeSettings.change_1_closed_seconds} seconds. Allow at least ${shutterInterval(game.changeSettings)} seconds from the last zap to the next sequence's first. A hit costs ${Math.round(game.changeSettings.change_1_damage_fraction*100)}% of remaining cubes, rounded down, with ${game.changeSettings.change_1_damage_cooldown} seconds of grid-damage protection. ${game.flags.change_1_no_repeat_leg?'Complete sequences alternate revealed legs; a lone leg finishes its sequence, then waits.':'Another sequence may use the same leg.'} ${game.flags.change_4_pattern?'Four-gate order: inner, far end, opposite end, other inner. The exact centre gate stays out of this pattern.':''}`;rulesDetails.append(shutterHelp);
     const bonusRules=document.createElement('p');bonusRules.textContent=`PICKING UP THE PIECES · Bonus round 001 follows level ${BONUS_SCHEDULE.firstLevel}, then every ${BONUS_SCHEDULE.interval} levels before the final level cap. Roll on a solid floor using WASD / arrow keys; Shift rushes. Collect the scattered pieces and take the ramp to the portal within ${PIECES_RULES.seconds} seconds. Each piece banks ${PIECES_RULES.pointsPerPiece} bonus points only if you escape. Running out of time forfeits this bonus; your existing score is kept and the next level follows. C and the corridor heat/entropy rules do not apply.`;rulesDetails.append(bonusRules);
     const rules=game.difficulty,current=document.createElement('p');
@@ -435,7 +436,7 @@ async function main() {
       const r=lastSummary,total=Math.floor(r.playSeconds),hours=Math.floor(total/3600),minutes=Math.floor(total%3600/60),seconds=total%60;
       const duration=`${hours}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
       const rows=[['Total score',r.score.toLocaleString()],['Best score',r.bestScore.toLocaleString()],
-        ['Levels cleared this run',`${r.levelsCleared} / ${BALANCE.levelCap}`],['Final level',r.finalLevel],
+        ['Levels cleared this run',`${r.levelsCleared} / ${game.levelCap}`],['Final level',r.finalLevel],
         ['Cubes at the final portal',`${r.finalCubes} / 125`],['Best escape',`${r.bestEscape} / 125`],
         ['Time in play',duration],['Deaths / reassemblies',r.deaths],['Pieces re-coupled',r.recoupledCubes],
         ['Bonus rounds played',r.bonusRounds],['Bonus pieces banked',r.bonusPieces],['Bonus points',r.bonusScore.toLocaleString()]];
@@ -485,7 +486,7 @@ async function main() {
       $('new-run').hidden=!resume;$('new-run').disabled=loadingStart;
       $('save-note').textContent=campaignStore.note;
       dots(loadingStart?'LOADING AUDIO - PLEASE WAIT':`${mobile.enabled?'TAP':connected?'A / SPACE / ENTER':'SPACE / ENTER'} = ${action}`,game.t);
-      $('title-stats').textContent=`Score ${game.score} · Best escape ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${BALANCE.levelCap}`;
+      $('title-stats').textContent=`Score ${game.score} · Best escape ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${game.levelCap}`;
     }
     const phase=s.endsWith('_intro')&&!opening&&!bonusIntro,ready=s==='level_ready',result=s==='result_overlay',rebuild=['reassembly','loss_assembly'].includes(s),ended=s==='ended';
     $('card').hidden=!(phase||ready||result||rebuild||ended||bonusIntro||bonusResult);
@@ -513,7 +514,7 @@ async function main() {
       $('card').style.opacity=String(smooth(t/RESUME_TIMING.lineFade)*(1-smooth((t-RESUME_TIMING.fadeOutStarts)/RESUME_TIMING.fadeOutSeconds)));
       $('card-subtitle').style.opacity=String(smooth((t-RESUME_TIMING.welcomeStarts)/RESUME_TIMING.welcomeFade));
     } else if(phase) {
-      const card=introductionCard(s,game.level,game.flags,game.changeSettings,game.lossMinLevel);
+      const card=introductionCard(s,game.level,game.flags,game.changeSettings,game.lossMinLevel,game.balance);
       $('card-title').textContent=card.title;$('card-subtitle').textContent=card.subtitle;$('card-detail').textContent=card.detail;
       $('card').style.opacity=String(smooth(game.stateTime/1.1)*(1-smooth((game.stateTime/5-.86)/.14)));
     } else if(ready) {
@@ -526,7 +527,7 @@ async function main() {
       $('card').style.color='';
       if(result) {
         $('card-title').textContent='TRANSCENDENCE';$('card-subtitle').textContent=`LEVEL ${game.completedLevel} COMPLETE\nCUBES INTACT: ${game.lastEscape}/125 (${Math.round(game.lastEscape/125*100)}%)`;
-        $('card-detail').textContent=`SCORE +${game.lastEscape*100} · TOTAL ${game.score}\nBEST ESCAPE ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${BALANCE.levelCap}`;
+        $('card-detail').textContent=`SCORE +${game.lastEscape*100} · TOTAL ${game.score}\nBEST ESCAPE ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${game.levelCap}`;
         $('card').style.opacity=String(1-smooth((game.stateTime/4.25-.56)/.40));
       } else if(rebuild) {
         const incomplete=game.lossActive&&game.missingEntryCells.length>0;
@@ -540,7 +541,7 @@ async function main() {
     const n=game.player.alive.size;
     $('cube-count').textContent=`LVL ${String(game.level).padStart(2,'0')} · CUBES ${String(n).padStart(3,'0')}/125`;
     $('score').textContent=`INTEGRITY ${(n/125*100).toFixed(1)}% · SCORE ${game.score}`;
-    $('records').textContent=`BEST ESCAPE ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${BALANCE.levelCap}`;
+    $('records').textContent=`BEST ESCAPE ${game.stats.best_escape}/125 · TOP LEVEL: ${game.stats.highest_level}/${game.levelCap}`;
     $('integrity-warning').textContent=n<=18?'CRITICAL: STRUCTURE FAILING':n<=42?'WARNING: STRUCTURE FAILING':'';
     if(bonusPlaying) {
       const b=game.bonus;

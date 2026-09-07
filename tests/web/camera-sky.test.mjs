@@ -18,7 +18,7 @@ function project(r,p) {r.scene.updateMatrixWorld(true);r.camera.updateMatrixWorl
 
 test('auto-location starts at level one, follows the cube through motion, and retains the introductory overview',()=>{
   for(const aspect of [16/9,8/9,1.5])for(const level of [1,2,3,7,50]) {
-    const g=new Game({rng:()=>.5}),r=scene(aspect);g.ready(level);g.setState('playing');g.flags.shake=false;
+    const g=new Game({gameMode:50,rng:()=>.5}),r=scene(aspect);g.ready(level);g.setState('playing');g.flags.shake=false;
     assert.equal(g.autoLocateMinLevel,0);assert.equal(g.autoLocate,true);
     for(const origin of [new V(-18,0,0),g.course.portal.world(10),new V(150,-20,90)]) {
       g.player.origin=origin;g.angles=[29,93,18];r.render(g);const p=project(r,origin);near(p.x,0);near(p.y,0);
@@ -30,7 +30,7 @@ test('auto-location starts at level one, follows the cube through motion, and re
 });
 
 test('auto-location minimum can restore the previous level-three rule without changing SPACE or culling',()=>{
-  const g=new Game(),r=scene();g.ready(1);g.setState('playing');g.flags.shake=false;
+  const g=new Game({gameMode:50}),r=scene();g.ready(1);g.setState('playing');g.flags.shake=false;
   assert.equal(g.command('set auto_locate_min_level 3'),'auto_locate_min_level set to 3');
   assert.equal(g.autoLocate,false);r.render(g);assert.ok(Math.abs(project(r,g.player.origin).x)>.05);
   g.command('set locate true');r.render(g);near(project(r,g.player.origin).x,0);
@@ -61,7 +61,7 @@ test('pattern one exactly preserves the old spiral; pattern two has random spaci
 });
 
 test('sky switches reuse buffers, zero hides the stars, and camera travel preserves the selected pattern',()=>{
-  const r=scene(),g=new Game();g.ready(1);g.setState('playing');
+  const r=scene(),g=new Game({gameMode:50});g.ready(1);g.setState('playing');
   const geometry=r.stars.geometry,positions=geometry.attributes.position.array;
   for(const pattern of [0,1,2,0,2]) {
     g.command(`set star_pattern ${pattern}`);r.render(g);assert.equal(r.stars.visible,pattern!==0);
@@ -79,12 +79,12 @@ test('sky switches reuse buffers, zero hides the stars, and camera travel preser
 
 test('star selection saves only through console changes; reading status never writes preferences',()=>{
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8'),a=source.indexOf("$('console-form').onsubmit="),b=source.indexOf("  $('console-input').addEventListener",a);
-  const game=new Game(),elements={'console-form':{},'console-input':{}},saved=[];
+  const game=new Game({gameMode:50}),elements={'console-form':{},'console-input':{}},saved=[];
   vm.runInNewContext(source.slice(a,b),{$:id=>elements[id],game,history:[],historyIndex:0,log:[],consoleLog(){},syncAudio(){},write:(...v)=>saved.push(v)});
   const submit=text=>{elements['console-input'].value=text;elements['console-form'].onsubmit({preventDefault(){}});};
   submit('set star_pattern 1');assert.deepEqual(saved.at(-1),['cube-libre-star-pattern-v1',1]);
   const writes=saved.length;submit('status star_pattern');submit('view star_pattern');submit('set star_pattern');assert.equal(saved.length,writes);
-  const load=source.slice(source.indexOf('  const savedStarPattern='),source.indexOf('  const renderer=')),fresh=new Game();
+  const load=source.slice(source.indexOf('  const savedStarPattern='),source.indexOf('  const renderer=')),fresh=new Game({gameMode:50});
   vm.runInNewContext(load,{game:fresh,read:()=>1});assert.equal(fresh.starPattern,1);
   assert.ok(!source.slice(source.indexOf('  function help()'),source.indexOf('  function menu()')).includes('star_pattern'));
 });

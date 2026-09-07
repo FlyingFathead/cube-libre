@@ -7,7 +7,7 @@ const ref=JSON.parse(readFileSync(new URL('./python-reference.json',import.meta.
 const near=(a,b,eps=1e-9)=>assert.ok(Math.abs(a-b)<=eps,`${a} != ${b}`);
 const nearVector=(a,b)=>a.forEach((v,i)=>near(v,b[i]));
 const advance=(g,seconds,input={})=>{for(let i=0;i<Math.ceil(seconds*120);i++)g.tick(1/120,input);};
-function playing(level=1){const g=new Game({rng:()=>.5});g.ready(level);advance(g,8.7);assert.equal(g.state,'playing');return g;}
+function playing(level=1){const g=new Game({gameMode:50,rng:()=>.5});g.ready(level);advance(g,8.7);assert.equal(g.state,'playing');return g;}
 // Preserve comparisons with the seven-leg PyGame snapshot; web progression now
 // has its own full-length route checks below and in long-course.test.mjs.
 const referenceCourse=(level,route3d=true)=>new Course(level,route3d,{moduleCount:Math.min(7,level)});
@@ -43,7 +43,7 @@ test('direct-control mode keeps the original world-axis speeds and preview time 
   const g=playing(5);g.command('microgravity off');g.flags.damage=false;g.flags.suction=false;
   const before=g.player.origin;advance(g,1,{x:1,y:1,z:1});nearVector(g.player.origin.sub(before).array(),[6,6,6],1e-7);
   const p=g.player.origin;advance(g,1,{x:-1,rush:true});near(g.player.origin.x-p.x,-15.6);
-  const intro=new Game();intro.ready(5);advance(intro,8);near(intro.legTime,30);
+  const intro=new Game({gameMode:50});intro.ready(5);advance(intro,8);near(intro.legTime,30);
 });
 test('a first-level portal traversal scores once, then advances to level two',()=>{
   const g=playing();g.flags.damage=false;advance(g,7,{x:1});assert.ok(['portal_warp','result_overlay'].includes(g.state));
@@ -52,7 +52,7 @@ test('a first-level portal traversal scores once, then advances to level two',()
 });
 test('phase cards hold for five seconds before levels 3, 5, 10 and 15',()=>{
   for(const [completed,phase] of [[2,'space_intro'],[4,'time_intro'],[9,'entropy_intro'],[14,'heat_intro']]){
-    const g=new Game();g.level=completed;g.completedLevel=completed;g.advance();assert.equal(g.state,phase);advance(g,4.9);assert.equal(g.state,phase);
+    const g=new Game({gameMode:50});g.level=completed;g.completedLevel=completed;g.advance();assert.equal(g.state,phase);advance(g,4.9);assert.equal(g.state,phase);
     advance(g,.2);assert.equal(g.state,'level_ready');assert.equal(g.level,completed+1);
   }
 });
@@ -95,7 +95,7 @@ test('debug commands cover original flags, progression and current-level reset',
 });
 
 test('new runs play the opening before level one; pause freezes it and retries skip it',()=>{
-  const g=new Game({rng:()=>.5});g.newRun();
+  const g=new Game({gameMode:50,rng:()=>.5});g.newRun();
   assert.equal(g.state,'opening_intro');assert.equal(g.level,1);assert.equal(g.score,0);
   const origin=g.player.origin.array();
   advance(g,2,{x:1,y:1,z:1,rush:true});nearVector(g.player.origin.array(),origin);
@@ -167,12 +167,12 @@ test('scaled time allowance survives preview, forward leg resets, death and retr
 
 test('TIME returns before levels 20, 35 and 50 with the new allowance and no running clock',()=>{
   for(const level of [20,35,50]){
-    const g=new Game();g.ready(level-1);g.completedLevel=level-1;g.advance();
+    const g=new Game({gameMode:50});g.ready(level-1);g.completedLevel=level-1;g.advance();
     assert.equal(g.state,'time_intro');assert.equal(g.level,level);
     const initial=g.legTime;advance(g,4.9);assert.equal(g.state,'time_intro');near(g.legTime,initial);
     advance(g,.2);assert.equal(g.state,'level_ready');near(g.legTime,difficultyForLevel(level).secondsPerLeg);
   }
-  const g=new Game();g.ready(50);g.completedLevel=50;g.advance();
+  const g=new Game({gameMode:50});g.ready(50);g.completedLevel=50;g.advance();
   assert.equal(g.state,'ascension');assert.equal(g.level,50);
 });
 
@@ -202,7 +202,7 @@ test('all 50 legs can be traversed with timed shutter windows, rush, lasers and 
 test('HEAT shortens the out-of-bounds grace period by one second from level 15 onward',()=>{
   assert.equal(difficultyForLevel(14).heat,false);assert.equal(difficultyForLevel(15).heat,true);
   for(const level of [14,15,50]){
-    const g=new Game();g.ready(level);const threshold=level<15?2.4:1.4;
+    const g=new Game({gameMode:50});g.ready(level);const threshold=level<15?2.4:1.4;
     near(g.difficulty.overheatGraceSeconds,threshold);
     g.player.origin=new V(-18,12,0);g.thermal(threshold-.02);assert.equal(g.heat,0);
     g.thermal(.04);assert.ok(g.heat>=.38);
@@ -254,7 +254,7 @@ test('ascension renders a single cube; the white hold contains no scene geometry
   Object.assign(r,{lines:{reset:noop,finish:noop},cubes:{reset(){cubes=0;},cube(){cubes++;},finish:noop},
     gl:{setClearColor(c){clearColor=c;},render:noop},stars:{material:{color:{setHex:noop}}},
     world:new T.Group(),rotator:{rotation:transform,scale:transform},camera:{position:transform,aspect:16/9,lookAt:noop},effects:noop});
-  const g=new Game();g.command('view_end_anim_v1');r.render(g);assert.equal(cubes,1);
+  const g=new Game({gameMode:50});g.command('view_end_anim_v1');g.tick(ASCENSION_TIMING.arrivalSeconds);r.render(g);assert.equal(cubes,1);
   for(const state of ['ascension_white','ascension_title','thank_you_note','run_summary']){
     g.setState(state);r.render(g);assert.equal(cubes,0);assert.equal(clearColor,0xffffff);assert.equal(r.stars.visible,false);
     assert.equal(r.ascensionScene.group.visible,false);

@@ -84,7 +84,7 @@ test('top-right leg text reports the live leg and full route length, while bonus
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
   const line=source.split('\n').find(s=>s.includes("$('timer').textContent="));
   for(const [level,leg,bonus,expected] of [[5,0,false,'LEG 1/5'],[50,0,false,'LEG 1/50'],[50,49,false,'LEG 50/50'],[50,49,true,'BONUS']]) {
-    const game=new Game();game.ready(level);game.timedModule=leg;const timer={};
+    const game=new Game({gameMode:50});game.ready(level);game.timedModule=leg;const timer={};
     vm.runInNewContext(line,{$:()=>timer,game,bonus,clock:10});assert.equal(timer.textContent,`10.0s\n${expected}`);
   }
 });

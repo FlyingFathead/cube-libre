@@ -6,7 +6,7 @@ import {Game} from '../../web/js/core.mjs';
 import {PickingUpThePieces,scheduledBonus,createBonus,rotateQ,recoveredShape,PIECES_RULES,BONUS_SCHEDULE,bonusHeat} from '../../web/js/bonus.mjs';
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-6,`${a} != ${b}`);
 function advance(g,seconds,input={}) {for(let i=0;i<Math.ceil(seconds*120);i++)g.tick(1/120,input);}
-function playable(preview=false) {const g=new Game({rng:()=>.5});g.startBonus('001',{preview});advance(g,8.7);assert.equal(g.state,'bonus_playing');return g;}
+function playable(preview=false) {const g=new Game({gameMode:50,rng:()=>.5});g.startBonus('001',{preview});advance(g,8.7);assert.equal(g.state,'bonus_playing');return g;}
 
 test('bonus registry and schedule start after 5, recur every five, and preserve the cap ending',()=>{
   const scheduled=[];for(let n=1;n<=55;n++)if(scheduledBonus(n,50))scheduled.push(n);
@@ -18,7 +18,7 @@ test('bonus registry and schedule start after 5, recur every five, and preserve 
 });
 
 test('intro and crash freeze the bonus clock; impact emits once; pause and help freeze play',()=>{
-  const g=new Game();g.startBonus('001');advance(g,4.9);near(g.bonus.timeLeft,45);assert.equal(g.state,'bonus_intro');
+  const g=new Game({gameMode:50});g.startBonus('001');advance(g,4.9);near(g.bonus.timeLeft,45);assert.equal(g.state,'bonus_intro');
   advance(g,.2);assert.equal(g.state,'bonus_smash');near(g.bonus.timeLeft,45);
   advance(g,3.3);assert.equal(g.state,'bonus_smash');near(g.bonus.timeLeft,45);
   assert.equal(g.events.filter(e=>e.name==='crash').length,1);
@@ -75,7 +75,7 @@ test('solid floor edges and ramp sides stop movement without killing the player'
 });
 
 test('a scheduled bonus banks score only on escape, once, then advances without replaying the bonus',()=>{
-  const g=new Game({rng:()=>.5});g.ready(10);g.setState('playing');g.player.setCount(50);g.win();
+  const g=new Game({gameMode:50,rng:()=>.5});g.ready(10);g.setState('playing');g.player.setCount(50);g.win();
   assert.equal(g.score,5000);advance(g,8);assert.equal(g.state,'bonus_intro');assert.equal(g.level,10);
   advance(g,8.7);advance(g,15,{z:-1});assert.equal(g.state,'bonus_result');
   const bonus=g.bonus.potentialScore;assert.ok(bonus>0);assert.equal(g.score,5000+bonus);
@@ -95,7 +95,7 @@ test('deadline forfeits only the bonus and prevents movement or pickups afterwar
 });
 
 test('bonus tests lead to the next active level, preserve earned points and never award test points',()=>{
-  const g=new Game({rng:()=>.5});g.ready(23);g.setState('playing');g.score=4200;
+  const g=new Game({gameMode:50,rng:()=>.5});g.ready(23);g.setState('playing');g.score=4200;
   const run={...g.runStats},stats={...g.stats};
   g.command('test bonus_round_1');advance(g,8.7);advance(g,12,{z:-1});assert.equal(g.state,'bonus_result');
   assert.equal(g.score,4200);assert.deepEqual(g.stats,stats);assert.deepEqual(g.runStats,run);
@@ -106,15 +106,15 @@ test('bonus tests lead to the next active level, preserve earned points and neve
 
 test('menu tests fall back to the configured first bonus level, including after an old completed run',()=>{
   for(const previousLevel of [1,23,50]) {
-    const g=new Game();g.level=previousLevel;g.command('test bonus_round_1');
+    const g=new Game({gameMode:50});g.level=previousLevel;g.command('test bonus_round_1');
     assert.equal(g.previewReturn.nextLevel,BONUS_SCHEDULE.firstLevel);
     g.command('test bonus_round_1');assert.equal(g.previewReturn.nextLevel,BONUS_SCHEDULE.firstLevel);
     g.setState('bonus_result');g.stateTime=1;g.continue();
     assert.equal(g.level,BONUS_SCHEDULE.firstLevel);assert.equal(g.state,'time_intro');
   }
-  const missing=new Game();missing.setState('playing');delete missing.level;missing.command('test bonus_round_1');
+  const missing=new Game({gameMode:50});missing.setState('playing');delete missing.level;missing.command('test bonus_round_1');
   assert.equal(missing.previewReturn.nextLevel,BONUS_SCHEDULE.firstLevel);
-  const g=new Game();g.ready(50);g.command('test bonus_round_1');
+  const g=new Game({gameMode:50});g.ready(50);g.command('test bonus_round_1');
   assert.equal(g.previewReturn.nextLevel,50,'Tests cannot create a level beyond the campaign cap');
 });
 
@@ -122,7 +122,7 @@ test('preview aliases close the actual console submit handler and remain unpause
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
   const start=source.indexOf("$('console-form').onsubmit="),end=source.indexOf("  $('console-input').addEventListener",start);
   for(const command of ['view_end_anim_v1','test ending_1','test bonus_round_1','bonus 001','view_bonus_001']) {
-    const game=new Game(),elements={'console-form':{},'console-input':{value:command},'console-log':{}},output=[];
+    const game=new Game({gameMode:50}),elements={'console-form':{},'console-input':{value:command},'console-log':{}},output=[];
     game.paused=true;let closed=0;
     vm.runInNewContext(source.slice(start,end),{$:id=>elements[id],game,audio:{muted:true},history:[],historyIndex:0,log:[],consoleLog:v=>output.push(v),closeConsole(){closed++;},syncAudio(){},focusGame(){}});
     elements['console-form'].onsubmit({preventDefault(){}});
@@ -140,7 +140,7 @@ test('bonus scene uses solid slabs, a ramp, finite geometry and one miniature pl
   const finite=p=>assert.ok([p.x,p.y,p.z].every(Number.isFinite));
   r.lines={line(a,b){finite(a);finite(b);},loop(ps){ps.forEach(finite);}};
   r.cubes={cube(p){finite(p);cubeCount++;}};
-  const g=new Game({rng:()=>.5});g.startBonus('001');
+  const g=new Game({gameMode:50,rng:()=>.5});g.startBonus('001');
   for(const [state,time] of [['bonus_smash',.1],['bonus_smash',1.4],['bonus_smash',3.59],['bonus_playing',1]]) {
     g.setState(state);g.stateTime=time;cubeCount=0;r.bonus(g);assert.equal(cubeCount,147);finite(r.camera.position);
   }

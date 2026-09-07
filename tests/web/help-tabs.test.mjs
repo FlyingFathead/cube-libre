@@ -39,8 +39,8 @@ function dom() {
 }
 
 const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
-function buildHelp({bonus=false,connected=false,paused=false,touch=false}={}) {
-  const document=dom(),game=new Game();game.ready(15);game.setState(bonus?'bonus_playing':'playing');game.paused=paused;
+function buildHelp({bonus=false,connected=false,paused=false,touch=false,gameMode=50}={}) {
+  const document=dom(),game=new Game({gameMode});game.ready(15);game.setState(bonus?'bonus_playing':'playing');game.paused=paused;
   const nodes=Object.fromEntries(['modal','modal-title','modal-body','modal-actions','console'].map(k=>[k,document.createElement('div')]));
   nodes.modal.append(nodes['modal-title'],nodes['modal-body'],nodes['modal-actions']);
   const writes=[],ctx={document,game,controller:{enabled:true,connected},modalKind:null,previousPaused:false,$:id=>nodes[id],clearInput(){},syncAudio(){},focusGame(){},write:(...x)=>writes.push(x),
@@ -112,5 +112,19 @@ test('touch Help opens by default in mobile mode and Options can switch the save
     assert.ok(panels[2].textContent.includes(bonus?'roll on the floor':'three movement axes'));
     const modes=panels[3].querySelectorAll('button');assert.equal(modes.length,4);modes[2].click();assert.equal(ctx.mobile.mode,2);
     assert.equal(modes[2].attrs['aria-pressed'],'true');assert.equal(modes[0].attrs['aria-pressed'],'false');
+  }
+});
+
+
+test('Help uses the active campaign cap and milestones without offering the original mode as a public option',()=>{
+  for(const gameMode of [20,50]) {
+    const {nodes,game}=buildHelp({gameMode}),body=nodes['modal-body'];
+    assert.ok(body.textContent.includes(`up to ${gameMode}.`));
+    const rows=body.querySelectorAll('tr').filter(row=>row.textContent.includes('LOSS ...'));
+    assert.equal(rows.length,1);assert.ok(rows[0].textContent.startsWith(gameMode===20?'16':'44'));
+    const options=body.querySelectorAll('[role="tabpanel"]')[3];
+    assert.ok(!options.textContent.includes('50-level'));assert.ok(!options.textContent.includes('game_mode'));
+    assert.equal(options.querySelectorAll('input').some(i=>i.dataset.setting==='game_mode'),false);
+    assert.equal(game.gameMode,gameMode);
   }
 });

@@ -6,7 +6,7 @@ import {rotateQ} from '../../web/js/bonus.mjs';
 import {Renderer} from '../../web/js/render.mjs';
 
 const nearV=(a,b)=>a.forEach((v,i)=>assert.ok(Math.abs(v-b[i])<1e-7,`${a} != ${b}`));
-function playing() {const g=new Game({rng:()=>.5});g.ready(1);g.setState('playing');return g;}
+function playing() {const g=new Game({gameMode:50,rng:()=>.5});g.ready(1);g.setState('playing');return g;}
 function capture(g) {
   const cubes=[],r=Object.create(Renderer.prototype);
   r.cubes={cube(pos,color,scale,axis,angle,alpha,wire,outline,quaternion){cubes.push({pos:pos.array(),quaternion});}};

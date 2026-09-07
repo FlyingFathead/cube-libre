@@ -23,7 +23,7 @@ function setup({mode=0,detected=true}={}) {
       });
     }return nodes.get(id);
   }};
-  const game=new Game();game.ready(7);game.setState('playing');game.flags.damage=false;game.flags.suction=false;
+  const game=new Game({gameMode:50});game.ready(7);game.setState('playing');game.flags.damage=false;game.flags.suction=false;
   const renderer={resize(){},touchView:()=>({x:190,y:180,radius:15,visible:true,basis:identity})};
   const writes=[],mobile=new MobileControls({document,game,renderer,detected,read:(key)=>key==='cube-libre-touch-helpers-v1'?true:mode,write:(...v)=>writes.push(v),focus(){}});
   mobile.sync();mobile.draw();return {document,game,renderer,writes,mobile,node:id=>document.getElementById(id)};
@@ -56,7 +56,7 @@ test('drag starts neutral, scales thrust, anchors the rush ring and uses hystere
 test('view-relative drag and depth remain orthogonal through rotating views and stay within normal speed limits',()=>{
   const scene=new T.Scene(),world=new T.Group();scene.add(world);
   const camera=new T.PerspectiveCamera(45,2,.1,12000);camera.position.set(0,0,48);camera.lookAt(0,0,0);
-  const renderer={camera,world,width:800,height:400},g=new Game();g.ready(1);g.setState('playing');
+  const renderer={camera,world,width:800,height:400},g=new Game({gameMode:50});g.ready(1);g.setState('playing');
   for(const angle of [[0,0,0],[.8,1.7,-.4],[Math.PI/2,Math.PI/2,0]]){
     world.rotation.set(...angle);world.position.copy(g.player.origin).multiplyScalar(-1);
     const v=Renderer.prototype.touchView.call(renderer,g),b=v.basis;
@@ -65,7 +65,7 @@ test('view-relative drag and depth remain orthogonal through rotating views and 
     const q=new T.Vector3(move.x,move.y,move.z).applyQuaternion(world.quaternion);near(q.x,1);near(q.y,0);near(q.z,0);
     const all=touchMovement({x:1,y:1,rush:true},{y:1,rush:false},b);near(Math.hypot(all.x,all.y,all.z),1);assert.equal(all.rush,true);
   }
-  const small=new Game();small.ready(1);small.setState('playing');small.player.alive=new Set([124]);world.rotation.set(0,0,0);world.position.copy(small.player.origin).multiplyScalar(-1);
+  const small=new Game({gameMode:50});small.ready(1);small.setState('playing');small.player.alive=new Set([124]);world.rotation.set(0,0,0);world.position.copy(small.player.origin).multiplyScalar(-1);
   const v=Renderer.prototype.touchView.call(renderer,small);assert.ok(v.visible);assert.ok(v.x>400,'Grab target tracks the surviving piece, not an empty body center');
 });
 
@@ -162,7 +162,7 @@ test('mobile entry notice offers both saved input choices; its handlers close th
 
 test('touch-only start continues immediately while mobile audio is still downloading or awaiting permission',async()=>{
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
-  const game=new Game(),nodes={start:{}},ctx={game,$:id=>nodes[id],mobile:{enabled:true},controllerAction:false,controllerAudioPending:false,loadingStart:false,audioProgress:'',audioWarning:'',
+  const game=new Game({gameMode:50}),nodes={start:{}},ctx={game,$:id=>nodes[id],mobile:{enabled:true},controllerAction:false,controllerAudioPending:false,loadingStart:false,audioProgress:'',audioWarning:'',
     audio:{muted:false,failed:[],unlock:()=>new Promise(()=>{})},clearInput(){},focusGame(){},syncAudio(){}};
   vm.createContext(ctx);const a=source.indexOf('  async function start('),b=source.indexOf('  function unlockControllerAudio()',a);vm.runInContext(source.slice(a,b),ctx);
   await ctx.start();assert.equal(game.state,'opening_intro');assert.equal(ctx.loadingStart,false);assert.equal(nodes.start.disabled,false);

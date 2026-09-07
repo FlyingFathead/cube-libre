@@ -21,13 +21,13 @@ function draw(g,assembly=false) {
 }
 
 test('LOSS starts at the exit of 44 and carries exact surviving cells through bonus rounds and the final TIME card',()=>{
-  const g=new Game({rng:()=>.5});g.ready(43);
+  const g=new Game({gameMode:50,rng:()=>.5});g.ready(43);
   escape(g,shape);assert.equal(g.level,44);assert.equal(g.state,'loss_intro');finishCards(g);
   assert.equal(g.entryCells.length,125,'Level 44 still arrives with a full body');
   escape(g,shape);assert.equal(g.level,45);assert.deepEqual([...g.player.alive],shape);
   assert.deepEqual(g.entryCells,shape);assert.equal(g.missingEntryCells.length,125-shape.length);
   for(const outcome of ['escaped','timeout']) {
-    const b=new Game({rng:()=>.5});b.ready(45,{survivors:shape});
+    const b=new Game({gameMode:50,rng:()=>.5});b.ready(45,{survivors:shape});
     const remaining=shape.slice(7);escape(b,remaining);assert.equal(b.state,'bonus_intro');
     assert.deepEqual([...b.player.alive],remaining);const before=b.score;
     b.setState('bonus_playing');b.bonus.collected=125;b.bonus.result=outcome;b.tick(.01);
@@ -36,7 +36,7 @@ test('LOSS starts at the exit of 44 and carries exact surviving cells through bo
     assert.equal(b.level,46);assert.deepEqual(b.entryCells,remaining);
     assert.deepEqual([...b.player.alive],remaining,'Bonus collection changes score, never campaign cells');
   }
-  const final=new Game();final.ready(49,{survivors:shape});escape(final,shape.slice(10));
+  const final=new Game({gameMode:50});final.ready(49,{survivors:shape});escape(final,shape.slice(10));
   assert.equal(final.state,'time_intro');assert.equal(final.level,50);finishCards(final);
   assert.deepEqual(final.entryCells,shape.slice(10));final.setState('playing');final.win();
   assert.equal(final.state,'ascension','The ending is after clearing level 50');
@@ -45,7 +45,7 @@ test('LOSS starts at the exit of 44 and carries exact surviving cells through bo
 
 test('automatic death, console restart and UI retry restore only the level-entry checkpoint; new runs start full',()=>{
   for(const retry of ['death','restart','ui']) {
-    const g=new Game({rng:()=>.5});g.ready(45,{survivors:shape});g.setState('playing');
+    const g=new Game({gameMode:50,rng:()=>.5});g.ready(45,{survivors:shape});g.setState('playing');
     g.score=1234;g.player.alive=new Set(shape.slice(8));
     if(retry==='death') {
       g.die();assert.equal(g.reassembly.length,shape.length);
@@ -63,12 +63,12 @@ test('automatic death, console restart and UI retry restore only the level-entry
     g.command('heal');g.retry();assert.deepEqual([...g.player.alive],shape,'Debug healing does not overwrite the checkpoint');
     g.newRun();assert.equal(g.player.alive.size,125);assert.equal(g.missingEntryCells.length,0);
   }
-  const g=new Game();g.ready(49,{survivors:shape});escape(g,shape.slice(4));
+  const g=new Game({gameMode:50});g.ready(49,{survivors:shape});escape(g,shape.slice(4));
   g.retry();assert.deepEqual(g.entryCells,shape.slice(4),'Retrying during a milestone uses its pending body');
 });
 
 test('LOSS controls move the rule and card together, including level zero, while debug jumps show all applicable cards',()=>{
-  const g=new Game();assert.equal(g.command('status loss'),'Status for loss is: Enabled');
+  const g=new Game({gameMode:50});assert.equal(g.command('status loss'),'Status for loss is: Enabled');
   g.command('set loss_min_level 0');g.newRun();g.tick(9.21);assert.equal(g.state,'loss_intro');
   assert.equal(introductionCard(g.state,g.level,g.flags,g.changeSettings,g.lossMinLevel).title,'LOSS ...');
   assert.equal(g.lossActive,true);finishCards(g);escape(g,shape);assert.deepEqual(g.entryCells,shape);
@@ -87,7 +87,7 @@ test('LOSS controls move the rule and card together, including level zero, while
 });
 
 test('absent forms tremble, scatter with one lament, and never enter recovery or the physical body',()=>{
-  const g=new Game({rng:()=>.5});g.ready(45,{survivors:shape});g.tick(1.66);
+  const g=new Game({gameMode:50,rng:()=>.5});g.ready(45,{survivors:shape});g.tick(1.66);
   assert.equal(g.state,'loss_assembly');assert.equal(g.reassembly.length,shape.length);
   const checkpoint=[...g.player.alive],absent=g.missingEntryCells[0],p=cells[absent];
   const fixed=lossGhostPose(p,absent,2.3,false),shaking=lossGhostPose(p,absent,2.3,true);
@@ -109,7 +109,7 @@ test('body colour starts subtly at 44, accelerates to neutral grey at 50, and le
   let previous=lossGreyAmount(44),increment=0;
   for(let level=45;level<=50;level++) {const amount=lossGreyAmount(level);assert.ok(amount-previous>increment);increment=amount-previous;previous=amount;}
   assert.equal(previous,1);assert.equal(lossGreyAmount(500),1);assert.equal(lossGreyAmount(5,5),.025);
-  const g=new Game();g.ready(50);g.setState('playing');
+  const g=new Game({gameMode:50});g.ready(50);g.setState('playing');
   const physical=[...g.player.alive].map(i=>g.player.pos(i).array());
   for(const cube of draw(g))assert.ok(Math.abs(cube.color[0]-cube.color[1])<1e-12&&Math.abs(cube.color[1]-cube.color[2])<1e-12);
   assert.deepEqual(draw(g).map(c=>c.pos),physical);
@@ -123,7 +123,7 @@ test('body colour starts subtly at 44, accelerates to neutral grey at 50, and le
 test('LOSS and outline switches save through the real console; status does not write and previews run unpaused',()=>{
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
   const start=source.indexOf("$('console-form').onsubmit="),end=source.indexOf("  $('console-input').addEventListener",start);
-  const game=new Game(),nodes={'console-form':{},'console-input':{}},writes=[];let closed=0;
+  const game=new Game({gameMode:50}),nodes={'console-form':{},'console-input':{}},writes=[];let closed=0;
   const ctx={$:id=>nodes[id],game,history:[],historyIndex:0,log:[],consoleLog(){},syncAudio(){},focusGame(){},closeConsole(){closed++;},audio:{muted:true},write(k,v){writes.push([k,v]);}};
   vm.runInNewContext(source.slice(start,end),ctx);
   const submit=value=>{nodes['console-input'].value=value;nodes['console-form'].onsubmit({preventDefault(){}});};

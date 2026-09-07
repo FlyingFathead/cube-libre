@@ -21,7 +21,7 @@ test('all animated title cubes fit between measured overlays in full, half-width
   // CSS pixel sizes cover the reported half-screen Firefox view at 100/120/200%.
   const layouts=[[1920,1080,90,790],[960,1080,90,780],[770,900,70,635],[480,560,50,295],[960,500,45,240],[390,750,75,430]];
   for(const [width,height,startBottom,infoTop] of layouts) {
-    const {r,drawn}=capture(width,height),g=new Game();
+    const {r,drawn}=capture(width,height),g=new Game({gameMode:50});
     r.titleArea=titleSafeArea({top:44,width,height},{bottom:44+startBottom},{top:44+infoTop});
     const a=r.titleArea;
     assert.ok(a.y>startBottom&&a.y+a.height<infoTop);
@@ -61,7 +61,7 @@ test('title layout remeasures wrapping, resize and menu entry without layout rea
 });
 
 test('title camera offsets are cleared before gameplay and ending scenes, while geometry bounds are reused',()=>{
-  const {r,drawn}=capture(770,900),g=new Game();
+  const {r,drawn}=capture(770,900),g=new Game({gameMode:50});
   r.titleArea={x:16,y:80,width:738,height:500};r.render(g);
   const bounds=r.titleFrame;assert.equal(r.camera.view.enabled,true);
   g.newRun();r.render(g);assert.equal(r.camera.view.enabled,false);
@@ -72,7 +72,7 @@ test('title camera offsets are cleared before gameplay and ending scenes, while 
 
 test('the reassembly caption stays below the final cube across window shapes and rotating views',()=>{
   for(const [width,height] of [[1920,1080],[960,1080],[770,900],[960,500],[480,560]]) {
-    const {r,drawn}=capture(width,height),g=new Game();
+    const {r,drawn}=capture(width,height),g=new Game({gameMode:50});
     // First visit the title to ensure its shifted camera cannot displace the caption.
     r.titleArea={x:16,y:80,width:width-32,height:height*.5};r.render(g);
     g.die();g.setState('reassembly');g.stateTime=3.74;

@@ -3,6 +3,7 @@ export const CONFIG_COMMANDS=Object.freeze(['viewconfig','showconfig','showvars'
 // Descriptions enrich the command registry; they never decide which settings exist.
 // Browser-owned settings may supply their own name and description alongside get/set.
 const DETAILS=Object.freeze({
+  game_mode:['Campaign variant','20: default compact campaign; 50: original campaign, console only. Changing mode returns to the title and resets mode thresholds; existing save is kept. New runs use the selected mode; Continue uses its saved mode. Session only.'],
   damage:['Damage','Allow normal-level cell damage from boundaries and laser grids, including shutters.'],
   lasers:['Laser grids','Enable laser hazards, including electric shutters.'],
   bounds:['Boundary damage','Allow corridor boundaries to shave off exposed cells and trigger overheating.'],
@@ -44,8 +45,9 @@ const DETAILS=Object.freeze({
   change_1_pitch_5:['Zap 5 pitch','Semitones relative to the original electric sound; default -7. Applies to closing and reopening. Range -12 to 12.'],
   auto_locate_min_level:['Automatic camera tracking level','Follow the player at or above this level; 0 means always on. Integer 0–1000000; intro overviews remain.'],
   loss:['Permanent portal loss','From loss_min_level, exits carry the surviving body into the next level. Retries restore the level-entry body; bonuses do not refill it. Saved boolean.'],
-  loss_grey:['LOSS colour fading','Subtle colour loss at the LOSS starting level, accelerating nonlinearly to full grey at the level cap. Visual only; heat flashes remain. Saved boolean.'],
-  loss_min_level:['LOSS starting level','First level whose exit stops refilling the body; default 44. Integer 0–50; 0 starts at level 1. Also moves the LOSS banner and colour fade. Session only.'],
+  loss_grey:['LOSS colour fading','Subtle colour loss at loss_grey_min_level, accelerating nonlinearly to full grey at the level cap. Visual only; heat flashes remain. Saved boolean.'],
+  loss_min_level:['LOSS starting level','First level whose exit stops refilling the body; default 16 in mode 20, 44 in mode 50. Integer 0 to the active cap; 0 starts at level 1. Moves the LOSS banner. Session only.'],
+  loss_grey_min_level:['Colour fade starting level','Start barely perceptible colour loss here, then fade quadratically to full grey at the active cap. Default 10 in mode 20, 44 in mode 50. 0 starts at level 1. Independent of LOSS. Session only.'],
   route_outline:['Upcoming corridor outlines','Show faint exterior edges ahead during normal play without revealing distant hazards. Saved boolean; independent of the opening preview.'],
   route_outline_ahead_legs:['Upcoming outline distance','Number of legs ahead to outline during play, default 3. 0 hides them. Session only; does not reveal hazards.'],
   route_outline_fade_after_legs:['Upcoming outline fade starts after','Keep this many upcoming legs at full outline opacity, then fade with distance; default 1.'],

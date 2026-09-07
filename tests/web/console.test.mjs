@@ -15,7 +15,7 @@ test('top-level reset persists through the browser adapter and preserves all oth
     const context=vm.createContext({Game,CheckpointStore,clamp:(n,min,max)=>Math.min(max,Math.max(min,n)),localStorage:{
       getItem:key=>storage.get(key)??null,setItem:(key,value)=>{writes.push(key);storage.set(key,value);}
     }});
-    vm.runInContext(source.slice(start,end),context);return vm.runInContext('game',context);
+    vm.runInContext(source.slice(start,end),context);const g=vm.runInContext('game',context);g.command('game_mode 50');return g;
   };
   const g=load();g.ready(20);g.setState('playing');g.paused=true;g.score=700;g.flags.spin=false;g.shutters.tick(1.1);
   const course=g.course,player=g.player,flags={...g.flags},clock=g.legTime;
@@ -27,8 +27,8 @@ test('top-level reset persists through the browser adapter and preserves all oth
     assert.ok(g.command('viewconfig').includes('top_level | 50 | Saved top level |'));
     assert.equal(writes.length,count);assert.equal(g.stats.highest_level,50);
     assert.equal(g.command(command),'Top level reset to 1/50. Best score and best escape kept.');
-    assert.equal(writes.length,count+1);assert.equal(writes.at(-1),'cube-libre-scores-v1');
-    assert.deepEqual(JSON.parse(storage.get('cube-libre-scores-v1')),{highest_level:1,best_escape:117,best_score:23000});
+    assert.equal(writes.length,count+1);assert.equal(writes.at(-1),'cube-libre-mode-scores-v1');
+    assert.deepEqual(JSON.parse(storage.get('cube-libre-mode-scores-v1'))[50],{highest_level:1,best_escape:117,best_score:23000});
     const reloaded=load();assert.equal(reloaded.stats.highest_level,1);assert.equal(reloaded.stats.best_score,23000);assert.equal(reloaded.stats.best_escape,117);
     assert.equal(reloaded.command('toplevel'),'TOP LEVEL: 1/50');
     assert.equal(g.course,course);assert.equal(g.player,player);assert.equal(g.state,'playing');assert.equal(g.paused,true);
@@ -46,11 +46,11 @@ test('top-level reset persists through the browser adapter and preserves all oth
   assert.equal(JSON.stringify([...storage]),before);assert.equal(writes.length,count);
   assert.ok(g.command('help').includes('reset top level'));
   const fresh=load();fresh.newRun();assert.equal(fresh.stats.highest_level,1);
-  fresh.ready(7);assert.equal(JSON.parse(storage.get('cube-libre-scores-v1')).highest_level,7);
+  fresh.ready(7);assert.equal(JSON.parse(storage.get('cube-libre-mode-scores-v1'))[50].highest_level,7);
 });
 
 test('all config listing aliases report live values from every registered setting without side effects',()=>{
-  const g=new Game();g.ready(7);g.player.setSpinAngles(5,10,15);g.shutters.tick(.75);
+  const g=new Game({gameMode:50});g.ready(7);g.player.setSpinAngles(5,10,15);g.shutters.tick(.75);
   let muted=false;g.consoleSettings.mute={get:()=>muted,set:v=>{muted=v;}};
   g.consoleSettings.future_setting={name:'Future setting',description:'Registered without editing the listing.',get:()=>true,set:()=>assert.fail('Listing must not call a setter')};
   g.flags.future_flag=true;
@@ -61,7 +61,7 @@ test('all config listing aliases report live values from every registered settin
   assert.equal(snapshot(),before);assert.equal(g.course,course);
   const rows=output.split('\n').filter(line=>/^[a-z_0-9]+ \|/.test(line));
   const names=rows.map(line=>line.split(' | ')[0]);
-  const expected=[...Object.keys(g.flags),'locate',...Object.keys(g.consoleSettings),'level','score','cubes','top_level',...Object.keys(CHANGE_NUMBERS),...Object.keys(g.previewSettings),...Object.keys(g.routeOutlineSettings),'loss_min_level','star_pattern','auto_locate_min_level'];
+  const expected=[...Object.keys(g.flags),'locate',...Object.keys(g.consoleSettings),'level','score','cubes','top_level',...Object.keys(CHANGE_NUMBERS),...Object.keys(g.previewSettings),...Object.keys(g.routeOutlineSettings),'loss_min_level','loss_grey_min_level','game_mode','star_pattern','auto_locate_min_level'];
   assert.deepEqual(new Set(names),new Set(expected));assert.equal(names.length,expected.length);
   for(const row of rows)assert.equal(row.split(' | ').length,4);
   assert.match(output,/star_pattern \| 2 \| Background star pattern \| 0: no background stars; 1: original/);
@@ -96,7 +96,7 @@ test('console keeps an entire long config response and Page Up/Down scroll the o
 });
 
 test('every boolean shares toggle, explicit values, and non-mutating status aliases',()=>{
-  const g=new Game();let muted=false;
+  const g=new Game({gameMode:50});let muted=false;
   g.consoleSettings.mute={get:()=>muted,set:value=>{muted=value;}};
   const settings=[...Object.keys(g.flags),'locate','mute'];
   const read=key=>key==='mute'?muted:key==='locate'?g.locate:g.flags[key];
@@ -123,7 +123,7 @@ test('every boolean shares toggle, explicit values, and non-mutating status alia
 });
 
 test('unknown settings, non-booleans and malformed values fail without changing the game',()=>{
-  const g=new Game(),flags={...g.flags};
+  const g=new Game({gameMode:50}),flags={...g.flags};
   for(const name of ['missing','__proto__','constructor','tostring'])for(const cmd of ['status','view','get','set','toggle']) {
     assert.throws(()=>g.command(`${cmd} ${name}`),{message:`${name} not found!`});
     assert.throws(()=>g.command(`set ${name} on`),{message:`${name} not found!`});
@@ -139,7 +139,7 @@ test('unknown settings, non-booleans and malformed values fail without changing 
 });
 
 test('queries preserve poses and route state, while setters apply the required side effects',()=>{
-  const g=new Game();g.ready(10);g.player.setSpinAngles(20,30,40);
+  const g=new Game({gameMode:50});g.ready(10);g.player.setSpinAngles(20,30,40);
   g.kickRotation(g.player.origin.add(new V(2,2,2)));g.updateRotationShock(.1);
   const course=g.course,version=g.geometryVersion,pose=g.player.pos(124).array(),angle=g.rotationShock.angle.array();
   for(const key of ['spin','rotation_shocks','route3d','portal'])for(const alias of ['set','view','status'])g.command(`${alias} ${key}`);
@@ -156,7 +156,7 @@ test('queries preserve poses and route state, while setters apply the required s
 test('browser console aliases save visual and movement preferences and status queries do not write',()=>{
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
   const start=source.indexOf("$('console-form').onsubmit="),end=source.indexOf("  $('console-input').addEventListener",start);
-  const game=new Game(),elements={'console-form':{},'console-input':{},'console-log':{}},saved=[],messages=[];
+  const game=new Game({gameMode:50}),elements={'console-form':{},'console-input':{},'console-log':{}},saved=[],messages=[];
   vm.runInNewContext(source.slice(start,end),{$:id=>elements[id],game,history:[],historyIndex:0,log:[],consoleLog:line=>messages.push(line),syncAudio(){},write:(...entry)=>saved.push(entry)});
   const submit=value=>{elements['console-input'].value=value;elements['console-form'].onsubmit({preventDefault(){}});};
   for(const [key,storage] of [['shake','shake'],['spin','spin'],['rotation_shocks','rotation-shocks'],['portal_white_light','portal-white-light'],['culling','culling'],['preview_outline','preview-outline'],['microgravity','microgravity'],['overheat_blocks_recoupling','overheat-blocks-recoupling'],['change_1','change-1'],['change_1_random_per_leg','change-1-random-per-leg'],['change_1_no_repeat_leg','change-1-no-repeat-leg']]) {
@@ -164,7 +164,7 @@ test('browser console aliases save visual and movement preferences and status qu
     assert.equal(messages.at(-1),`${key} set to false`);
     const writes=saved.length;for(const alias of ['set','view','status'])submit(`${alias} ${key}`);
     assert.equal(saved.length,writes);assert.equal(messages.at(-1),`Status for ${key} is: Disabled`);
-    const load=source.split('\n').find(line=>line.includes(`game.flags.${key}=read(`)),fresh=new Game();
+    const load=source.split('\n').find(line=>line.includes(`game.flags.${key}=read(`)),fresh=new Game({gameMode:50});
     vm.runInNewContext(load,{game:fresh,read:name=>saved.findLast(([key])=>key===name)?.[1]});
     assert.equal(fresh.flags[key],false);
     submit(`set ${key} enabled`);assert.deepEqual(saved.at(-1),[`cube-libre-${storage}-v1`,true]);
@@ -174,7 +174,7 @@ test('browser console aliases save visual and movement preferences and status qu
 
 test('audio mute uses the shared boolean interface and remains compatible with its button',async()=>{
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
-  const game=new Game(),writes=[],audio={muted:false,failed:[],mute(value=!this.muted){this.muted=value;},async unlock(){}};
+  const game=new Game({gameMode:50}),writes=[],audio={muted:false,failed:[],mute(value=!this.muted){this.muted=value;},async unlock(){}};
   const context=vm.createContext({game,audio,write:(...entry)=>writes.push(entry),syncAudio(){},audioWarning:''});
   const start=source.indexOf('  async function mute('),end=source.indexOf('  async function fullscreen(',start);
   vm.runInContext(source.slice(start,end),context);

@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.28.0 — Twenty levels
+
+Based on published web v0.27.0 (`fd8ce6a`).
+
+- Make the 20-level campaign the default. Keep the original 50-level progression
+  under console/config `game_mode 50`, with no public mode selector. Per-game
+  immutable balances keep routes, cards, timers, recovery, bonuses and ending
+  predicates on the selected variant. Mode queries are inert; switching returns
+  to the title and preserves the saved campaign.
+- Compress time and entropy curves to their original final 10 seconds per leg
+  and 1% recovery at 20. TIME warnings recur at 10, 15 and 20. Keep SPACE at 3,
+  CHANGE at 4/6/7/8, ENTROPY at 10 and HEAT at 15. Retain shutter windows,
+  alternating legs, damage protection, speeds and the laser-spin ceiling.
+- Start barely perceptible greyness at 10 and reach full grey at 20. Move LOSS to
+  exit 16: exact survivors carry into 17 and onward. Add independent console
+  loss_grey_min_level. Original mode retains LOSS/fade at 44 and ending at 50.
+- Save gameMode in schema-2 checkpoints. Migrate schema-1 saves to mode 50,
+  including early-level saves. Continue restores its saved mode, exact cells,
+  holes and rewards without changing the selection for the next new run.
+  Keep TOP LEVEL, best score and best escape separately per mode; import old
+  records into 50 only. Preserve original storage and unrelated preferences.
+- Expand the shared ending: one intact cube outline rotates slowly on white in
+  silence for three seconds, then flashes once into the existing blue-grid and
+  starfield scene. Stop all audio, including queued portal tails, for the arrival.
+  Hold the completed star two seconds longer before the white fade. Keep the
+  full title/subtitle, thank-you note and separate statistics/menu inputs.
+  The outline is visual only and never refills the physical or saved body.
+- Make test end_portal use the active final leg (20/20 or 50/50), leading through
+  the real oversized white portal into the full ending. Keep previews isolated
+  from campaign saves and records. Update Help, progression and technical docs.
+- Record YOU HAVE DESCENDED and atmospheric re-entry as a humorous roadmap
+  thought experiment, not a serious proposal or an implemented continuation.
+  The author considers the ascension arc complete as it stands.
+
+Validation: all 188 automated test groups and static checks pass on Node.js
+18.19.1. Coverage includes both variants, compressed curves and actual recovery,
+legacy-save migration, separate records, LOSS carry/Continue, public Help, final
+portal traversal, outline geometry, silence, longer star hold and input guards.
+Both final routes are traversable in simulation; this does not establish human
+balance under campaign LOSS. New ending visuals/audio and the shorter journey
+still need real browser/device playtesting.
+
 ## 0.27.0 — Welcome back
 
 Based on published web v0.26.0 (`bb6a420`).

@@ -2,11 +2,11 @@ import * as T from '../vendor/three.module.min.js';
 import {VISUAL_EFFECTS,END_PORTAL} from './config.mjs';
 import {lossGreyAmount,lossBodyColor,lossGhostPose} from './loss.mjs';
 import {PIECES_RULES,recoveredShape,rotateQ,multiplyQ,bonusHeat} from './bonus.mjs';
-import {AscensionScene,ascensionPose} from './ending.mjs';
+import {AscensionScene,ascensionPose,arrivalOutlineOpacity} from './ending.mjs';
 import {titleBounds,frameTitle} from './title-layout.mjs';
 import {updatePortalWhiteLight,isEndPortal} from './portal-light.mjs';
 import {RouteGuide,detailWindow,overviewZoom,createInfiniteStarfield,positionInfiniteStarfield,setStarPattern} from './space-view.mjs';
-import { BALANCE,C,V,cells,cellColor,clamp,smooth,mix,lerp,rotate,radians,portalMetrics } from './core.mjs';
+import { ASCENSION_TIMING,C,V,cells,cellColor,clamp,smooth,mix,lerp,rotate,radians,portalMetrics } from './core.mjs';
 
 const vec=p=>new T.Vector3(p.x,p.y,p.z);
 const white=[1,1,1],cyan=[0,1,.95],red=[1,.05,.03];
@@ -266,7 +266,7 @@ export class Renderer {
     for(const m of c.modules.slice(first,last+1)) {
       const i=m.index;
       const fade=preview?0:c.fade(i,p,t),alpha=(1-fade)*(fade>.01?.58+.42*(.5+.5*Math.sin(t*Math.PI*22+i)) : 1);
-      const future=!preview&&g.level>=BALANCE.spaceStartLevel&&i>reveal;
+      const future=!preview&&g.level>=g.balance.spaceStartLevel&&i>reveal;
       const col=future?[.45,.48,.52]:[.25,.62,.8];
       const [x0,x1]=c.span(m),map=(x,y,z)=>m.world(x,y,z);
       this.box(map,x0,x1,-7,7,-7,7,col,alpha*(future?.22:.48)*(.18+.82*progress));
@@ -303,7 +303,7 @@ export class Renderer {
     for(const l of c.moduleLasers.slice(first,last+1).flat()) {
       const i=l.module.index;
       const fade=preview?0:c.fade(i,p,t); if(fade>=.995) continue;
-      const future=!preview&&g.level>=BALANCE.spaceStartLevel&&i>reveal;
+      const future=!preview&&g.level>=g.balance.spaceStartLevel&&i>reveal;
       const rp=preview?smooth((progress-.24-i*.045)/.48):c.revealProgress(i,t);
       if(preview&&rp<=0) continue;
       this.laser(l,t,future,(1-fade)*(future?.22:rp),fade,g.shutterState(l));
@@ -410,7 +410,7 @@ export class Renderer {
       this.lines.line(pos,pos.add(new V(Math.sin(t*13+i)*.3,.6+g.heat*.9,0)),[1,.3,.015],g.heat*.7);
     }
   }
-  lossColor(g,color) {return g.flags.loss_grey&&g.lossActive?lossBodyColor(color,lossGreyAmount(g.level,g.lossMinLevel,BALANCE.levelCap)):color;}
+  lossColor(g,color) {return g.flags.loss_grey?lossBodyColor(color,lossGreyAmount(g.level,Math.max(1,g.lossGreyMinLevel),g.levelCap)):color;}
   reassemble(g) {
     const dissolve=g.state==='death_dissolve',q=clamp(g.stateTime/(dissolve?.48:3.75));
     for(const part of g.reassembly||[]) {
@@ -454,7 +454,7 @@ export class Renderer {
       const alpha=b.result==='timeout'?Math.max(.6*(1-smooth(t/.18)),smooth((t-b.rules.explosionFadeStarts)/(b.rules.explosionSeconds-b.rules.explosionFadeStarts))):smooth(t/2);
       ctx.fillStyle=`rgba(255,255,255,${alpha})`;ctx.fillRect(0,0,w,h);
     }
-    if(g.state==='ascension') {
+    if(g.state==='ascension'&&g.stateTime>=ASCENSION_TIMING.arrivalSeconds) {
       const fade=ascensionPose(g.stateTime).white;
       ctx.fillStyle=`rgba(255,255,255,${fade})`;ctx.fillRect(0,0,w,h);
     }
@@ -482,13 +482,14 @@ export class Renderer {
     this.reassemblyLabel=null;
     const title=['title','quit_confirm'].includes(g.state),phase=g.state.endsWith('_intro'),preview=g.state==='course_materialize';
     if(!title&&this.camera.view?.enabled)this.camera.clearViewOffset();
-    const ascending=g.state==='ascension',endWhite=['ascension_white','ascension_title','thank_you_note','run_summary'].includes(g.state);
+    const arrival=g.state==='ascension'&&g.stateTime<ASCENSION_TIMING.arrivalSeconds;
+    const ascending=g.state==='ascension'&&!arrival,endWhite=arrival||['ascension_white','ascension_title','thank_you_note','run_summary'].includes(g.state);
     const bonusScene=['bonus_smash','bonus_playing','bonus_escape'].includes(g.state),bonusResult=g.state==='bonus_result';
     const rebuilding=['reassembly','loss_assembly'].includes(g.state);
     const whiteVoid=phase||g.state==='result_overlay'||bonusResult||rebuilding||endWhite;
     const blank=phase||g.state==='result_overlay'||bonusResult||g.state==='level_ready'||ascending||endWhite;
     if(this.bonusArena)this.bonusArena.visible=bonusScene;
-    if(ascending&&!this.ascensionScene)this.ascensionScene=new AscensionScene(this.world);
+    if(g.state==='ascension'&&!this.ascensionScene)this.ascensionScene=new AscensionScene(this.world);
     if(this.ascensionScene)this.ascensionScene.group.visible=ascending;
     if(this.routeGuide)this.routeGuide.group.visible=false;
     updatePortalWhiteLight(this,g);
@@ -507,6 +508,14 @@ export class Renderer {
       }
     } else if(bonusScene) {
       this.bonus(g);
+    } else if(arrival) {
+      // One whole outline only: symbolic, never a replacement physical body.
+      const alpha=arrivalOutlineOpacity(g.stateTime);
+      this.camera.position.set(0,0,18*Math.max(1,.8/this.camera.aspect));
+      if(alpha>.002) {
+        const corners=boxCorners.map(c=>rotate(rotate(V.of(c).mul(2.2),new V(1,0,0),-18+g.stateTime*.6),new V(0,1,0),35+g.stateTime*3));
+        for(const [a,b] of edgeIndices)this.lines.line(corners[a],corners[b],[.18,.18,.18],alpha*.8);
+      }
     } else if(ascending) {
       const pose=ascensionPose(g.stateTime,this.camera.aspect);this.ascensionScene.update(pose);
       this.camera.position.copy(vec(pose.camera));this.camera.lookAt(pose.target.x,pose.target.y,pose.target.z);

@@ -5,7 +5,7 @@ import {Game,V} from '../../web/js/core.mjs';
 import {BALANCE,LEVEL_FEATURES,difficultyForLevel,introductionsForLevel,introductionCard,heatLevelReached,recouplingHeatBlocked} from '../../web/js/difficulty.mjs';
 
 function setup(level=BALANCE.heatStartLevel) {
-  const g=new Game({rng:()=>.5});g.ready(level);g.setState('playing');
+  const g=new Game({gameMode:50,rng:()=>.5});g.ready(level);g.setState('playing');
   g.flags.damage=false;g.flags.suction=false;
   for(let i=0;i<10;i++)g.player.destroy(i,g.player.origin);
   return g;
@@ -56,7 +56,7 @@ test('the ordered milestone schedule drives banners and sequential introductions
   for(const feature of LEVEL_FEATURES) {
     assert.ok(feature.summary().length>20);
     const card=introductionCard(feature.state,feature.level);assert.equal(card.title,feature.banner);assert.ok(card.subtitle);
-    const g=new Game();g.introduceLevel(feature.level);assert.equal(g.state,feature.state);
+    const g=new Game({gameMode:50});g.introduceLevel(feature.level);assert.equal(g.state,feature.state);
     const clock=g.legTime;for(let i=0;i<590;i++)g.tick(1/120);assert.equal(g.state,feature.state);assert.equal(g.legTime,clock);
     for(let i=0;i<12;i++)g.tick(1/120);assert.equal(g.state,'level_ready');
   }
@@ -75,7 +75,7 @@ test('changing the configured heat minimum to zero or a shared milestone moves t
     const configURL=asModule(absoluteImports(difficulty));
     const core=readFileSync(new URL('core.mjs',base),'utf8').replaceAll("from './difficulty.mjs'",`from '${configURL}'`);
     const {Game:ConfiguredGame}=await import(asModule(absoluteImports(core)));
-    const g=new ConfiguredGame({rng:()=>.5});
+    const g=new ConfiguredGame({gameMode:50,rng:()=>.5});
     if(min===0) {
       g.newRun();for(let i=0;i<1110;i++)g.tick(1/120);
       assert.equal(g.level,1);assert.equal(g.state,'heat_intro');

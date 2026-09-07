@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {Game,Course} from '../../web/js/core.mjs';
 
 function playing(level=6) {
-  const g=new Game({rng:()=>.5});g.ready(level);g.setState('playing');
+  const g=new Game({gameMode:50,rng:()=>.5});g.ready(level);g.setState('playing');
   g.flags.lasers=false;g.flags.suction=false;
   return g;
 }

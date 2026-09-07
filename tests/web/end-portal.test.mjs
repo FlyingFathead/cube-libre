@@ -15,7 +15,7 @@ function capture(g) {
 }
 
 test('the final portal is pure white and larger than the corridor; earlier exits retain their colour and capture size',()=>{
-  const g=new Game();g.ready(BALANCE.levelCap);g.setState('playing');
+  const g=new Game({gameMode:50});g.ready(BALANCE.levelCap);g.setState('playing');
   g.player.origin=g.course.portal.world(-10);const metric=portalMetrics(g.course,g.player);
   const final=capture(g),extent=lines=>Math.max(...lines.flatMap(l=>[l.a,l.b]).map(p=>Math.abs(g.course.portal.local(p).y)));
   assert.ok(final.every(l=>l.color.every(c=>c===1)&&l.alpha<=1));assert.ok(extent(final)>7);
@@ -32,7 +32,7 @@ test('the final portal is pure white and larger than the corridor; earlier exits
 });
 
 test('final halo and core share the existing texture, reuse their sprites, and disappear throughout the ending',()=>{
-  const g=new Game(),r={world:new T.Group()};g.command('test end_portal');updatePortalWhiteLight(r,g);
+  const g=new Game({gameMode:50}),r={world:new T.Group()};g.command('test end_portal');updatePortalWhiteLight(r,g);
   const halo=r.portalWhiteLight,core=r.endPortalCore,map=halo.material.map;
   assert.equal(r.world.children.length,2);assert.equal(core.material.map,map);assert.equal(map.image.data.length,64*64*4);
   assert.equal(core.material.color.getHex(),0xffffff);assert.equal(halo.material.color.getHex(),0xffffff);
@@ -52,7 +52,7 @@ test('final halo and core share the existing texture, reuse their sprites, and d
 
 test('test end_portal starts on leg 50 and real movement enters the full ending without changing records or score',()=>{
   for(const fps of [30,60,120]) {
-    const saved=[],g=new Game({rng:()=>.5,stats:{highest_level:6,best_score:1600,best_escape:70},save:s=>saved.push(s)});
+    const saved=[],g=new Game({gameMode:50,rng:()=>.5,stats:{highest_level:6,best_score:1600,best_escape:70},save:s=>saved.push(s)});
     g.score=900;g.completedLevel=5;g.lastEscape=20;g.runStats.levelsCleared=5;
     const stats={...g.stats},run={...g.runStats};g.help=true;g.paused=true;g.autoLocateMinLevel=1000;
     g.command('test end_portal');assert.equal(g.state,'playing');assert.equal(g.level,50);assert.equal(g.course.location(g.player.origin).index,49);
@@ -72,7 +72,7 @@ test('test end_portal starts on leg 50 and real movement enters the full ending 
 });
 
 test('preview death and manual retry return to the final gap; new runs restore normal progression and scoring',()=>{
-  const g=new Game();g.command('test end_portal');const start=g.player.origin.array();
+  const g=new Game({gameMode:50});g.command('test end_portal');const start=g.player.origin.array();
   g.legTime=.001;g.tick(.02);assert.equal(g.state,'death_dissolve');g.tick(.49);g.tick(3.76);g.tick(1.11);
   assert.equal(g.state,'playing');assert.deepEqual(g.player.origin.array(),start);assert.equal(g.timedModule,49);assert.equal(g.runStats.deaths,0);
   g.command('restart');assert.equal(g.state,'playing');assert.deepEqual(g.player.origin.array(),start);assert.equal(g.stats.highest_level,1);
@@ -81,7 +81,7 @@ test('preview death and manual retry return to the final gap; new runs restore n
 
 test('the actual browser console launches the portal test unpaused and persists only explicit visual changes',()=>{
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8'),start=source.indexOf("$('console-form').onsubmit="),end=source.indexOf("  $('console-input').addEventListener",start);
-  const game=new Game(),nodes={'console-form':{},'console-input':{}},writes=[];let closed=0;
+  const game=new Game({gameMode:50}),nodes={'console-form':{},'console-input':{}},writes=[];let closed=0;
   vm.runInNewContext(source.slice(start,end),{$:id=>nodes[id],game,history:[],historyIndex:0,log:[],consoleLog(){},syncAudio(){},focusGame(){},closeConsole(){closed++;},audio:{muted:true},write(k,v){writes.push([k,v]);}});
   const submit=value=>{nodes['console-input'].value=value;nodes['console-form'].onsubmit({preventDefault(){}});};
   submit('end_portal false');assert.deepEqual(writes.at(-1),['cube-libre-end-portal-v1',false]);

@@ -11,7 +11,7 @@ test('the fully visible ascension title holds alone for two seconds before the s
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
   const start=source.indexOf("    $('ending').hidden="),end=source.indexOf("    if(s==='run_summary'&&",start);
   assert.ok(start>=0&&end>start);
-  const game=new Game(),elements=Object.fromEntries(['ending','ascension-copy','thank-you-copy','run-summary','ending-next','ascension-title','ascension-subtitle'].map(id=>[id,{style:{}}]));
+  const game=new Game({gameMode:50}),elements=Object.fromEntries(['ending','ascension-copy','thank-you-copy','run-summary','ending-next','ascension-title','ascension-subtitle'].map(id=>[id,{style:{}}]));
   game.command('test ending_1');game.setState('ascension_title');
   const ui=()=>vm.runInNewContext(source.slice(start,end),{s:game.state,game,ASCENSION_TIMING,THANK_YOU_TIMING,thankYouOpacity,smooth,$:id=>elements[id]});
   const title=()=>Number(elements['ascension-title'].style.opacity),subtitle=()=>Number(elements['ascension-subtitle'].style.opacity);
@@ -51,7 +51,7 @@ test('the ending uses a broad blue floor grid and one reusable starfield buffer 
 });
 
 test('the cube rises from the grid, stays framed, and becomes a star before any white fade',()=>{
-  const start=ascensionPose(0),starTime=ASCENSION_TIMING.starStarts+ASCENSION_TIMING.starSeconds;
+  const start=ascensionPose(ASCENSION_TIMING.sceneStarts),starTime=ASCENSION_TIMING.starStarts+ASCENSION_TIMING.starSeconds;
   assert.ok(Math.abs(start.position.y-.46*start.scale-ASCENSION_STAGE.floorY)<1e-8);
   assert.equal(start.white,0);assert.equal(start.starOpacity,0);
   const merged=ascensionPose(starTime+.2);
@@ -72,12 +72,12 @@ test('the cube rises from the grid, stays framed, and becomes a star before any 
 });
 
 test('ending_1 renders one white cube, then just its star, freezes on pause, and hides the stage for white/text',()=>{
-  const g=new Game(),drawn=[],r=Object.create(Renderer.prototype),noop=()=>{};
+  const g=new Game({gameMode:50}),drawn=[],r=Object.create(Renderer.prototype),noop=()=>{};
   Object.assign(r,{world:new T.Group(),rotator:new T.Group(),camera:new T.PerspectiveCamera(45,16/9,.1,1500),
     stars:{material:{color:{setHex:noop}}},lines:{reset:noop,finish:noop},
     cubes:{reset(){drawn.length=0;},cube(pos,color,scale){drawn.push({pos:pos.array(),color,scale});},finish:noop},
     gl:{setClearColor:noop,render:noop},effects:noop});
-  g.command('test ending_1');r.render(g);assert.equal(drawn.length,1);assert.deepEqual(drawn[0].color,[1,1,1]);
+  g.command('test ending_1');g.tick(ASCENSION_TIMING.sceneStarts);r.render(g);assert.equal(drawn.length,1);assert.deepEqual(drawn[0].color,[1,1,1]);
   assert.equal(r.ascensionScene.group.visible,true);assert.equal(r.stars.visible,false);
   g.tick(3);r.render(g);const before=structuredClone(drawn);
   g.paused=true;g.tick(4);r.render(g);assert.deepEqual(drawn,before);g.paused=false;
@@ -85,5 +85,46 @@ test('ending_1 renders one white cube, then just its star, freezes on pause, and
   assert.equal(ascensionPose(g.stateTime).white,0);
   for(const state of ['ascension_white','ascension_title','thank_you_note','run_summary']) {
     g.setState(state);r.render(g);assert.equal(r.ascensionScene.group.visible,false);assert.equal(drawn.length,0);
+  }
+});
+
+test('the silent arrival draws one slowly rotating intact outline, flashes once into the scene and leaves the saved survivor body untouched',()=>{
+  for(const gameMode of [20,50])for(const aspect of [9/16,16/9]) {
+    const g=new Game({gameMode}),drawn=[],lines=[],r=Object.create(Renderer.prototype),noop=()=>{};let clear;
+    const effects={clearRect:noop,fillRect(){effects.fills.push(effects.fillStyle);},fills:[]};
+    Object.assign(r,{width:900,height:600,ctx:effects,world:new T.Group(),rotator:new T.Group(),camera:new T.PerspectiveCamera(45,aspect,.1,1500),
+      stars:{material:{color:{setHex:noop}}},lines:{reset(){lines.length=0;},finish:noop,line(a,b,color,alpha){lines.push({a:a.array(),b:b.array(),color,alpha});}},
+      cubes:{reset(){drawn.length=0;},cube(pos,color,scale){drawn.push({pos:pos.array(),color,scale});},finish:noop},
+      gl:{setClearColor:c=>{clear=c;},render:noop}});
+    g.ready(g.levelCap,{survivors:[0,62,124]});g.setState('playing');g.win();const survivors=[...g.player.alive],score=g.score;
+    r.render(g);assert.equal(clear,0xffffff);assert.equal(drawn.length,0);assert.equal(lines.length,12);assert.equal(r.ascensionScene.group.visible,false);assert.equal(r.stars.visible,false);assert.equal(effects.fills.length,0);
+    assert.equal(new Set(lines.flatMap(l=>[l.a.join(','),l.b.join(',')])).size,8,'Exactly eight intact corners, no miniature cubes');
+    const first=structuredClone(lines);g.tick(2);r.render(g);assert.notDeepEqual(lines,first);assert.equal(lines[0].alpha,.8);
+    for(let i=0;i<lines.length;i++)assert.ok(Math.hypot(...lines[i].a.map((v,j)=>v-first[i].a[j]))<.5,'The rotation is deliberately slow');
+    r.camera.updateMatrixWorld();for(const l of lines)for(const pos of [l.a,l.b]) {const v=new T.Vector3(...pos).project(r.camera);assert.ok(Math.abs(v.x)<.8&&Math.abs(v.y)<.8);}
+    const frozen=structuredClone(lines);g.paused=true;g.tick(10);r.render(g);assert.deepEqual(lines,frozen);g.paused=false;
+    g.continue();assert.equal(g.stateTime,2);assert.equal(g.state,'ascension');
+    g.stateTime=3.09;r.render(g);assert.ok(Math.abs(lines[0].alpha-.4)<1e-8,'One short fade into a white flash');
+    g.stateTime=3.2;r.render(g);assert.equal(lines.length,0);assert.equal(drawn.length,0);assert.equal(clear,0xffffff);
+    g.stateTime=ASCENSION_TIMING.arrivalSeconds+.06;r.render(g);assert.equal(r.ascensionScene.group.visible,true);assert.equal(drawn.length,1);assert.ok(Math.abs(ascensionPose(g.stateTime).white-.5)<1e-8);
+    g.stateTime=ASCENSION_TIMING.sceneStarts;r.render(g);assert.equal(ascensionPose(g.stateTime).white,0);assert.equal(drawn.length,1);
+    const starAt=ASCENSION_TIMING.starStarts+ASCENSION_TIMING.starSeconds;
+    assert.ok(Math.abs(ASCENSION_TIMING.fadeStarts-starAt-3.2)<1e-8);
+    for(const extra of [.1,1.2,2.5,3.19]) {g.stateTime=starAt+extra;r.render(g);assert.equal(drawn.length,0);assert.equal(r.ascensionScene.spark.visible,true);assert.equal(ascensionPose(g.stateTime).white,0);}
+    assert.deepEqual([...g.player.alive],survivors);assert.equal(g.score,score);
+  }
+});
+
+test('arrival immediately silences live audio and drops queued portal sounds, including previews and late audio unlocks',async()=>{
+  const {GameAudio}=await import('../../web/js/audio.mjs');
+  for(const gameMode of [20,50]) {
+    const g=new Game({gameMode});g.command('test end_portal');g.emit('shutter_close');g.win();assert.deepEqual(g.events.map(e=>e.name),['stop']);
+    const stopped=[],played=[],audio=Object.create(GameAudio.prototype);
+    audio.channels=new Map(['portal_wou','ambient','gamelan','portal'].map(name=>[name,{source:{stop(t){stopped.push([name,t]);}},gain:{gain:{cancelScheduledValues(){},setTargetAtTime(){}}}}]));
+    audio.ctx={currentTime:25};audio.ready=true;audio.sound=(...args)=>played.push(args);
+    g.emit('portal');g.emit('shutter_open');audio.update(g);assert.deepEqual(stopped.map(x=>x[1]),[25,25,25,25]);assert.equal(audio.channels.size,0);assert.equal(played.length,0);assert.equal(g.events.length,0);
+    g.tick(2);audio.update(g);assert.equal(played.length,0);assert.equal(stopped.length,4);
+    g.stateTime=ASCENSION_TIMING.arrivalSeconds;audio.update(g);assert.equal(played.length,0,'Dropped arrival sounds are never replayed');
+    g.command('test ending_1');g.emit('portal');audio.update(g);assert.equal(played.length,0);
   }
 });

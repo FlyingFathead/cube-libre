@@ -13,7 +13,7 @@ function capturePlayer(g) {
 const distance=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]));
 
 test('outside overheating vibrates the actual body increasingly while preserving collision positions',()=>{
-  const g=new Game();g.ready(15);g.setState('playing');g.t=.123;
+  const g=new Game({gameMode:50});g.ready(15);g.setState('playing');g.t=.123;
   g.player.origin=new V(-18,12,0);
   const physical=[...g.player.alive].map(i=>g.player.pos(i).array()),metric=portalMetrics(g.course,g.player);
   g.thermal(g.difficulty.overheatGraceSeconds-.01);
@@ -32,7 +32,7 @@ test('outside overheating vibrates the actual body increasingly while preserving
 });
 
 test('hot cells flash red/orange, freeze on pause/help, and stay steadily hot when the switch is off',()=>{
-  const g=new Game();g.ready(15);g.setState('playing');g.heat=1;g.t=.123;
+  const g=new Game({gameMode:50});g.ready(15);g.setState('playing');g.heat=1;g.t=.123;
   g.hitTime=.2;g.lastHit='bounds'; // Boundary hit flashes must not wash heat back to blue.
   const first=capturePlayer(g);assert.ok(first[124].color[0]>first[124].color[2]);
   g.t+=.04;const second=capturePlayer(g);assert.notDeepEqual(first[0].color,second[0].color);
@@ -45,7 +45,7 @@ test('hot cells flash red/orange, freeze on pause/help, and stay steadily hot wh
 test('console accepts true/false and 0/1 for shaking and persists the choice through the browser adapter',()=>{
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
   const start=source.indexOf("$('console-form').onsubmit="),end=source.indexOf("  $('console-input').addEventListener",start);
-  const game=new Game(),elements={'console-form':{},'console-input':{},'console-log':{}},saved=[];
+  const game=new Game({gameMode:50}),elements={'console-form':{},'console-input':{},'console-log':{}},saved=[];
   vm.runInNewContext(source.slice(start,end),{$:id=>elements[id],game,history:[],historyIndex:0,log:[],consoleLog(){},syncAudio(){},write(key,value){saved.push([key,value]);}});
   for(const [command,expected] of [['shake 0',false],['shake true',true],['set shake false',false],['set shake 1',true]]) {
     elements['console-input'].value=command;elements['console-form'].onsubmit({preventDefault(){}});

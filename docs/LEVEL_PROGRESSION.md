@@ -1,56 +1,94 @@
 # Cube Libre web progression
 
-Default schedule for web **0.27.0**, continuing from published v0.26.0 (`bb6a420`).
-[`featuresForSettings()`](../web/js/difficulty.mjs) combines the `BALANCE`
-milestones and [`CHANGES`](../web/js/changes.mjs), sorts by configured level,
-and supplies phase selection, banner text and the Help table. `LEVEL_FEATURES`
-is its default snapshot. Moving a shutter threshold moves its actual rule and card.
+Default schedule for web **0.28.0**, based on published v0.27.0 (`fd8ce6a`).
+`DEFAULT_GAME_MODE = 20` and the immutable `GAME_MODES` registry live in
+[`web/js/difficulty.mjs`](../web/js/difficulty.mjs). Each `Game` owns its active
+balance; `featuresForSettings(settings, flags, lossMinLevel, game.balance)` drives
+the actual cards and Help table. The `BALANCE` export, default helper arguments
+and `LEVEL_FEATURES` snapshot retain the original 50-level reference for tools.
+Runtime gameplay always supplies its selected mode explicitly.
+
+## Default campaign: game_mode 20
 
 | Level | Banner | What changes |
 | --- | --- | --- |
-| 1 onward | Opening story | Microgravity and automatic camera tracking after the overview. |
-| Every level | LEVEL number / overview | One added corridor leg per level, reaching fifty at level 50. |
+| 1 onward | Opening story | Microgravity and automatic tracking after the overview. |
+| Every level | LEVEL / overview | One added leg: 1 through 20, totaling 210 before retries. |
 | 3 | SPACE ... | World Y opens; three-dimensional routes and nearby detail. |
-| 4 | CHANGE ... (change_1) | THE LASERS NOW OPEN AND CLOSE. One random gate zaps per sequence. |
-| 5 | TIME ... | 30 seconds per leg, gradually tightening to 10 at level 50. |
-| 6 | CHANGE ... (change_2) | TWO GATES. ONE AFTER ANOTHER. Two different random gates inside one leg, two seconds between starts. The second pitch is 3 semitones lower. |
-| 7 | CHANGE ... (change_3) | NOW THERE ARE THREE. A third different gate, 3 semitones above the original. |
-| 8 | CHANGE ... (change_4) | FOUR GATES. A PATTERN EMERGES. Inner, far end, opposite end, other inner; mirrored starting side. Fourth pitch is 7 semitones above the original. |
-| 10 | ENTROPY ... | Re-coupling yield drops from 90% to 50%, then gradually to 1% at level 50. |
-| 15 | HEAT ... | Outside grace drops from 2.4 to 1.4 seconds; new re-coupling requests are blocked while overheating. |
-| 20 | TIME ... | Announces 24.8 seconds per leg. |
-| 35 | TIME ... | Announces 15.2 seconds per leg. |
-| 44 | LOSS ... | PORTALS NO LONGER RESTORE LOST PIECES. Exiting 44 carries survivors into 45; retries restore the level-entry body. Colour loss begins subtly here. |
-| 50 | TIME ... | Announces 10 seconds per leg. Re-coupling yield is 1%; four-step sequences still close one gate at a time. The surviving body is fully grey. |
-| After 5, 10, 15 ... 45 | PICKING UP THE PIECES / BONUS ROUND | 45-second floor bonus; gather pieces and escape up the ramp. |
-| After clearing 50 | YOU'VE ASCENDED / ... FOR NOW. | Single-cube ascension, a long white thank-you fade, statistics and main menu. |
+| 4 | CHANGE ... (change_1) | One random gate zaps per sequence. |
+| 5 | TIME ... | 30 seconds per leg; continuous tightening starts. |
+| 6 | CHANGE ... (change_2) | Two distinct gates in one leg, two seconds between starts; second pitch −3 semitones. |
+| 7 | CHANGE ... (change_3) | A third distinct gate; pitch +3 semitones. |
+| 8 | CHANGE ... (change_4) | Four gates: inner, far end, opposite end, other inner. Mirrored starting side; fourth pitch +7 semitones. |
+| 10 | ENTROPY ..., then TIME ... | 50% recovery per request; colour starts at 2.5% desaturation. TIME announces 24.8 seconds per leg. |
+| 15 | HEAT ..., then TIME ... | Outside grace drops to 1.4 seconds; no new recovery requests while hot. TIME announces 15.2 seconds; recovery is 26%. |
+| 16 | LOSS ... | PORTALS NO LONGER RESTORE LOST PIECES. Exit 16 carries survivors into 17. Retries restore the entry body. |
+| 20 | TIME ... | Ten seconds per leg, 1% recovery, twenty legs and full greyness. The exit is oversized and pure white. |
+| After 5, 10, 15 | PICKING UP THE PIECES / BONUS ROUND | 45-second floor bonus with separate body and score. No bonus after the final level. |
+| After clearing 20 | Silent outline → ascension | A whole outline rotates on white, flashes into the blue-grid/starfield scene, then ascends. Ending words, thank-you fades, statistics and menu follow. |
 
-There are no longer shutter-count changes at levels 22 and 36. The four stages
-replace that ramp. Other difficulty curves and the v0.24.1 collapse fix remain.
+Phase cards hold for five seconds each, queued in the order shown. They and the
+preview do not consume the leg clock. TIME warnings describe the continuous
+curve. The fading has no separate title card and does not cause damage.
 
-Phase cards last five seconds each. If multiple introductions share a level,
-they play in schedule order before the level preview; the timer stays frozen.
-The TIME reminders describe an ongoing curve, rather than abruptly reducing the
-allowance only on those three levels. Heat and entropy are separate rules.
+## Same end pressure, shorter ramps
+
+| Level in mode 20 | Seconds per leg | Recovery per request | Colour blended toward grey |
+| --- | --- | --- | --- |
+| 5 | 30.0 | 90% | 0% |
+| 10 | 24.8 | 50% | 2.5% |
+| 15 | 15.2 | 26% | 26.9% |
+| 16 | 13.5 | 18% | 37.6% |
+| 17 | 12.1 | 12% | 50.3% |
+| 18 | 11.0 | 6% | 64.9% |
+| 19 | 10.3 | 2% | 81.5% |
+| 20 | 10.0 | 1% | 100% |
+
+Time uses smoothstep from level 5 to the active endpoint; entropy from 10 to
+that endpoint. Seconds round to tenths, recovery to whole percentages. Both
+variants finish at the same 10 seconds / 1% / 1.4-second heat grace. Recovery
+still guarantees at least one available piece per accepted request, with the
+existing quota and expiry. Shutter windows, immunity, damage, movement speeds
+and the laser-spin cap remain unchanged; spin reaches its 1.45× ceiling by 14.
+
+## Preserved original: game_mode 50
+
+| Feature | Mode 20 (default) | Mode 50 (console/config only) |
+| --- | --- | --- |
+| SPACE / TIME / ENTROPY / HEAT | 3 / 5 / 10 / 15 | 3 / 5 / 10 / 15 |
+| CHANGE 1 / 2 / 3 / 4 | 4 / 6 / 7 / 8 | 4 / 6 / 7 / 8 |
+| Repeated TIME cards | 10 / 15 / 20 | 20 / 35 / 50 |
+| First LOSS exit | 16 → 17 | 44 → 45 |
+| Colour fade range | 10–20 | 44–50 |
+| Curve endpoint / final portal / ending | 20 | 50 |
+| Bonus rounds | After 5, 10, 15 | Every five from 5 through 45 |
+
+`set game_mode 50` selects the original for `newrun` and console previews.
+`set game_mode 20` restores the default selection. A changed mode returns to
+the title, resets LOSS/fade thresholds to that mode's defaults, and leaves the
+saved campaign intact. A same-value set is inert. Continue uses its saved mode
+without changing the session selection for the next new run. Reloading returns
+the new-run selection to 20. There is no public mode selector.
 
 ## Editing the schedule
 
-In `web/js/difficulty.mjs`:
+Both balances are in `GAME_MODES`; mode 50 is the original `BALANCE` object.
+Shared defaults such as SPACE and HEAT remain defined there and inherited by 20.
+Use the mode registry to change campaign milestones, and keep its `levelCap`
+and `capLevel` aligned. Public mode values are validated as exactly 20 or 50.
 
-| Setting | Default | Meaning |
+| Console setting | Default in 20 / 50 | Meaning |
 | --- | --- | --- |
-| `BALANCE.spaceStartLevel` | `3` | SPACE, Y-route introduction and nearby-detail behavior |
-| `BALANCE.timeStartLevel` | `5` | First timed level and TIME introduction |
-| `BALANCE.entropyStartLevel` | `10` | First entropy level and ENTROPY introduction |
-| `BALANCE.heatMinLevel` | `15` | Gate for both heat penalties and the HEAT introduction; **0 removes the level gate** |
-| `BALANCE.overheatBlocksRecoupling` | `true` | Default for the `overheat_blocks_recoupling` console flag |
-| `BALANCE.lossEnabled` | `true` | Default for the permanent-loss console flag `loss` |
-| `BALANCE.lossMinLevel` | `44` | First exit without a refill; console override `loss_min_level`, 0 means level 1 |
-| `BALANCE.timeReminderLevels` | `[20,35,50]` | Additional TIME announcements |
-| `BALANCE.capLevel` | `50` | Endpoint of timer and recovery curves |
-| `BALANCE.levelCap` | `50` | Last level before ascension |
-| `featuresForSettings()` | Ordered records | Live feature IDs, configured levels, phase states, banners and descriptions |
-| `LEVEL_FEATURES` | Default snapshot | The schedule before session overrides |
+| `game_mode` | 20 / selected explicitly | Variant, with no public checkbox. Queries never change it. |
+| `loss_min_level` | 16 / 44 | First exit without refill and LOSS card; 0 means first level. |
+| `loss_grey_min_level` | 10 / 44 | Separate colour-fade onset; 0 means first level. |
+| `loss` | true / true | Enable portal survivor carry; saved flag. |
+| `loss_grey` | true / true | Enable visual desaturation; saved flag. |
+
+Numeric LOSS/fade thresholds accept integers from 0 through the active cap and
+last for the session. `game_mode` is session-only; saves record their own mode.
+All appear in `viewconfig` with current values and descriptions. Remaining
+shutter, camera, visual and control settings keep their existing commands.
 
 `heatStartLevel` is derived from `heatMinLevel` for the introduction. With a
 minimum of 0, the penalties apply from the first normal level, and HEAT appears
@@ -85,12 +123,13 @@ independent of normal-level propulsion and the heat re-coupling restriction.
 
 ## LOSS and incomplete assembly
 
-The rule applies to the **source level's exit**. Level 43 → 44 still refills.
-Level 44 → 45 carries exact cell IDs and positions within the formation. Later
+The rule applies to the **source level's exit**. Level 15 → 16 still refills.
+Level 16 → 17 carries exact cell IDs and positions within the formation. Later
 portals keep doing this. A snapshot at each level's entry controls retries and
 automatic reassembly, so dying can never refill beyond that entry body. Ordinary
 re-coupling can still recover fresh debris under the current entropy/heat rules.
-Bonuses, including the one after 45, score independently and preserve the carry.
+Bonuses score independently and preserve the carry. The original variant retains
+its bonus after 45 and its 44 → 45 LOSS transition.
 
 Absent entry cells are temporary grey visual forms, never physical or recoverable
 fragments. They tremble and fly away with a generated `loss_weep` sound. The
@@ -100,11 +139,12 @@ and the overview to finish.
 | Console parameter | Default | Meaning |
 | --- | --- | --- |
 | `loss` | `true` | Carry survivors through portals from the threshold; saved boolean |
-| `loss_min_level` | `44` | First affected exit and LOSS card; integer 0–50, session only |
-| `loss_grey` | `true` | Gradual body desaturation during LOSS; saved visual flag |
+| `loss_min_level` | `16` | First affected exit and LOSS card; integer 0–20 in default mode, session only |
+| `loss_grey_min_level` | `10` | Independent fade onset, same range; session only |
+| `loss_grey` | `true` | Gradual body desaturation; saved visual flag |
 
 The colour blend is **2.5% at the starting level**, then follows a quadratic
-curve to 100% at the cap. Defaults for 44–50: 2.5%, 5.2%, 13.3%, 26.9%, 45.8%,
+curve to 100% at the cap. Original-mode defaults for 44–50: 2.5%, 5.2%, 13.3%, 26.9%, 45.8%,
 70.2%, 100%. These are colour-blend amounts, not damage or re-coupling rates.
 `LOSS_COLOUR` in `web/js/loss.mjs` defines the onset and exponent. Disabling
 `loss_grey` changes appearance only; heat and hit flashes remain visible.
@@ -113,7 +153,7 @@ curve to 100% at the cap. Defaults for 44–50: 2.5%, 5.2%, 13.3%, 26.9%, 45.8%,
 `test loss` shows the LOSS card and a deliberately incomplete demonstration body.
 `test ending_1` / `view_end_anim_v1` include the thank-you segment;
 `thank_you_note` or `test thank_you_note` previews that segment alone. Previews
-are developer tools. The normal ending still requires clearing level 50.
+are developer tools. The normal ending still requires clearing the active cap: 20 or 50.
 
 ## CHANGE 1–4: shutter sequences
 
@@ -261,15 +301,17 @@ use `set name number` (or the documented `score N` / `cubes N` commands).
 `toplevel` / `top_level` reports the highest level reached in this browser.
 `toplevel reset`, `top_level reset` and `reset top level` reset only that record
 to 1. `status top_level` is read-only. The record is stored in
-`cube-libre-scores-v1`, field `highest_level`; debug level jumps still update it.
+`cube-libre-mode-scores-v1`, nested under the mode (20 or 50), field
+`highest_level`. The old `cube-libre-scores-v1` record is imported into 50 only,
+without deleting its original key. Debug level jumps update the active record.
 
 `controller` is a saved boolean, on by default. `controller_deadzone` is a saved
 number from 0 to 0.8, default 0.18. Both use the standard console syntax and appear
 in `viewconfig`. Help includes the Xbox-style controller map and keyboard diagram.
 
-The campaign ending limit is still file-configured: `BALANCE.levelCap`, currently
-50. `BALANCE.capLevel` is the independent endpoint of the time/entropy curves.
-There is no runtime console setter for those two limits in this release.
+The active `game.balance` supplies both the ending cap and curve endpoint.
+Choose the bundled pair with `game_mode 20` or `game_mode 50`; no independent
+cap-only console setting can leave LOSS or the ending outside the campaign.
 
 ## Public Options versus developer configuration
 
@@ -292,19 +334,36 @@ and drawing resolution have session console settings documented in
 Continue restores the saved level's entrance, score, run statistics and exact
 level-entry cell IDs. Its white splash says "Continuing from level X ...", then
 fades in "Welcome back." Normal milestone cards follow when applicable.
-From the body carried out of 44 into 45 onward, an incomplete saved body uses
+From the body carried out of 16 into 17 onward (44 into 45 in original mode), an incomplete saved body uses
 the partial LOSS assembly and that level's grey colour; returning cannot refill
 pieces missing before the saved level. The more forgiving level-only/full-body
 alternative remains considered in [ROADMAP.md](../ROADMAP.md).
 
 Pending bonuses keep the normal survivor body separate. Completed bonus rewards
-save the next normal checkpoint once. Clearing level 50 saves the ending until
+save the next normal checkpoint once. Clearing the active final level saves the ending until
 the player finishes the statistics and returns to the menu; reloading the ending
 does not award its score again. Saves use this browser/device only.
 
 At the final level, `end_portal` (saved visual boolean, default true) makes the
 exit frame three times its normal size, pure white, with an oversized white glow.
 `portal_white_light` controls its halo; physics and the final ending threshold
-are unchanged. `test end_portal` starts on LEG 50/50 before the last gate, with
+are unchanged. `test end_portal` starts on LEG 20/20 (50/50 in original mode) before the last gate, with
 normal hazards and ten seconds. It runs through the actual portal into the full
 ending, awards no records or points and cannot overwrite the saved campaign.
+
+
+## Expanded ending (0.28.0)
+
+The final exit begins with one intact dark-grey outline on pure white, turning
+at three degrees per second with a gentle secondary tilt. It holds for three
+seconds in silence. The outline disappears over 0.18 seconds, white holds for
+0.12 seconds, and the starfield is revealed over 0.12 seconds: one brief flash,
+not a repeating effect. Gameplay audio and the portal tail stop at entry; no
+queued sound is replayed afterward. The physical and saved survivor body is untouched.
+
+The existing rise begins after the scene's original 0.6-second rest. The cube
+still becomes a star over 1.2 seconds at the end of its rise, but the completed
+star now holds for 3.2 seconds instead of 1.2. The subsequent 2.4-second white
+fade, two-second white pause, title/subtitle and full thank-you sequence remain.
+Pause and Help freeze every part. These presentation changes apply to both modes
+and the existing `test ending_1` and `test end_portal` previews.

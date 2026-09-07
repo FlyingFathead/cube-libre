@@ -4,7 +4,7 @@ import {isEndPortal} from './portal-light.mjs';
 
 export function detailWindow(g,preview=false) {
   const c=g.course,location=c.location(g.player.origin),reveal=c.revealIndex(g.player.origin);
-  const overview=preview&&g.stateTime/7<.78,full=!g.flags.culling||g.level<3;
+  const overview=preview&&g.stateTime/7<.78,full=!g.flags.culling||g.level<g.balance.spaceStartLevel;
   return {location,reveal,overview,
     first:preview?0:full?0:Math.max(0,location.index-1),
     last:preview?(overview?-1:Math.min(1,c.modules.length-1)):full?c.modules.length-1:Math.min(c.modules.length-1,Math.max(location.index+1,reveal+1))};

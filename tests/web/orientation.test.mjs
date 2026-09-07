@@ -90,7 +90,7 @@ test('leaving fullscreen, hiding the page, switching away and native rotation re
 });
 
 test('mobile Options exposes the orientation control without changing gameplay or persisting a fullscreen request',async()=>{
-  const s=setup(),game=new Game();game.ready(6);game.setState('playing');
+  const s=setup(),game=new Game({gameMode:50});game.ready(6);game.setState('playing');
   const before={flags:{...game.flags},time:game.t,clock:game.legTime,state:game.state};
   const mobile={mode:0,helpers:false,orientation:s.control,setMode(){throw Error('Unrelated input mutation');},setHelpers(){throw Error('Unrelated helper mutation');}};
   const options=createMobileOptions(s.document,mobile),section=options.children.at(-1),input=section.children[1].children[0];
@@ -105,7 +105,7 @@ test('mobile Options exposes the orientation control without changing gameplay o
 test('real app resize and orientation handlers keep portrait and landscape playable, freeze the clock and release held gestures',()=>{
   const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
   for(const startPortrait of [true,false]) {
-    const s=setup(),game=new Game();game.ready(6);game.setState('playing');
+    const s=setup(),game=new Game({gameMode:50});game.ready(6);game.setState('playing');
     let held=true,resizes=0,invalidates=0;
     const renderer={width:startPortrait?400:800,height:startPortrait?800:400,resize(){resizes++;}};
     const mobile={enabled:true,resize(){held=false;},canPlay:()=>!game.paused};

@@ -9,7 +9,7 @@ import {Renderer} from '../../web/js/render.mjs';
 import {GameAudio} from '../../web/js/audio.mjs';
 const near=(a,b,e=1e-8)=>assert.ok(Math.abs(a-b)<e,`${a} != ${b}`);
 function game(level=4) {
-  const g=new Game({rng:()=>.5});g.ready(level);g.setState('playing');
+  const g=new Game({gameMode:50,rng:()=>.5});g.ready(level);g.setState('playing');
   g.flags.change_1_random_per_leg=false;g.flags.suction=false;g.flags.spin=false;
   return g;
 }

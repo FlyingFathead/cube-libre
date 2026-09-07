@@ -5,7 +5,7 @@ import {PLAYER_PROPULSION as P} from '../../web/js/config.mjs';
 
 const near=(a,b,eps=1e-9)=>assert.ok(Math.abs(a-b)<eps,`${a} != ${b}`);
 function free() {
-  const g=new Game({rng:()=>.5});g.ready(1);g.setState('playing');
+  const g=new Game({gameMode:50,rng:()=>.5});g.ready(1);g.setState('playing');
   g.flags.suction=false;g.flags.noclip=true;g.flags.damage=false;
   return g;
 }
