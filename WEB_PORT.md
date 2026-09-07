@@ -86,7 +86,7 @@ remain active. Regression coverage is in `tests/web/collapse-contact.test.mjs`.
 | Maze | Modular self-avoiding X/Z/Y route and open turn chambers; one added leg per level through twenty at the default cap; original fifty-leg mode retained |
 | Boundary damage | Cell shaving, delayed overheating, cooling, local impacts and drifting debris |
 | Recovery | Eight-second expiry, warning blinks, compact reconstruction, five requests per ten seconds, active-spam quota |
-| Critical grace | Quiet, configurable 1.5-second protection after rapid damage leaves at most 20 cubes; 15-second cooldown after protection |
+| Critical grace | Quiet, configurable 2-second protection after rapid damage leaves at most 20 cubes; 15-second cooldown after protection |
 | Difficulty | Space at level 3; timed legs from level 5; shutter changes at levels 4, 6, 7 and 8; entropy from level 10; HEAT at level 15; LOSS from exit 16; timer/yield ramp to 20 (original mode: LOSS 44, endpoint 50) |
 | Collapse | Progressive reveal/arming; the previous leg dissolves after the next turn is cleared, with debris, sound and sealed timed backtracking |
 | Portal | Per-cell slab contact, suction, charge, absorption and 98.5% body commitment |
@@ -1124,20 +1124,20 @@ The existing tests had allowed rejected fragments to be requested again. The
 updated checks enforce batch loss and distinguish fresh damage from spent
 debris, including early levels, ENTROPY, both modes and all input layouts.
 
-## Critical grace and sealed-contact feedback (web 0.30.0)
+## Critical grace and sealed-contact feedback (web 0.30.0; grace extended in 0.30.1)
 
 `web/js/mercy.mjs` owns the rapid-hit history, protection clock, cooldown and
 numeric defaults. `Game.damage()` and `Game.updateShutters()` share its loss
 limiter. Two real damaging contacts no more than 0.5 seconds apart qualify
 when the second hit would leave 20 or fewer cells. The triggering hit is applied,
 preserving the final existing cell if necessary, then ordinary laser, shutter
-and boundary damage is ignored for 1.5 seconds. No lost cells are recreated.
+and boundary damage is ignored for 2 seconds. No lost cells are recreated.
 An isolated hit or a low count without damage does not grant protection.
 
 | Console setting | Default | Range / behavior |
 | --- | --- | --- |
 | `mercy_mode` | `true` | Standard boolean aliases. Off cancels protection but preserves its incurred cooldown. |
-| `mercy_seconds` | `1.5` | 0–10 seconds; 0 prevents new protection windows. |
+| `mercy_seconds` | `2` | 0–10 seconds; 0 prevents new protection windows. |
 | `mercy_cube_threshold` | `20` | Integer 1–125; maximum survivors after the triggering hit. |
 | `mercy_damage_window_seconds` | `0.5` | 0–5 seconds between two real damaging hits. |
 | `mercy_cooldown_seconds` | `15` | 0–300 seconds after protection ends before another burst can qualify. |
@@ -1174,14 +1174,14 @@ Returning from outside into an open section never invokes the sealed effect.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.30.0**, continuing from published **0.29.3** (`e0a7e85`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.30.1**, continuing from published **0.30.0** (`91172bf`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.30.1`, `0.30.2`, etc. for fixes, and `0.31.0` for the
+For future releases, use `0.30.2`, `0.30.3`, etc. for fixes, and `0.31.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.30.0.zip` and `v0.30.0`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.30.1.zip` and `v0.30.1`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 The project-scoped `cube-libre-web-version` cookie records the booted version,

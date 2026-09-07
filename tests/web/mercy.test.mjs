@@ -19,13 +19,13 @@ function burst(g) {
   assert.equal(g.mercyActive,true);return g;
 }
 
-test('rapid boundary damage grants 1.5 seconds at twenty cubes, then ordinary hits resume without an immunity loop',()=>{
+test('rapid boundary damage grants two seconds at twenty cubes, then ordinary hits resume without an immunity loop',()=>{
   for(const mode of [20,50])for(const fps of [30,60,120]) {
     const g=game(24,1,mode);outside(g);g.damageTimer=0;
     g.tick(1/fps);assert.equal(g.player.alive.size,22);assert.equal(g.mercyActive,false);
     for(let i=0;i<fps&&!g.mercyActive;i++)g.tick(1/fps);
     assert.equal(g.mercyActive,true);assert.equal(g.player.alive.size,20);
-    const until=g.mercy.until;near(until-g.mercy.time,1.5);near(g.mercy.readyAt-until,15);
+    const until=g.mercy.until;near(until-g.mercy.time,2);near(g.mercy.readyAt-until,15);
     const body=[...g.player.alive],fragments=g.player.fragments.length;
     while(g.mercy.time+1/fps<until-1e-8) {
       g.tick(1/fps);assert.deepEqual([...g.player.alive],body);assert.equal(g.player.fragments.length,fragments);
@@ -57,7 +57,7 @@ test('an otherwise fatal second hit preserves the last existing cube once, witho
   const last=[...g.player.alive];advance(g,.16);g.events=[];
   assert.equal(g.damage(),null);assert.equal(g.mercyActive,true);assert.deepEqual([...g.player.alive],last);
   assert.equal(g.player.fragments.length,2);assert.equal(g.events.length,0);
-  advance(g,1.49);assert.equal(g.damage(),null);assert.deepEqual([...g.player.alive],last);
+  advance(g,1.99);assert.equal(g.damage(),null);assert.deepEqual([...g.player.alive],last);
   advance(g,.02);assert.equal(g.damage(),'bounds');assert.equal(g.player.alive.size,0);assert.equal(g.player.fragments.length,3);
   const isolated=game(1);outside(isolated);isolated.damage();assert.equal(isolated.player.alive.size,0);assert.equal(isolated.mercyActive,false);
 });
@@ -86,7 +86,7 @@ test('laser, shutter and overheated boundary hits share mercy, and a blocked shu
   blocked.flags.damage=false;advance(blocked,3.21);blocked.flags.damage=true;
   burst(blocked);const closed=blocked.course.lasers[0];blocked.player.origin=closed.center;
   blocked.updateShutters(0);assert.equal(blocked.shutters.contacts.get(closed),blocked.shutterState(closed).cycle);
-  advance(blocked,1.51);assert.equal(blocked.mercyActive,false);assert.equal(blocked.player.alive.size,20);
+  advance(blocked,2.01);assert.equal(blocked.mercyActive,false);assert.equal(blocked.player.alive.size,20);
   assert.equal(blocked.shutterState(closed).closed,true);blocked.updateShutters(.01);assert.equal(blocked.player.alive.size,20);
 });
 
@@ -95,8 +95,8 @@ test('cooldown lasts fifteen seconds after protection, survives toggles and need
   g.command('set mercy_mode off');g.command('set mercy_mode on');assert.equal(g.mercyActive,false);assert.equal(g.mercy.readyAt,ready);
   outside(g);g.damage();advance(g,.16);g.damage();assert.equal(g.mercyActive,false);
   safe(g);advance(g,until-g.mercy.time+14.9);outside(g);g.damage();assert.equal(g.mercyActive,false);
-  safe(g);advance(g,.11);outside(g);g.damage();assert.equal(g.mercyActive,true);near(g.mercy.until-g.mercy.time,1.5);
-  const idle=burst(game());safe(idle);advance(idle,17);assert.equal(idle.mercyActive,false);
+  safe(g);advance(g,.11);outside(g);g.damage();assert.equal(g.mercyActive,true);near(g.mercy.until-g.mercy.time,2);
+  const idle=burst(game());safe(idle);advance(idle,17.1);assert.equal(idle.mercyActive,false);
   outside(idle);idle.damage();assert.equal(idle.mercyActive,false,'Time spent waiting is not a damage burst');
   advance(idle,.16);idle.damage();assert.equal(idle.mercyActive,true);
 });
@@ -147,7 +147,7 @@ test('mercy console settings validate and list their values without advancing, r
     'set mercy_mode banana','set mercy_seconds 1 extra'])assert.throws(()=>g.command(command));
   assert.equal(snapshot(),before);
   const until=g.mercy.until,ready=g.mercy.readyAt;
-  g.command('mercy_seconds 2');g.command('set mercy_cooldown_seconds 8');
+  g.command('mercy_seconds 3');g.command('set mercy_cooldown_seconds 8');
   assert.equal(g.mercy.until,until);assert.equal(g.mercy.readyAt,ready,'Tuning affects the next trigger');
   g.command('set mercy_mode false');assert.equal(g.mercyActive,false);assert.equal(g.mercy.readyAt,ready);
   for(const value of ['true','on','1']){g.command(`set mercy_mode ${value}`);assert.equal(g.flags.mercy_mode,true);}

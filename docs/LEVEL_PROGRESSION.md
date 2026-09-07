@@ -1,6 +1,6 @@
 # Cube Libre web progression
 
-Default schedule for web **0.30.0**, based on published v0.29.3 (`e0a7e85`).
+Default schedule for web **0.30.1**, based on published v0.30.0 (`91172bf`) with mercy extended to two seconds.
 `DEFAULT_GAME_MODE = 20` and the immutable `GAME_MODES` registry live in
 [`web/js/difficulty.mjs`](../web/js/difficulty.mjs). Each `Game` owns its active
 balance; `featuresForSettings(settings, flags, lossMinLevel, game.balance)` drives
@@ -34,7 +34,7 @@ curve. The fading has no separate title card and does not cause damage.
 ## Quiet grace during critical damage
 
 In both campaigns, default-on `mercy_mode` protects the surviving body for
-`mercy_seconds` (1.5) when two damaging hits within
+`mercy_seconds` (2) when two damaging hits within
 `mercy_damage_window_seconds` (0.5) leave at most `mercy_cube_threshold` (20)
 cubes. `mercy_cooldown_seconds` (15) starts after that protection ends.
 These are session-only console settings, with no introduction, menu control or

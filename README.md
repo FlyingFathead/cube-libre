@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.30.0
+# Cube Libre — Web v0.30.1
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,10 +23,10 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.30.0 · Critical grace
+## Update 0.30.1 · Two seconds of mercy
 
 A quiet grace period gives you time to react to rapid disintegration. Two hits
-within half a second, leaving **20 cubes or fewer**, grant **1.5 seconds** of
+within half a second, leaving **20 cubes or fewer**, grant **2 seconds** of
 protection from lasers, shutters and boundary damage. A **15-second cooldown**
 starts after protection ends. Low integrity alone does not trigger it, and
 blocked hits cannot renew the protection or accumulate for later.
@@ -37,7 +37,7 @@ settings last for the session:
 
 ```text
 set mercy_mode true
-set mercy_seconds 1.5
+set mercy_seconds 2
 set mercy_cube_threshold 20
 set mercy_damage_window_seconds 0.5
 set mercy_cooldown_seconds 15
@@ -636,7 +636,10 @@ node --test tests/web/*.test.mjs
 
 See [WEB_PORT.md](WEB_PORT.md) for gameplay details, browser differences,
 source layout, and optional regeneration using a separate PyGame checkout.
-Web 0.29.3 (`e0a7e85`) is the published baseline. This release passes 222
+For an optional interpretation, read
+[ChaosWhisperer's take on the game's philosophy](docs/PHILOSOPHY.md).
+
+Web 0.30.0 (`91172bf`) is the published baseline. This release passes 222
 automated test groups and static checks on Node.js 18.19.1, including both
 campaigns, legacy save migration, independent records, LOSS body carry, ending
 wave/audio timing and render data, controller/touch dispatch, simulated final routes,

@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.30.1 — Two seconds of mercy
+
+Based on published web v0.30.0 (`91172bf`).
+
+- Increase the default `mercy_seconds` from 1.5 to 2, giving players another
+  half-second to react to rapid disintegration. Keep the same burst trigger,
+  cube threshold, 15-second cooldown and console controls.
+- Add `docs/PHILOSOPHY.md`, titled "ChaosWhisperer's take on the game's
+  philosophy". Reflect on the collective body, entropy and lasting loss,
+  rescue into the same hostile circumstances, menace and absurdity, mercy,
+  understandable danger, and the white tide ending. Identify it as an
+  interpretation drawn from conversations with the creator.
+- Link the piece in the README's Development section. Keep it outside the
+  game's interface and opening presentation.
+- Update current documentation, release metadata and package checksums.
+
+Validation: all 222 automated test groups and static checks pass on Node.js
+18.19.1. Mercy checks cover the two-second protection and expiry, cooldown,
+all damage sources, both campaigns and pause behavior. The essay and its
+relative link were reviewed; package contents and checksums are verified.
+The longer grace window still needs device playtesting for balance.
+
 ## 0.30.0 — Critical grace
 
 Based on published web v0.29.3 (`e0a7e85`).

@@ -2,7 +2,7 @@
 // This clock advances only during normal play, alongside ordinary hazards.
 export const MERCY_ENABLED=true;
 export const MERCY_NUMBERS=Object.freeze({
-  mercy_seconds:{value:1.5,min:0,max:10},
+  mercy_seconds:{value:2,min:0,max:10},
   mercy_cube_threshold:{value:20,min:1,max:125,integer:true},
   mercy_damage_window_seconds:{value:.5,min:0,max:5},
   mercy_cooldown_seconds:{value:15,min:0,max:300},

@@ -9,8 +9,8 @@ gets harder, while preserving the feeling that arriving in one piece is unlikely
 
 **Status: implemented.** Rapid disintegration could leave too little time to
 react. Two real damaging hits within 0.5 seconds that leave at most 20 cubes
-now grant 1.5 seconds of protection from ordinary hazards, followed by a
-15-second cooldown. The feature is on by default, has no public control or
+now grant 2 seconds of protection from ordinary hazards, extended from 1.5
+in web 0.30.1, followed by a 15-second cooldown. The feature is on by default, has no public control or
 announcement, and uses the existing CRITICAL warnings. Its boolean, duration,
 threshold, burst window and cooldown are session console settings. Test the
 feel on devices before changing these defaults.
