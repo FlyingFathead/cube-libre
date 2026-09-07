@@ -1,6 +1,7 @@
 import {CheckpointStore,RESUME_TIMING} from './save-game.mjs';
 import {MobileControls,detectMobile,MOBILE_NOTICE,createTouchHelp,createMobileOptions} from './mobile.mjs';
 import {createHelpTabs,createVisualOptions} from './help-tabs.mjs';
+import {createPhilosophySection} from './philosophy.mjs';
 import {GamepadInput,emptyMovement,mergeMovement,navigateControllerMenu} from './gamepad.mjs';
 import {shutterGateCount,shutterInterval,shutterStepInterval} from './changes.mjs';
 import {UpdateChecker,UPDATE_INTERVAL_MS,releaseAssetURL} from './updates.mjs';
@@ -204,7 +205,8 @@ async function main() {
       {id:'keyboard',label:'KEYBOARD',body:keyboardBody},
       {id:'controller',label:'CONTROLLER',body:controllerHelp(inBonus)},
       {id:'touch',label:'TOUCH',body:createTouchHelp(document,inBonus,releaseAssetURL('../assets/touch-controls.svg',import.meta.url).href)},
-      {id:'options',label:'OPTIONS',body:options}
+      {id:'options',label:'OPTIONS',body:options},
+      createPhilosophySection(document,releaseAssetURL('../assets/PHILOSOPHY.md',import.meta.url))
     ],section==='options'?'options':mobile.enabled?'touch':controller.enabled&&controller.connected?'controller':'keyboard'));
     const creditBlock=document.createElement('footer');creditBlock.className='help-credits';body.append(creditBlock);
     const credits=document.createElement('p');credits.className='version-note';

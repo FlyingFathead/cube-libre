@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {createHelpTabs,createVisualOptions} from '../../web/js/help-tabs.mjs';
+import {createPhilosophySection,renderPhilosophy} from '../../web/js/philosophy.mjs';
 import {createMobileOptions,createTouchHelp} from '../../web/js/mobile.mjs';
 import {navigateControllerMenu} from '../../web/js/gamepad.mjs';
 import {Game,BALANCE} from '../../web/js/core.mjs';
@@ -39,23 +40,26 @@ function dom() {
 }
 
 const source=readFileSync(new URL('../../web/js/app.mjs',import.meta.url),'utf8');
+const philosophy=readFileSync(new URL('../../docs/PHILOSOPHY.md',import.meta.url),'utf8');
 function buildHelp({bonus=false,connected=false,paused=false,touch=false,gameMode=50}={}) {
   const document=dom(),game=new Game({gameMode});game.ready(15);game.setState(bonus?'bonus_playing':'playing');game.paused=paused;
   const nodes=Object.fromEntries(['modal','modal-title','modal-body','modal-actions','console'].map(k=>[k,document.createElement('div')]));
   nodes.modal.append(nodes['modal-title'],nodes['modal-body'],nodes['modal-actions']);
+  const requests=[],cache=new Map();
   const writes=[],ctx={document,game,controller:{enabled:true,connected},modalKind:null,previousPaused:false,$:id=>nodes[id],clearInput(){},syncAudio(){},focusGame(){},write:(...x)=>writes.push(x),
+    createPhilosophySection:(doc,url)=>createPhilosophySection(doc,url,{cache,fetcher:async url=>{requests.push(url);return {ok:true,text:async()=>philosophy};}}),
     createHelpTabs,createVisualOptions,createMobileOptions,createTouchHelp,mobile:{enabled:touch,mode:0,helpers:false,setMode(n){this.mode=n;},setHelpers(n){this.helpers=n;}},releaseAssetURL,featuresForSettings,shutterGateCount,shutterInterval,shutterStepInterval,BONUS_SCHEDULE,PIECES_RULES,BALANCE,release:{version:'0.23.1',upstream:{version:'0.15.79'}}};
   vm.createContext(ctx);
   const a=source.indexOf('  function closeModal()'),b=source.indexOf('  function pause()',a),c=source.indexOf('  function controllerHelp('),d=source.indexOf('  function menu()',c);
   vm.runInContext((source.slice(a,b)+source.slice(c,d)).replaceAll('import.meta.url',JSON.stringify('https://flyingfathead.github.io/cube-libre/js/app.mjs')),ctx);
-  ctx.help();return {document,game,nodes,writes,ctx};
+  ctx.help();return {document,game,nodes,writes,ctx,requests};
 }
 
 test('actual Help separates keyboard, controller and visual and rescue options, including bonus-specific maps',()=>{
   for(const bonus of [false,true])for(const connected of [false,true]) {
     const {nodes,game,writes,ctx}=buildHelp({bonus,connected}),body=nodes['modal-body'];
     const tabs=body.querySelectorAll('[role="tab"]'),panels=body.querySelectorAll('[role="tabpanel"]');
-    assert.deepEqual(tabs.map(t=>t.textContent),['KEYBOARD','CONTROLLER','TOUCH','OPTIONS']);
+    assert.deepEqual(tabs.map(t=>t.textContent),['KEYBOARD','CONTROLLER','TOUCH','OPTIONS','PHILOSOPHY']);
     assert.equal(panels.filter(p=>!p.hidden).length,1);assert.equal(panels[connected?1:0].hidden,false);
     assert.equal(tabs[connected?1:0].attrs['aria-selected'],'true');assert.equal(game.paused,true);assert.equal(game.help,true);
     assert.equal(panels[0].querySelectorAll('input').length,0);assert.equal(panels[1].querySelectorAll('input').length,0);
@@ -72,7 +76,7 @@ test('tab clicks and arrow/Home/End keys hide inactive panels, move focus and ne
   const {nodes,game,document}=buildHelp(),body=nodes['modal-body'],tabs=body.querySelectorAll('[role="tab"]'),panels=body.querySelectorAll('[role="tabpanel"]');
   const before={state:game.state,time:game.t,leg:game.legTime,flags:{...game.flags}};
   tabs[3].click();assert.equal(panels[3].hidden,false);assert.equal(tabs[3].tabIndex,0);assert.equal(tabs[0].tabIndex,-1);
-  for(const [from,key,next] of [[3,'ArrowRight',0],[0,'ArrowLeft',3],[3,'Home',0],[0,'End',3]]) {
+  for(const [from,key,next] of [[3,'ArrowRight',4],[4,'ArrowRight',0],[0,'ArrowLeft',4],[4,'Home',0],[0,'End',4]]) {
     let prevented=false;panels[next].scrollTop=400;tabs[from].events.keydown({key,preventDefault(){prevented=true;}});
     assert.equal(prevented,true);assert.equal(document.activeElement,tabs[next]);assert.equal(panels[next].hidden,false);assert.equal(panels[next].scrollTop,0);
     assert.equal(panels.filter(p=>!p.hidden).length,1);
@@ -97,10 +101,59 @@ test('controller navigation reaches tabs and visible options, with scrolling con
   const tabs=body.querySelectorAll('[role="tab"]'),panels=body.querySelectorAll('[role="tabpanel"]');
   tabs[2].focus();navigateControllerMenu(root,{menuStep:1,scroll:0,actions:{}},document,.1);assert.equal(document.activeElement,tabs[3]);
   navigateControllerMenu(root,{menuStep:0,scroll:0,actions:{confirm:true}},document,.1);assert.equal(panels[3].hidden,false);
+  navigateControllerMenu(root,{menuStep:1,scroll:0,actions:{}},document,.1);assert.equal(document.activeElement,tabs[4]);
   navigateControllerMenu(root,{menuStep:1,scroll:1,actions:{}},document,.1);
   assert.equal(document.activeElement,panels[3].querySelector('button'));assert.equal(panels[3].scrollTop,55);assert.equal(panels[1].scrollTop,0);assert.equal(root.scrollTop,0);
-  tabs[0].click();tabs[3].focus();navigateControllerMenu(root,{menuStep:1,scroll:0,actions:{}},document,.1);
+  tabs[0].click();tabs[4].focus();navigateControllerMenu(root,{menuStep:1,scroll:0,actions:{}},document,.1);
   assert.equal(document.activeElement.tag,'summary','Hidden Options checkboxes are skipped');
+});
+
+test('Philosophy loads the real Markdown on selection, formats it and remains scrollable while play is paused',async()=>{
+  for(const touch of [false,true])for(const connected of [false,true]) {
+    const {nodes,game,ctx,requests,document}=buildHelp({touch,connected}),body=nodes['modal-body'];
+    const before={time:game.t,leg:game.legTime,score:game.score,cells:[...game.player.alive],flags:{...game.flags}};
+    let tabs=body.querySelectorAll('[role="tab"]'),panels=body.querySelectorAll('[role="tabpanel"]');
+    assert.equal(requests.length,0,'Opening Help does not fetch optional philosophy');
+    tabs[4].focus();navigateControllerMenu(nodes.modal,{menuStep:0,scroll:0,actions:{confirm:true}},document,.1);
+    tabs[4].click();await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(requests.length,1);assert.equal(requests[0].pathname,'/cube-libre/assets/PHILOSOPHY.md');
+    assert.equal(panels[4].hidden,false);assert.equal(panels[4].querySelector('article').attrs['aria-busy'],'false');
+    assert.equal(panels[4].querySelector('h3').textContent,"ChaosWhisperer's take on the game's philosophy");
+    assert.match(panels[4].querySelector('em').textContent,/Harry Horsperg \(a.k.a. FlyingFathead\), the developer of Cube Libre/);
+    assert.ok(panels[4].querySelectorAll('strong').some(el=>el.textContent==='"Cube Souls"'));
+    assert.ok(panels[4].querySelectorAll('p').length>8);assert.ok(!panels[4].textContent.includes('**'));
+    assert.match(panels[4].textContent,/time, space, life, death and existence/);
+    navigateControllerMenu(nodes.modal,{menuStep:0,scroll:1,actions:{}},document,.1);
+    assert.equal(panels[4].scrollTop,55);assert.equal(panels[0].scrollTop,0);assert.equal(nodes.modal.scrollTop,0);
+    game.tick(5);assert.equal(game.paused,true);assert.equal(game.help,true);
+    assert.deepEqual({time:game.t,leg:game.legTime,score:game.score,cells:[...game.player.alive],flags:game.flags},before);
+    ctx.closeModal();ctx.help();tabs=body.querySelectorAll('[role="tab"]');tabs[4].click();
+    await new Promise(resolve=>setImmediate(resolve));assert.equal(requests.length,1,'Reopening uses the successful read');
+  }
+});
+
+test('Philosophy read failures can retry, release URLs are retained, and Markdown never injects HTML',async()=>{
+  const document=dom(),cache=new Map(),url=releaseAssetURL('../assets/PHILOSOPHY.md','https://example.test/cube-libre/js/app.mjs','0.30.2');
+  let calls=0;
+  const section=createPhilosophySection(document,url,{cache,fetcher:async requested=>{
+    assert.equal(requested.searchParams.get('v'),'0.30.2');calls++;
+    if(calls===1)throw Error('offline');
+    if(calls===2)return {ok:false};
+    if(calls===3)return {ok:true,text:async()=>''};
+    return {ok:true,text:async()=>philosophy};
+  }});
+  for(let attempt=0;attempt<3;attempt++) {
+    await section.onSelect();assert.equal(section.body.attrs['aria-busy'],'false');
+    assert.match(section.body.textContent,/Could not load/);assert.equal(section.body.querySelector('button').textContent,'Try again');
+  }
+  section.body.querySelector('button').click();await section.onSelect();
+  assert.equal(calls,4);assert.ok(section.body.querySelector('h3'));
+  await section.onSelect();assert.equal(calls,4);
+  const literal=document.createElement('article');renderPhilosophy(document,literal,'# Title\n\n**Bold** and *italic* <script>alert(1)</script> [source](https://example.test/report) [unsafe](javascript:alert)');
+  assert.equal(literal.querySelector('script'),null);assert.match(literal.textContent,/<script>alert\(1\)<\/script>/);
+  assert.equal(literal.querySelector('strong').textContent,'Bold');assert.equal(literal.querySelector('em').textContent,'italic');
+  const links=literal.querySelectorAll('a');assert.equal(links.length,1);assert.equal(links[0].href,'https://example.test/report');
+  assert.equal(links[0].target,'_blank');assert.equal(links[0].rel,'noopener noreferrer');
 });
 
 

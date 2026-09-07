@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.30.2 — What remains
+
+Based on published web v0.30.1 (`771a2df`).
+
+- Refine `docs/PHILOSOPHY.md`, "ChaosWhisperer's take on the game's
+  philosophy", around the creator's description of a cubistic, futuristic
+  hell-realm fever dream. Explore irreversible loss, the body's visible
+  history, rescue into unchanged conditions, and the player's decisions
+  about carrying on with what remains. Develop the pressure of scarce time,
+  increasingly convoluted and cramped conditions, and integrity as both
+  physical cohesion and continuity of self. Frame life as an ongoing
+  polycrisis, with limited time, health and resources, narrowing
+  possibilities, and the attrition of stress and pressures accumulating
+  with age. Reflect on time's inevitable passage and the smallness of the
+  individual within the world.
+- Record its beginnings as a philosophical thought experiment during
+  cubistic OpenGL tests in the earlier PyGame version, contemplating time,
+  space, life, death and existence. Include the original maze-platformer-puzzle
+  premise of lasers cutting pieces from a larger cube, and the significance
+  of reaching the end with even one small cube remaining.
+- Describe the web version, in the developer's terms, as a kind of self-therapy
+  through art and game-making. Add a brief note on the eruption news from
+  Anak Krakatau that he brought up during the work, with a linked source.
+- Include the creator's "Cube Souls" joke: the "Dark Souls" of 3D
+  maze-puzzle-action-reaction games. Explain its demanding learning curve
+  and the psychological challenge of accepting imperfect runs and partial
+  losses.
+- Credit Harry Horsperg (a.k.a. FlyingFathead), the developer of Cube Libre.
+  Retain the note's personal perspective and discreet Development link, and
+  leave the ending open to interpretation.
+- Add a PHILOSOPHY tab beside Options on desktop and both mobile layouts.
+  Load the release's Markdown when selected and format it as readable HTML
+  with headings, paragraphs, bold and italics. Keep play paused, scroll within
+  the panel, support keyboard/controller navigation, and wrap tabs on small
+  screens. A failed read offers retry; successful reads are reused.
+- The release preparation script copies `docs/PHILOSOPHY.md` into the
+  published assets. Static checks require the copies to match. Include the
+  Markdown and new reader module in versioned loading and forced refresh.
+  Gameplay rules, recovery and the two-second mercy window are unchanged.
+
+Validation: all 224 automated test groups and static checks pass on Node.js
+18.19.1. New coverage uses the actual Help builder and essay to check lazy
+loading, formatted content, author credit, tab navigation, scrolling, pause,
+cached reopening, failed/empty reads, retry and literal HTML handling.
+Package checksums and unchanged simulation modules were verified. Device
+checking of the new reading layout remains needed.
+
 ## 0.30.1 — Two seconds of mercy
 
 Based on published web v0.30.0 (`91172bf`).

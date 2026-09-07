@@ -165,7 +165,7 @@ dialog{color:#d2ebf0;background:#030a0f;border:1px solid #39c4cf;border-radius:9
 #modal[data-kind="help"] #modal-body { display:flex; flex:1; min-height:0; }
 #modal[data-kind="help"] #modal-body>div { display:flex; flex-direction:column; width:100%; min-width:0; min-height:0; }
 .help-tabs { display:flex; flex-direction:column; flex:1; min-height:0; min-width:0; }
-.help-tab-list { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.5rem; padding:.25rem .25rem .7rem; flex:none; }
+.help-tab-list { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:.5rem; padding:.25rem .25rem .7rem; flex:none; }
 .help-tab-list button { min-width:0; min-height:44px; padding:.5rem .3rem; font-size:clamp(.7rem,2.2vw,.95rem); letter-spacing:.02em; }
 .help-tab-list button[aria-selected="true"] { background:#143c40; border-color:#8bfff4; color:#bafff5; box-shadow:inset 0 -3px #8bfff4; }
 .help-panels { flex:1; min-height:0; }
@@ -176,13 +176,18 @@ dialog{color:#d2ebf0;background:#030a0f;border:1px solid #39c4cf;border-radius:9
 .help-panel .shake-setting { margin:1rem 0; width:100%; }
 .help-panel details { margin-top:1.5rem; border-top:1px solid #37616e; padding-top:1rem; }
 .help-panel summary { cursor:pointer; color:#8bfff4; line-height:1.5; }
+.philosophy-text { max-width:70ch; margin:0 auto; padding:.35rem .25rem; font-family:system-ui,sans-serif; overflow-wrap:anywhere; }
+.help-panel .philosophy-text h3 { font-size:1.4rem; line-height:1.35; margin:.25rem 0 1rem; }
+.philosophy-text p { line-height:1.75; margin:0 0 1.15em; }
+.philosophy-text>p:first-of-type { color:#a6bcc2; font-size:.9rem; }
+.philosophy-text strong { color:#eefcff; }
+@media(max-width:640px) { .help-tab-list { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 .help-credits { flex:none; padding-top:.6rem; border-top:1px solid #18333e; }
 #modal[data-kind="help"] .help-credits p { font-size:.7rem; line-height:1.35; margin:.15rem 0; overflow-wrap:anywhere; }
 #modal[data-kind="help"] #modal-actions { flex:none; margin-top:.6rem; }
 @media(max-height:560px) { #modal[data-kind="help"] { padding:.65rem; } #modal[data-kind="help"] #modal-title { font-size:1rem; margin-bottom:.2rem; } .help-tab-list { padding-bottom:.35rem; } .help-credits { padding-top:.3rem; } }
 
 /* Touch beta. Keep every active target inside the device's safe area. */
-.help-tab-list{grid-template-columns:repeat(4,minmax(0,1fr))}
 .input-mode-options{display:flex;gap:.5rem;flex-wrap:wrap;margin:.7rem 0 1.4rem}
 .input-mode-options button{min-height:44px}
 .touch-help-map{display:block;width:100%;height:auto;border:1px solid #263e4b;border-radius:9px;margin:1rem 0}

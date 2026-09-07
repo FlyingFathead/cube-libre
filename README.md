@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.30.1
+# Cube Libre — Web v0.30.2
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,7 +23,7 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Update 0.30.1 · Two seconds of mercy
+## Gameplay update 0.30.1 · Two seconds of mercy
 
 A quiet grace period gives you time to react to rapid disintegration. Two hits
 within half a second, leaving **20 cubes or fewer**, grant **2 seconds** of
@@ -302,7 +302,8 @@ re-coupling once; holding it does not repeatedly spend your quota.
 
 **⚙ opens Options directly.** Choose Automatic, Touch beta or Keyboard/controller.
 Optional extra drag/depth thumb areas are off by default. Help now has
-**KEYBOARD | CONTROLLER | TOUCH | OPTIONS**, including a touch diagram.
+**KEYBOARD | CONTROLLER | TOUCH | OPTIONS | PHILOSOPHY**, including a touch
+diagram and an optional, formatted essay about the game.
 Gameplay difficulty switches remain console-only; public Options covers input
 preferences and the existing visual effects. In bonus rounds, drag to roll on
 the floor and collect by contact; axis/depth and re-coupling controls are hidden.
@@ -638,9 +639,12 @@ See [WEB_PORT.md](WEB_PORT.md) for gameplay details, browser differences,
 source layout, and optional regeneration using a separate PyGame checkout.
 For an optional interpretation, read
 [ChaosWhisperer's take on the game's philosophy](docs/PHILOSOPHY.md).
+It is also available in the in-game Help/Options menu's **PHILOSOPHY** tab.
+Edit the document under `docs/` and run `node tools/prepare_web_release.mjs`
+to refresh its published copy and release metadata.
 
-Web 0.30.0 (`91172bf`) is the published baseline. This release passes 222
-automated test groups and static checks on Node.js 18.19.1, including both
+Web 0.30.1 (`771a2df`) is the published baseline. This release passes
+224 automated test groups and static checks on Node.js 18.19.1, including both
 campaigns, legacy save migration, independent records, LOSS body carry, ending
 wave/audio timing and render data, controller/touch dispatch, simulated final routes,
 and Panic returns at every leg start in both campaigns with preserved recovery limits.

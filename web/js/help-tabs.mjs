@@ -13,6 +13,7 @@ export function createHelpTabs(document,sections,initial='keyboard') {
   const select=(index,focus=false)=>{
     tabs.forEach((tab,i)=>{const active=i===index;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;panels[i].hidden=!active;});
     panels[index].scrollTop=0;if(focus)tabs[index].focus({preventScroll:true});
+    sections[index].onSelect?.();
   };
   sections.forEach(({id,label,body},index)=>{
     const tab=document.createElement('button');tab.type='button';tab.id=`help-tab-${id}`;tab.textContent=label;tab.setAttribute('role','tab');tab.setAttribute('aria-controls',`help-panel-${id}`);

@@ -583,7 +583,13 @@ pause with the game, and it shares the bottom stack with the other messages.
 
 ## Tabbed Help and public options
 
-Help has four sections: **KEYBOARD**, **CONTROLLER**, **TOUCH** and **OPTIONS**.
+Help has five sections: **KEYBOARD**, **CONTROLLER**, **TOUCH**, **OPTIONS** and
+**PHILOSOPHY**. The last loads the release's copy of `docs/PHILOSOPHY.md` on
+selection and displays its headings, paragraphs, bold and italics as HTML.
+It scrolls inside the paused Help dialog and offers retry if loading fails.
+Successful reads are reused when Help reopens. The release preparation script
+copies the source to `web/assets/PHILOSOPHY.md`; static checks enforce an exact
+match, and the Markdown is included in versioned component refresh.
 Touch mode opens Touch; otherwise a connected controller opens Controller.
 The settings cog opens Options directly. Every tab remains available.
 Keyboard maps adapt to normal/bonus play. A tablist uses roving keyboard focus,
@@ -1174,14 +1180,14 @@ Returning from outside into an open section never invokes the sealed effect.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.30.1**, continuing from published **0.30.0** (`91172bf`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.30.2**, continuing from published **0.30.1** (`771a2df`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.30.2`, `0.30.3`, etc. for fixes, and `0.31.0` for the
+For future releases, use `0.30.3`, `0.30.4`, etc. for fixes, and `0.31.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.30.1.zip` and `v0.30.1`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.30.2.zip` and `v0.30.2`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 The project-scoped `cube-libre-web-version` cookie records the booted version,
@@ -1262,7 +1268,7 @@ immunity, warning/closed rendering, local audio events, movable introductions,
 camera centering, legacy and irregular skies, saved pattern switching and full
 configuration listings. Web 0.23.0 adds controller axes/buttons and browser-dispatch
 checks, record resets, globally capped alternating shutters, preview limits/fade
-uniforms, startup cache replacement and live leg totals. The suite now has 222 passing test groups, including title text/logo activation and Panic return geometry and safety
+uniforms, startup cache replacement and live leg totals. The suite now has 224 passing test groups, including title text/logo activation, Philosophy reading and Panic return geometry and safety
 at every leg start, exact-body preservation without debris, normal recovery limits,
 whole-second cooldown, saved preferences and actual keyboard/controller/touch dispatch.
 The action HUD checks cover setup visibility, desktop key labels and urgency only
@@ -1328,6 +1334,7 @@ generator's bandpass helper, with no PyGame checkout or external recording.
 | `web/js/render.mjs` | Batched cube/line rendering, title, field and transition effects |
 | `web/js/audio.mjs` | Local audio loading, codecs, channels, loops and state mix |
 | `web/js/help-tabs.mjs` | Accessible Help tabs, visual effects and the explicit Panic gameplay option |
+| `web/js/philosophy.mjs` | Optional Markdown reader with semantic HTML formatting, cached loading and retry |
 | `web/js/panic.mjs` | Rescue tuning, shared status and physical reached-leg lookup |
 | `web/js/orientation.mjs` | Optional mobile orientation lock, confirmed state and fullscreen/device fallback |
 | `web/js/gamepad.mjs` | Standard controller polling, analog inputs, action edges and menu navigation |

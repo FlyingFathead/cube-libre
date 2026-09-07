@@ -1,6 +1,6 @@
 # Cube Libre web progression
 
-Default schedule for web **0.30.1**, based on published v0.30.0 (`91172bf`) with mercy extended to two seconds.
+Default schedule for web **0.30.2**, retaining the gameplay of published v0.30.1 (`771a2df`), including two seconds of mercy.
 `DEFAULT_GAME_MODE = 20` and the immutable `GAME_MODES` registry live in
 [`web/js/difficulty.mjs`](../web/js/difficulty.mjs). Each `Game` owns its active
 balance; `featuresForSettings(settings, flags, lossMinLevel, game.balance)` drives
