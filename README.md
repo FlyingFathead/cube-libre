@@ -1,4 +1,4 @@
-# Cube Libre — Web v0.28.0
+# Cube Libre — Web v0.28.1
 
 <h1 align="center"><a href="https://flyingfathead.github.io/cube-libre/">▶ PLAY THE WEB VERSION HERE</a></h1>
 
@@ -23,7 +23,7 @@ This repository contains the web port. The desktop version is developed separate
 The port is based on original source commit
 `ecf8f0148713e5606e64624464eecc4545c71047`.
 
-## Web release 0.28.0 · Twenty levels
+## Web release 0.28.1 · Silent arrival
 
 **Twenty levels. One more leg each time.** The default journey now reaches
 ascension after level 20, with the difficulty curves compressed to reach the
@@ -46,13 +46,14 @@ movement speeds, collision rules and controller/touch controls. The final laser
 spin multiplier is also unchanged. Shortening the journey does not remove the
 late-game pressure.
 
-**A moment before ascension.** The final portal leads into silence: one intact
-cube outline turns very slowly against pure white for three seconds. A single
-brief white flash reveals the blue-grid/starfield scene. The cube rises as before;
-once it becomes a star, it lingers for 3.2 seconds, two seconds longer than before,
+**A moment before ascension.** The final portal leads into a completely blank
+white screen in silence for 3.3 seconds, replacing the outlined cube from v0.28.0.
+The blue-grid/starfield scene then appears over 0.12 seconds. The cube rises as before;
+once it becomes a star, the stars and horizon linger for 5.7 seconds,
+2.5 seconds longer than v0.28.0,
 then fades to white. The existing **YOU'VE ASCENDED / ... FOR NOW.**, slow
 **thank you for playing / CUBE LIBRE**, and separate statistics/menu inputs follow.
-The outline is symbolic; it never refills your saved or physical body.
+The arrival leaves your saved and physical body unchanged.
 
 **Your existing save is kept.** Continue retains its campaign variant, exact
 level-entry pieces, holes, score and progress. Old v0.27.0 saves resume the
@@ -62,8 +63,8 @@ variant; old records belong to the original one.
 
 ### Continue and what remains
 
-The title offers **Continue** or **New run**; replacing a saved journey requires
-a deliberate choice. Continue opens on white with **Continuing from level X ...**,
+New players see one **New run** start option. With a valid saved journey, the
+title offers **Continue** and **New run**; replacing the save requires a deliberate choice. Continue opens on white with **Continuing from level X ...**,
 then **Welcome back.** An incomplete LOSS body plays the partial reassembly:
 missing grey forms tremble and scatter with an engine wind-down, followed by
 **ONLY PARTIAL REASSEMBLY SUCCEEDED**. Retries and Continue restore exactly the
@@ -451,7 +452,7 @@ return at 10, 15 and 20; the curves tighten continuously between them. LOSS
 starts at the exit of 16, with partial bodies carried into 17 and onward.
 Colour fades quadratically from barely perceptible at 10 to completely grey at 20.
 
-Clear the **20-level cap** to see the silent outline, single white flash,
+Clear the **20-level cap** to see the silent blank white hold,
 starfield ascension, slow thank-you fade and statistics. The original 50-level
 variant retains its own difficulty curves, LOSS at 44 and colour fading from
 44 to 50, followed by the same expanded ending.
@@ -540,7 +541,7 @@ node --test tests/web/*.test.mjs
 
 See [WEB_PORT.md](WEB_PORT.md) for gameplay details, browser differences,
 source layout, and optional regeneration using a separate PyGame checkout.
-Web 0.27.0 (`fd8ce6a`) is the published baseline. This release passes 188
+Web 0.28.0 (`8839995`) is the published baseline. This release passes 188
 automated test groups and static checks on Node.js 18.19.1, including both
 campaigns, legacy save migration, independent records, LOSS body carry, ending
 silence and render data, controller/touch dispatch and simulated final routes.

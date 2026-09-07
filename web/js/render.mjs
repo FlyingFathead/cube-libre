@@ -2,7 +2,7 @@ import * as T from '../vendor/three.module.min.js';
 import {VISUAL_EFFECTS,END_PORTAL} from './config.mjs';
 import {lossGreyAmount,lossBodyColor,lossGhostPose} from './loss.mjs';
 import {PIECES_RULES,recoveredShape,rotateQ,multiplyQ,bonusHeat} from './bonus.mjs';
-import {AscensionScene,ascensionPose,arrivalOutlineOpacity} from './ending.mjs';
+import {AscensionScene,ascensionPose} from './ending.mjs';
 import {titleBounds,frameTitle} from './title-layout.mjs';
 import {updatePortalWhiteLight,isEndPortal} from './portal-light.mjs';
 import {RouteGuide,detailWindow,overviewZoom,createInfiniteStarfield,positionInfiniteStarfield,setStarPattern} from './space-view.mjs';
@@ -509,13 +509,8 @@ export class Renderer {
     } else if(bonusScene) {
       this.bonus(g);
     } else if(arrival) {
-      // One whole outline only: symbolic, never a replacement physical body.
-      const alpha=arrivalOutlineOpacity(g.stateTime);
+      // Silent blank white hold before the starfield scene. Draw no geometry.
       this.camera.position.set(0,0,18*Math.max(1,.8/this.camera.aspect));
-      if(alpha>.002) {
-        const corners=boxCorners.map(c=>rotate(rotate(V.of(c).mul(2.2),new V(1,0,0),-18+g.stateTime*.6),new V(0,1,0),35+g.stateTime*3));
-        for(const [a,b] of edgeIndices)this.lines.line(corners[a],corners[b],[.18,.18,.18],alpha*.8);
-      }
     } else if(ascending) {
       const pose=ascensionPose(g.stateTime,this.camera.aspect);this.ascensionScene.update(pose);
       this.camera.position.copy(vec(pose.camera));this.camera.lookAt(pose.target.x,pose.target.y,pose.target.z);

@@ -103,9 +103,12 @@ same final limits sooner; fading starts at 10, HEAT at 15 and LOSS at exit 16.
 This aims to concentrate the existing content and make the journey inviting to
 attempt without removing its late pressure. Existing saves retain their mode.
 
-The shared ending gains a silent, slowly rotating intact outline on white,
-a single brief flash into the existing starfield scene, and two extra seconds
-holding the final star. The outline changes no physical or saved pieces.
+The shared ending gains a silent arrival before the existing starfield scene
+and two extra seconds holding the final star. In v0.28.1, the author replaced
+the rotating outline with a completely blank white hold of the same 3.3-second
+duration after playtesting, and added 2.5 seconds to the view of the stars and
+horizon after the cube departs, bringing that hold to 5.7 seconds. Physical and
+saved pieces remain unchanged.
 These presentation choices preserve the complete ascension arc.
 
 ## Playtest evidence and remaining questions

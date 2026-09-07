@@ -88,7 +88,7 @@ test('ending_1 renders one white cube, then just its star, freezes on pause, and
   }
 });
 
-test('the silent arrival draws one slowly rotating intact outline, flashes once into the scene and leaves the saved survivor body untouched',()=>{
+test('the silent arrival stays blank white for 3.3 seconds, reveals the scene and leaves the saved survivor body untouched',()=>{
   for(const gameMode of [20,50])for(const aspect of [9/16,16/9]) {
     const g=new Game({gameMode}),drawn=[],lines=[],r=Object.create(Renderer.prototype),noop=()=>{};let clear;
     const effects={clearRect:noop,fillRect(){effects.fills.push(effects.fillStyle);},fills:[]};
@@ -97,20 +97,17 @@ test('the silent arrival draws one slowly rotating intact outline, flashes once 
       cubes:{reset(){drawn.length=0;},cube(pos,color,scale){drawn.push({pos:pos.array(),color,scale});},finish:noop},
       gl:{setClearColor:c=>{clear=c;},render:noop}});
     g.ready(g.levelCap,{survivors:[0,62,124]});g.setState('playing');g.win();const survivors=[...g.player.alive],score=g.score;
-    r.render(g);assert.equal(clear,0xffffff);assert.equal(drawn.length,0);assert.equal(lines.length,12);assert.equal(r.ascensionScene.group.visible,false);assert.equal(r.stars.visible,false);assert.equal(effects.fills.length,0);
-    assert.equal(new Set(lines.flatMap(l=>[l.a.join(','),l.b.join(',')])).size,8,'Exactly eight intact corners, no miniature cubes');
-    const first=structuredClone(lines);g.tick(2);r.render(g);assert.notDeepEqual(lines,first);assert.equal(lines[0].alpha,.8);
-    for(let i=0;i<lines.length;i++)assert.ok(Math.hypot(...lines[i].a.map((v,j)=>v-first[i].a[j]))<.5,'The rotation is deliberately slow');
-    r.camera.updateMatrixWorld();for(const l of lines)for(const pos of [l.a,l.b]) {const v=new T.Vector3(...pos).project(r.camera);assert.ok(Math.abs(v.x)<.8&&Math.abs(v.y)<.8);}
-    const frozen=structuredClone(lines);g.paused=true;g.tick(10);r.render(g);assert.deepEqual(lines,frozen);g.paused=false;
-    g.continue();assert.equal(g.stateTime,2);assert.equal(g.state,'ascension');
-    g.stateTime=3.09;r.render(g);assert.ok(Math.abs(lines[0].alpha-.4)<1e-8,'One short fade into a white flash');
-    g.stateTime=3.2;r.render(g);assert.equal(lines.length,0);assert.equal(drawn.length,0);assert.equal(clear,0xffffff);
+    assert.equal(ASCENSION_TIMING.arrivalSeconds,3.3,'Keep the previous arrival duration');
+    const blank=()=>{r.render(g);assert.equal(clear,0xffffff);assert.equal(drawn.length,0);assert.equal(lines.length,0);assert.equal(r.ascensionScene.group.visible,false);assert.equal(r.stars.visible,false);assert.equal(effects.fills.length,0);};
+    for(const time of [0,.1,1,2,3,3.09,3.2,3.299]) {g.stateTime=time;blank();}
+    for(const flag of ['paused','help']) {g[flag]=true;g.tick(10);assert.equal(g.stateTime,3.299);blank();g[flag]=false;}
+    g.continue();assert.equal(g.stateTime,3.299);assert.equal(g.state,'ascension');
     g.stateTime=ASCENSION_TIMING.arrivalSeconds+.06;r.render(g);assert.equal(r.ascensionScene.group.visible,true);assert.equal(drawn.length,1);assert.ok(Math.abs(ascensionPose(g.stateTime).white-.5)<1e-8);
     g.stateTime=ASCENSION_TIMING.sceneStarts;r.render(g);assert.equal(ascensionPose(g.stateTime).white,0);assert.equal(drawn.length,1);
     const starAt=ASCENSION_TIMING.starStarts+ASCENSION_TIMING.starSeconds;
-    assert.ok(Math.abs(ASCENSION_TIMING.fadeStarts-starAt-3.2)<1e-8);
-    for(const extra of [.1,1.2,2.5,3.19]) {g.stateTime=starAt+extra;r.render(g);assert.equal(drawn.length,0);assert.equal(r.ascensionScene.spark.visible,true);assert.equal(ascensionPose(g.stateTime).white,0);}
+    assert.ok(Math.abs(ASCENSION_TIMING.fadeStarts-starAt-5.7)<1e-8);
+    for(const extra of [.1,1.2,2.5,3.19,4,5.69]) {g.stateTime=starAt+extra;r.render(g);assert.equal(drawn.length,0);assert.equal(r.ascensionScene.spark.visible,true);assert.equal(r.ascensionScene.group.visible,true);assert.ok(r.ascensionScene.grid.material.uniforms.opacity.value>0);assert.equal(ascensionPose(g.stateTime).white,0);}
+    g.stateTime=ASCENSION_TIMING.fadeStarts+.1;r.render(g);assert.ok(ascensionPose(g.stateTime).white>0);
     assert.deepEqual([...g.player.alive],survivors);assert.equal(g.score,score);
   }
 });

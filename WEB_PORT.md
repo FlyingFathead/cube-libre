@@ -531,7 +531,7 @@ edited in the file; the console flag changes the restriction's enabled state.
 ## Ascension and run statistics
 
 Clearing the current level cap awards the final portal score once, then replaces
-normal level advancement with the silent outline and starfield ascension scene. The scene
+normal level advancement with a silent blank white hold and starfield ascension scene. The scene
 fades completely white, holds white for two seconds, and fades in:
 
 > YOU'VE ASCENDED
@@ -786,19 +786,17 @@ settings. Browser settings join the same registry through `game.consoleSettings`
 
 ## Ascending into the stars (web 0.20.0)
 
-Ending 001 now opens with one intact outline on pure white, rotating slowly
-(3 degrees/second plus a 0.6 degree/second secondary tilt). This uses twelve
-lines from the existing batch and no miniature cubes. The outline holds for
-3 seconds, vanishes over 0.18 seconds, white holds for 0.12 seconds, then the
-scene is revealed over 0.12 seconds. This is one brief flash, not repeated
-flickering. The final portal tail and all channels stop immediately; queued
+As of web 0.28.1, Ending 001 opens with a completely blank white screen for
+3.3 seconds, replacing the earlier outlined cube without shortening the arrival.
+No cube, lines, route or stars are drawn during this hold. The blue-grid/starfield
+scene is then revealed over the existing 0.12 seconds. The final portal tail and all channels stop immediately; queued
 sounds are dropped throughout this silent arrival. The live body/save is unchanged.
 
 The original scene then shows one white cube above the blue grid. After its
 0.6-second rest, the cube levitates and the camera follows. It becomes a star
 from 5.2 to 6.4 seconds relative to the fully revealed scene. The completed
-star now lingers for 3.2 seconds (two seconds longer), then fades white over
-2.4 seconds. Arrival plus scene lasts 15.42 seconds. A two-second white hold
+star and horizon now linger for 5.7 seconds (2.5 seconds longer than v0.28.0), then fade white over
+2.4 seconds. Arrival plus scene lasts 17.92 seconds. A two-second white hold
 follows; YOU'VE ASCENDED fades in for 1.4 seconds and holds alone for two.
 ... FOR NOW. follows over 1.2 seconds. Input remains guarded until the full
 thank-you segment completes.
@@ -1023,14 +1021,14 @@ unimplemented panic/return proposal arising from this Android feedback.
 its **PyGame baseline**. The title, browser tab and help screen read it locally;
 no GitHub API or remote service is needed.
 
-The current web release is **0.28.0**, continuing from published **0.27.0** (`fd8ce6a`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
+The current web release is **0.28.1**, continuing from published **0.28.0** (`8839995`). The first explicitly numbered web release was **0.16.0**, branched from PyGame
 **0.15.79**, source commit `ecf8f0148713e5606e64624464eecc4545c71047`.
 The prior v2 ZIP label was a package revision, not the game's version.
 
-For future releases, use `0.28.1`, `0.28.2`, etc. for fixes, and `0.29.0` for the
+For future releases, use `0.28.2`, `0.28.3`, etc. for fixes, and `0.29.0` for the
 next feature release. Update `web/version.json`, run `node tools/prepare_web_release.mjs`, update the release notes, refresh
 `WEB_PORT_CHECKSUMS.sha256`, and use the same version in the ZIP filename and Git
-tag (for example, `cube-libre-web-port-v0.28.0.zip` and `v0.28.0`). Keep the upstream
+tag (for example, `cube-libre-web-port-v0.28.1.zip` and `v0.28.1`). Keep the upstream
 version and commit fixed unless deliberately rebasing on a different PyGame source.
 
 ## Browser-specific behavior
@@ -1103,8 +1101,8 @@ checks, record resets, globally capped alternating shutters, preview limits/fade
 uniforms, startup cache replacement and live leg totals. The suite now has 188 passing test groups. Existing regression fixtures select
 mode 50 explicitly; `game-modes.test.mjs` exercises the default 20-level variant,
 both caps, curve endpoints, legacy checkpoint migration, mode-isolated records,
-LOSS carry and final traversal. Ending tests inspect the silent rotating outline,
-flash, longer star hold, actual audio adapter and pause/input guards. The shorter
+LOSS carry and final traversal. Ending tests inspect the blank white hold for its full 3.3 seconds,
+scene reveal, longer star hold, actual audio adapter and pause/input guards. The shorter
 campaign's human balance and new visual/audio timing still need device playtesting.
 The fifty-leg simulated pilot accounts for closed shutters.
 

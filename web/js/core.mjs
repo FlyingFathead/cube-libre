@@ -17,13 +17,13 @@ export const OPENING_DURATION = 9.2;
 export const openingLineOpacity = (time,line) =>
   smooth((time-.8-line*1.6)/1.2)*(1-smooth((time-7.2)/1.2));
 export const ASCENSION_TIMING = Object.freeze({
-  arrivalHoldSeconds: 3, arrivalFadeSeconds: .18, arrivalWhiteSeconds: .12,
-  get arrivalSeconds() {return this.arrivalHoldSeconds+this.arrivalFadeSeconds+this.arrivalWhiteSeconds;},
+  arrivalHoldSeconds: 3.3,
+  get arrivalSeconds() {return this.arrivalHoldSeconds;},
   sceneFadeSeconds: .12,
   get sceneStarts() {return this.arrivalSeconds+this.sceneFadeSeconds;},
   get riseStarts() {return this.sceneStarts+.6;}, riseSeconds: 5.8,
   get starStarts() {return this.sceneStarts+5.2;}, starSeconds: 1.2,
-  starHoldSeconds: 3.2, // Original 1.2-second star hold, plus two more seconds.
+  starHoldSeconds: 5.7, // Hold the stars and horizon 2.5 seconds longer than v0.28.0.
   get fadeStarts() {return this.starStarts+this.starSeconds+this.starHoldSeconds;}, fadeSeconds: 2.4,
   get flySeconds() {return this.fadeStarts+this.fadeSeconds;},
   whiteHoldSeconds: 2, titleFadeSeconds: 1.4, titleHoldSeconds: 2,

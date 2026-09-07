@@ -1,6 +1,6 @@
 # Cube Libre web progression
 
-Default schedule for web **0.28.0**, based on published v0.27.0 (`fd8ce6a`).
+Default schedule for web **0.28.1**, based on published v0.28.0 (`8839995`).
 `DEFAULT_GAME_MODE = 20` and the immutable `GAME_MODES` registry live in
 [`web/js/difficulty.mjs`](../web/js/difficulty.mjs). Each `Game` owns its active
 balance; `featuresForSettings(settings, flags, lossMinLevel, game.balance)` drives
@@ -25,7 +25,7 @@ Runtime gameplay always supplies its selected mode explicitly.
 | 16 | LOSS ... | PORTALS NO LONGER RESTORE LOST PIECES. Exit 16 carries survivors into 17. Retries restore the entry body. |
 | 20 | TIME ... | Ten seconds per leg, 1% recovery, twenty legs and full greyness. The exit is oversized and pure white. |
 | After 5, 10, 15 | PICKING UP THE PIECES / BONUS ROUND | 45-second floor bonus with separate body and score. No bonus after the final level. |
-| After clearing 20 | Silent outline → ascension | A whole outline rotates on white, flashes into the blue-grid/starfield scene, then ascends. Ending words, thank-you fades, statistics and menu follow. |
+| After clearing 20 | Silent white hold → ascension | Blank white holds for 3.3 seconds, then the blue-grid/starfield scene appears and the cube ascends. Ending words, thank-you fades, statistics and menu follow. |
 
 Phase cards hold for five seconds each, queued in the order shown. They and the
 preview do not consume the leg clock. TIME warnings describe the continuous
@@ -352,18 +352,18 @@ normal hazards and ten seconds. It runs through the actual portal into the full
 ending, awards no records or points and cannot overwrite the saved campaign.
 
 
-## Expanded ending (0.28.0)
+## Expanded ending (updated in 0.28.1)
 
-The final exit begins with one intact dark-grey outline on pure white, turning
-at three degrees per second with a gentle secondary tilt. It holds for three
-seconds in silence. The outline disappears over 0.18 seconds, white holds for
-0.12 seconds, and the starfield is revealed over 0.12 seconds: one brief flash,
-not a repeating effect. Gameplay audio and the portal tail stop at entry; no
+The final exit begins with a completely blank white screen for 3.3 seconds
+in silence. This replaces the outlined cube from v0.28.0 while retaining the
+full arrival duration. The blue-grid/starfield scene is then revealed over the
+existing 0.12 seconds. Gameplay audio and the portal tail stop at entry; no
 queued sound is replayed afterward. The physical and saved survivor body is untouched.
 
 The existing rise begins after the scene's original 0.6-second rest. The cube
 still becomes a star over 1.2 seconds at the end of its rise, but the completed
-star now holds for 3.2 seconds instead of 1.2. The subsequent 2.4-second white
+star and horizon now hold for 5.7 seconds, 2.5 seconds longer than v0.28.0.
+The subsequent 2.4-second white
 fade, two-second white pause, title/subtitle and full thank-you sequence remain.
 Pause and Help freeze every part. These presentation changes apply to both modes
 and the existing `test ending_1` and `test end_portal` previews.

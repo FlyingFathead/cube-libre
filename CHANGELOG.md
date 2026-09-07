@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.28.1 — Silent arrival
+
+Based on published web v0.28.0 (`8839995`).
+
+- Replace the outlined cube at the beginning of the ending with a completely
+  blank white screen. Keep the same 3.3-second silent arrival and the existing
+  transition into the blue-grid/starfield ascension scene.
+- Apply this to both campaign modes and the ending/final-portal previews. Keep
+  the ending text, thank-you sequence and pause/input guards.
+- Linger on the stars and horizon for 2.5 additional seconds after the cube
+  becomes a star: 5.7 seconds total before the existing fade to white.
+- Remove the unused outline fade helper and update the ending render checks and
+  current documentation. Campaign rules, browser saves and records are unchanged.
+
+Validation: all 188 automated test groups and static checks pass on Node.js
+18.19.1. The arrival render check covers the complete white hold in portrait and
+landscape, both modes, pause/Help, scene reveal, the longer star/horizon hold
+and survivor preservation. Existing
+audio checks verify silence and dropped portal tails. Real-device visual checking
+of this replacement remains outstanding.
+
 ## 0.28.0 — Twenty levels
 
 Based on published web v0.27.0 (`fd8ce6a`).

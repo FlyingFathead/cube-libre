@@ -91,7 +91,7 @@ export class GameAudio {
   }
   update(g) {
     if(g.state==='ascension'&&g.stateTime<ASCENSION_TIMING.arrivalSeconds) {
-      // The silent outline/flash is intentional, including the final portal tail
+      // The silent white hold is intentional, including the final portal tail
       // and any event queued by the simulation before this browser audio frame.
       g.events.length=0;this.stopAll(0);return;
     }
